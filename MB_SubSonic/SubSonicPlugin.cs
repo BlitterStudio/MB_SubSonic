@@ -43,15 +43,67 @@ namespace MusicBeePlugin
             if (panelHandle != IntPtr.Zero)
             {
                 var configPanel = (Panel)Control.FromHandle(panelHandle);
-                var prompt = new Label
+                var hostPrompt = new Label
                 {
                     AutoSize = true,
-                    Location = new Point(0, 0),
-                    Text = "prompt:"
+                    Location = new Point(0, 8),
+                    Text = "SubSonic hostname:"
                 };
-                var textBox = new TextBox();
-                textBox.Bounds = new Rectangle(60, 0, 100, textBox.Height);
-                configPanel.Controls.AddRange(new Control[] { prompt, textBox });
+                var host = new TextBox();
+                host.Bounds = new Rectangle(80, 5, 120, host.Height);
+                host.Text = "<SubSonic Host>"; //TODO: needs to be =Subsonic.Host
+
+                var portPrompt = new Label
+                {
+                    AutoSize = true,
+                    Location = new Point(212, 8),
+                    Text = "SubSonic port:"
+                };
+                var port = new TextBox();
+                port.Bounds = new Rectangle(250, 5, 32, port.Height);
+                port.Text = "<SubSonic Port>"; //TODO: needs to be =Subsonic.Port
+
+                var basePathPrompt = new Label
+                {
+                    AutoSize = true,
+                    Location = new Point(297, 8),
+                    Text = "Path:"
+                };
+                var basePath = new TextBox();
+                basePath.Bounds = new Rectangle(337, 5, 70, basePath.Height);
+                basePath.Text = "<SubSonic BasePath>"; //TODO: needs to be =Subsonic.BasePath
+
+                var usernamePrompt = new Label
+                {
+                    AutoSize = true,
+                    Location = new Point(0, 34),
+                    Text = "Path:"
+                };
+                var username = new TextBox();
+                username.Bounds = new Rectangle(80, 31, 120, username.Height);
+                username.Text = "<SubSonic Username>"; //TODO: needs to be =Subsonic.Username
+
+                var passwordPrompt = new Label
+                {
+                    AutoSize = true,
+                    Location = new Point(0, 60),
+                    Text = "Path:"
+                };
+                var password = new TextBox();
+                password.Bounds = new Rectangle(80, 57, 120, password.Height);
+                password.Text = "<SubSonic Password>"; //TODO: needs to be =Subsonic.Password
+                password.PasswordChar = '*';
+
+                var transcode = new CheckBox()
+                {
+                    AutoSize = true,
+                    Checked = false, //TODO: = Subsonic.Transcode
+                    Text = "Transcode Streams"
+                };
+
+                configPanel.Controls.AddRange(new Control[] { host, hostPrompt, portPrompt, port, basePath, basePathPrompt, username, usernamePrompt, password, passwordPrompt, transcode });
+                configPanel.Width = basePath.Right + 10;
+                transcode.Location = new Point(basePath.Right - TextRenderer.MeasureText(transcode.Text, configPanel.Font).Width - 12, passwordPrompt.Top -1);
             }
             return false;
         }
