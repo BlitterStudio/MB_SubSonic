@@ -18,7 +18,7 @@ namespace MusicBeePlugin
             mbApiInterface = new MusicBeeApiInterface();
             mbApiInterface.Initialise(apiInterfacePtr);
             about.PluginInfoVersion = PluginInfoVersion;
-            about.Name = "SubSonic";
+            about.Name = "SubSonic v2";
             about.Description = "Access files and playlists on a SubSonic Server";
             about.Author = "Dimitris Panokostas";
             about.TargetApplication = "";   // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
@@ -47,21 +47,21 @@ namespace MusicBeePlugin
                 {
                     AutoSize = true,
                     Location = new Point(0, 8),
-                    Text = "SubSonic hostname:"
+                    Text = "Hostname:"
                 };
                 var host = new TextBox();
                 host.Bounds = new Rectangle(80, 5, 120, host.Height);
-                host.Text = "<SubSonic Host>"; //TODO: needs to be =Subsonic.Host
+                host.Text = "<Host>"; //TODO: needs to be =Subsonic.Host
 
                 var portPrompt = new Label
                 {
                     AutoSize = true,
                     Location = new Point(212, 8),
-                    Text = "SubSonic port:"
+                    Text = "Port:"
                 };
                 var port = new TextBox();
                 port.Bounds = new Rectangle(250, 5, 32, port.Height);
-                port.Text = "<SubSonic Port>"; //TODO: needs to be =Subsonic.Port
+                port.Text = "<Port>"; //TODO: needs to be =Subsonic.Port
 
                 var basePathPrompt = new Label
                 {
@@ -71,27 +71,27 @@ namespace MusicBeePlugin
                 };
                 var basePath = new TextBox();
                 basePath.Bounds = new Rectangle(337, 5, 70, basePath.Height);
-                basePath.Text = "<SubSonic BasePath>"; //TODO: needs to be =Subsonic.BasePath
+                basePath.Text = "<BasePath>"; //TODO: needs to be =Subsonic.BasePath
 
                 var usernamePrompt = new Label
                 {
                     AutoSize = true,
                     Location = new Point(0, 34),
-                    Text = "Path:"
+                    Text = "Username:"
                 };
                 var username = new TextBox();
                 username.Bounds = new Rectangle(80, 31, 120, username.Height);
-                username.Text = "<SubSonic Username>"; //TODO: needs to be =Subsonic.Username
+                username.Text = "<Username>"; //TODO: needs to be =Subsonic.Username
 
                 var passwordPrompt = new Label
                 {
                     AutoSize = true,
                     Location = new Point(0, 60),
-                    Text = "Path:"
+                    Text = "Password:"
                 };
                 var password = new TextBox();
                 password.Bounds = new Rectangle(80, 57, 120, password.Height);
-                password.Text = "<SubSonic Password>"; //TODO: needs to be =Subsonic.Password
+                password.Text = "<Password>"; //TODO: needs to be =Subsonic.Password
                 password.PasswordChar = '*';
 
                 var transcode = new CheckBox()
