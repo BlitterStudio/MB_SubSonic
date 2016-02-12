@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SubSonic", "MB_SubSonic\SubSonic.csproj", "{43FE56C9-52A8-4E86-BBEB-93A1782F01A0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Subsonic", "MB_SubSonic\Subsonic.csproj", "{43FE56C9-52A8-4E86-BBEB-93A1782F01A0}"
 EndProject
 Project("{911E67C6-3D85-4FCE-B560-20A9C3E3FF48}") = "MusicBee", "C:\Program Files (x86)\MusicBee\MusicBee.exe", "{4165A13D-0BA3-48FC-A4F4-151AA6C293CA}"
 	ProjectSection(DebuggerProjectSystem) = preProject
