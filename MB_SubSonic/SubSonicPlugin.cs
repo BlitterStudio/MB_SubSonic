@@ -59,7 +59,7 @@ namespace MusicBeePlugin
                 };
                 host = new TextBox();
                 host.Bounds = new Rectangle(80, 5, 120, host.Height);
-                host.Text = "<Host>"; //TODO: needs to be =Subsonic.Host
+                host.Text = Subsonic.Host;
 
                 var portPrompt = new Label
                 {
@@ -69,7 +69,7 @@ namespace MusicBeePlugin
                 };
                 port = new TextBox();
                 port.Bounds = new Rectangle(250, 5, 32, port.Height);
-                port.Text = "<Port>"; //TODO: needs to be =Subsonic.Port
+                port.Text = Subsonic.Port;
 
                 var basePathPrompt = new Label
                 {
@@ -79,7 +79,7 @@ namespace MusicBeePlugin
                 };
                 basePath = new TextBox();
                 basePath.Bounds = new Rectangle(337, 5, 70, basePath.Height);
-                basePath.Text = "<BasePath>"; //TODO: needs to be =Subsonic.BasePath
+                basePath.Text = Subsonic.BasePath;
 
                 var usernamePrompt = new Label
                 {
@@ -89,7 +89,7 @@ namespace MusicBeePlugin
                 };
                 username = new TextBox();
                 username.Bounds = new Rectangle(80, 31, 120, username.Height);
-                username.Text = "<Username>"; //TODO: needs to be =Subsonic.Username
+                username.Text = Subsonic.Username;
 
                 var passwordPrompt = new Label
                 {
@@ -99,13 +99,13 @@ namespace MusicBeePlugin
                 };
                 password = new TextBox();
                 password.Bounds = new Rectangle(80, 57, 120, password.Height);
-                password.Text = "<Password>"; //TODO: needs to be =Subsonic.Password
+                password.Text = Subsonic.Password;
                 password.PasswordChar = '*';
 
                 transcode = new CheckBox()
                 {
                     AutoSize = true,
-                    Checked = false, //TODO: = Subsonic.Transcode
+                    Checked = Subsonic.Transcode,
                     Text = "Transcode Streams"
                 };
 
@@ -123,10 +123,10 @@ namespace MusicBeePlugin
             // save any persistent settings in a sub-folder of this path
             var dataPath = mbApiInterface.Setting_GetPersistentStoragePath();
 
-            var setHostSuccess = true; //TODO: = Subsonic.SetHost(host.Text.Trim(), port.Text.Trim(), basePath.Text.Trim(), username.Text.Trim(), password.Text.Trim(), transcode.Checked);
+            var setHostSuccess = Subsonic.SetHost(host.Text.Trim(), port.Text.Trim(), basePath.Text.Trim(), username.Text.Trim(), password.Text.Trim(), transcode.Checked);
             if (!setHostSuccess)
             {
-                var message = "message"; //TODO: = Subsonic.GetError().Message;
+                var message = Subsonic.GetError().Message;
                 if (!string.IsNullOrEmpty(message))
                 {
                     MessageBox.Show(host, $"Error: {message}     ", "Subsonic Plugin", MessageBoxButtons.OK,
@@ -138,7 +138,7 @@ namespace MusicBeePlugin
         // MusicBee is closing the plugin (plugin is being disabled by user or MusicBee is shutting down)
         public void Close(PluginCloseReason reason)
         {
-            //TODO: Subsonic.Close();
+            Subsonic.Close();
         }
 
         // uninstall this plugin - clean up any persisted files
@@ -164,11 +164,16 @@ namespace MusicBeePlugin
                 //        break;
                 //}
                 //break;
-                //TODO: Subsonic.CacheUrl = mbApiInterface.Setting_GetPersistentStoragePath() & "\subsonicCache.dat";
-                //TODO: Subsonic.SettingsUrl = mbApiInterface.Setting_GetPersistentStoragePath() & "\subsonicSettings.dat";
-                //TODO: if (Subsonic.Initialize()) { Subsonic.SendNotificationHandler.Invoke(CallbackType.StorageReady) }
-                //TODO: else { Subsonic.SendNotificationHandler.Invoke(CallbackType.StorageFailed) }
-
+                Subsonic.CacheUrl = mbApiInterface.Setting_GetPersistentStoragePath() + @"\subsonicCache.dat";
+                Subsonic.SettingsUrl = mbApiInterface.Setting_GetPersistentStoragePath() + @"\subsonicSettings.dat";
+                if (Subsonic.Initialize())
+                {
+                    Subsonic.SendNotificationHandler.Invoke(CallbackType.StorageReady);
+                }
+                else
+                {
+                    Subsonic.SendNotificationHandler.Invoke(CallbackType.StorageFailed);
+                }
 
                 //case NotificationType.TrackChanged:
                 //    string artist = mbApiInterface.NowPlaying_GetFileTag(MetaDataType.Artist);
@@ -204,29 +209,26 @@ namespace MusicBeePlugin
 
         public void Refresh()
         {
-            //TODO: Create Subsonic class then uncomment these
-            //if (Subsonic.IsInitialized())
-            //{
-            //    Subsonic.Refresh();
-            //}
-            //else
-            //{
-            //    if (Subsonic.Initialize())
-            //    {
-            //        Subsonic.SendNotificationHandler.Invoke(CallbackType.StorageReady);
-            //    }
-            //    else
-            //    {
-            //        Subsonic.SendNotificationHandler.Invoke(CallbackType.StorageFailed);
-            //    }
-            //}
+            if (Subsonic.IsInitialized)
+            {
+                Subsonic.Refresh();
+            }
+            else
+            {
+                if (Subsonic.Initialize())
+                {
+                    Subsonic.SendNotificationHandler.Invoke(CallbackType.StorageReady);
+                }
+                else
+                {
+                    Subsonic.SendNotificationHandler.Invoke(CallbackType.StorageFailed);
+                }
+            }
         }
 
         public bool IsReady()
         {
-            //TODO: Create Subsonic class then uncomment these
-            //return Subsonic.IsInitialized();
-            return true;
+            return Subsonic.IsInitialized;
         }
 
         public Image GetIcon()
@@ -239,72 +241,52 @@ namespace MusicBeePlugin
 
         public bool FolderExists(string path)
         {
-            //TODO: Create Subsonic class then uncomment these
-            //return Subsonic.FolderExists(path);
-            return true;
+            return Subsonic.FolderExists(path);
         }
 
         public string GetFolders(string path)
         {
-            //TODO: Create Subsonic class then uncomment these
-            //return Subsonic.GetFolders(path);
-            return string.Empty;
+            return Subsonic.GetFolders(path);
         }
 
-        public IEnumerable<Dictionary<byte, string>> GetFiles(string path)
+        public KeyValuePair<byte, string>[][] GetFiles(string path)
         {
-            //TODO: Create Subsonic class then uncomment these
-            //return Subsonic.GetFiles(path);
-            return null;
+            return Subsonic.GetFiles(path);
         }
 
-        public Dictionary<byte, string> GetFile(string url)
+        public KeyValuePair<byte, string> GetFile(string url)
         {
-            //TODO: Create Subsonic class then uncomment these
-            //return Subsonic.GetFile(url);
-            return null;
+            return Subsonic.GetFile(url);
         }
 
         public bool FileExists(string url)
         {
-            //TODO: Create Subsonic class then uncomment these
-            //return Subsonic.FileExists(url);
-            return false;
+            return Subsonic.FileExists(url);
         }
 
         public byte[] GetFileArtwork(string url)
         {
-            //TODO: Create Subsonic class then uncomment these
-            //return Subsonic.GetFileArtwork(url);
-            return null;
+            return Subsonic.GetFileArtwork(url);
         }
 
-        public Dictionary<string, string> GetPlaylists()
+        public KeyValuePair<string, string> GetPlaylists()
         {
-            //TODO: Create Subsonic class then uncomment these
-            //return Subsonic.GetPlaylists();
-            return null;
+            return Subsonic.GetPlaylists();
         }
 
-        public IEnumerable<Dictionary<byte, string>> GetPlaylistFiles(string id)
+        public KeyValuePair<byte, string>[][] GetPlaylistFiles(string id)
         {
-            //TODO: Create Subsonic class then uncomment these
-            //return Subsonic.GetPlaylistFiles(id);
-            return null;
+            return Subsonic.GetPlaylistFiles(id);
         }
 
         public System.IO.Stream GetStream(string url)
         {
-            //TODO: Create Subsonic class then uncomment these
-            //return Subsonic.GetStream(url);
-            return null;
+            return Subsonic.GetStream(url);
         }
 
         public Exception GetError()
         {
-            //TODO: Create Subsonic class then uncomment these
-            //return Subsonic.GetError();
-            return null;
+            return Subsonic.GetError();
         }
     }
 }
