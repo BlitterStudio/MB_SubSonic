@@ -23,11 +23,12 @@ namespace MusicBeePlugin
         {
             _mbApiInterface = new MusicBeeApiInterface();
             _mbApiInterface.Initialise(apiInterfacePtr);
+            Subsonic.SendNotificationsHandler = _mbApiInterface.MB_SendNotification;
             _about.PluginInfoVersion = PluginInfoVersion;
             _about.Name = "Subsonic v2";
             _about.Description = "Access files and playlists on a SubSonic Server";
             _about.Author = "Dimitris Panokostas";
-            _about.TargetApplication = "";   // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
+            _about.TargetApplication = "Subsonic";   // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
             _about.Type = PluginType.Storage;
             _about.VersionMajor = 2;  // your plugin version
             _about.VersionMinor = 0;
@@ -35,7 +36,7 @@ namespace MusicBeePlugin
             _about.MinInterfaceVersion = MinInterfaceVersion;
             _about.MinApiRevision = MinApiRevision;
             _about.ReceiveNotifications = (ReceiveNotificationFlags.PlayerEvents | ReceiveNotificationFlags.TagEvents);
-            _about.ConfigurationPanelHeight = 80;   // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
+            _about.ConfigurationPanelHeight = 130;   // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
             return _about;
         }
 
@@ -52,51 +53,51 @@ namespace MusicBeePlugin
                 var hostPrompt = new Label
                 {
                     AutoSize = true,
-                    Location = new Point(0, 8),
+                    Location = new Point(0, 7),
                     Text = @"Hostname:"
                 };
                 _host = new TextBox();
-                _host.Bounds = new Rectangle(80, 5, 120, _host.Height);
+                _host.Bounds = new Rectangle(hostPrompt.Left + TextRenderer.MeasureText(hostPrompt.Text, configPanel.Font).Width, 5, 200, _host.Height);
                 _host.Text = Subsonic.Host;
 
                 var portPrompt = new Label
                 {
                     AutoSize = true,
-                    Location = new Point(212, 8),
+                    Location = new Point(_host.Left + _host.Width + 5, 7),
                     Text = @"Port:"
                 };
                 _port = new TextBox();
-                _port.Bounds = new Rectangle(250, 5, 32, _port.Height);
+                _port.Bounds = new Rectangle(portPrompt.Left + TextRenderer.MeasureText(portPrompt.Text, configPanel.Font).Width, 5, 60, _port.Height);
                 _port.Text = Subsonic.Port;
 
                 var basePathPrompt = new Label
                 {
                     AutoSize = true,
-                    Location = new Point(297, 8),
+                    Location = new Point(_port.Left + _port.Width + 5, 7),
                     Text = @"Path:"
                 };
                 _basePath = new TextBox();
-                _basePath.Bounds = new Rectangle(337, 5, 70, _basePath.Height);
+                _basePath.Bounds = new Rectangle(basePathPrompt.Left + TextRenderer.MeasureText(basePathPrompt.Text, configPanel.Font).Width, 5, 70, _basePath.Height);
                 _basePath.Text = Subsonic.BasePath;
 
                 var usernamePrompt = new Label
                 {
                     AutoSize = true,
-                    Location = new Point(0, 34),
+                    Location = new Point(hostPrompt.Left, 52),
                     Text = @"Username:"
                 };
                 _username = new TextBox();
-                _username.Bounds = new Rectangle(80, 31, 120, _username.Height);
+                _username.Bounds = new Rectangle(_host.Left, 50, 120, _username.Height);
                 _username.Text = Subsonic.Username;
 
                 var passwordPrompt = new Label
                 {
                     AutoSize = true,
-                    Location = new Point(0, 60),
+                    Location = new Point(hostPrompt.Left, 97),
                     Text = @"Password:"
                 };
                 _password = new TextBox();
-                _password.Bounds = new Rectangle(80, 57, 120, _password.Height);
+                _password.Bounds = new Rectangle(_host.Left, 95, 120, _password.Height);
                 _password.Text = Subsonic.Password;
                 _password.PasswordChar = '*';
 
@@ -109,7 +110,7 @@ namespace MusicBeePlugin
 
                 configPanel.Controls.AddRange(new Control[] { _host, hostPrompt, portPrompt, _port, _basePath, basePathPrompt, _username, usernamePrompt, _password, passwordPrompt, _transcode });
                 configPanel.Width = _basePath.Right + 10;
-                _transcode.Location = new Point(_basePath.Right - TextRenderer.MeasureText(_transcode.Text, configPanel.Font).Width - 12, passwordPrompt.Top -1);
+                _transcode.Location = new Point(_port.Left, passwordPrompt.Top -2);
             }
             return false;
         }
