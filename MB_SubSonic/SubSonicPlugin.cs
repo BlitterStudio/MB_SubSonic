@@ -12,39 +12,39 @@ namespace MusicBeePlugin
 {
     public partial class Plugin
     {
-        private MusicBeeApiInterface mbApiInterface;
-        private readonly PluginInfo about = new PluginInfo();
-        private TextBox host;
-        private TextBox port;
-        private TextBox basePath;
-        private TextBox username;
-        private TextBox password;
-        private CheckBox transcode;
+        private MusicBeeApiInterface _mbApiInterface;
+        private readonly PluginInfo _about = new PluginInfo();
+        private TextBox _host;
+        private TextBox _port;
+        private TextBox _basePath;
+        private TextBox _username;
+        private TextBox _password;
+        private CheckBox _transcode;
 
         public PluginInfo Initialise(IntPtr apiInterfacePtr)
         {
-            mbApiInterface = new MusicBeeApiInterface();
-            mbApiInterface.Initialise(apiInterfacePtr);
-            about.PluginInfoVersion = PluginInfoVersion;
-            about.Name = "Subsonic v2";
-            about.Description = "Access files and playlists on a SubSonic Server";
-            about.Author = "Dimitris Panokostas";
-            about.TargetApplication = "";   // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
-            about.Type = PluginType.Storage;
-            about.VersionMajor = 2;  // your plugin version
-            about.VersionMinor = 0;
-            about.Revision = 1;
-            about.MinInterfaceVersion = MinInterfaceVersion;
-            about.MinApiRevision = MinApiRevision;
-            about.ReceiveNotifications = (ReceiveNotificationFlags.PlayerEvents | ReceiveNotificationFlags.TagEvents);
-            about.ConfigurationPanelHeight = 80;   // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
-            return about;
+            _mbApiInterface = new MusicBeeApiInterface();
+            _mbApiInterface.Initialise(apiInterfacePtr);
+            _about.PluginInfoVersion = PluginInfoVersion;
+            _about.Name = "Subsonic v2";
+            _about.Description = "Access files and playlists on a SubSonic Server";
+            _about.Author = "Dimitris Panokostas";
+            _about.TargetApplication = "";   // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
+            _about.Type = PluginType.Storage;
+            _about.VersionMajor = 2;  // your plugin version
+            _about.VersionMinor = 0;
+            _about.Revision = 1;
+            _about.MinInterfaceVersion = MinInterfaceVersion;
+            _about.MinApiRevision = MinApiRevision;
+            _about.ReceiveNotifications = (ReceiveNotificationFlags.PlayerEvents | ReceiveNotificationFlags.TagEvents);
+            _about.ConfigurationPanelHeight = 80;   // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
+            return _about;
         }
 
         public bool Configure(IntPtr panelHandle)
         {
             // save any persistent settings in a sub-folder of this path
-            var dataPath = mbApiInterface.Setting_GetPersistentStoragePath();
+            var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
             // panelHandle will only be set if you set about.ConfigurationPanelHeight to a non-zero value
             // keep in mind the panel width is scaled according to the font the user has selected
             // if about.ConfigurationPanelHeight is set to 0, you can display your own popup window
@@ -55,63 +55,63 @@ namespace MusicBeePlugin
                 {
                     AutoSize = true,
                     Location = new Point(0, 8),
-                    Text = "Hostname:"
+                    Text = @"Hostname:"
                 };
-                host = new TextBox();
-                host.Bounds = new Rectangle(80, 5, 120, host.Height);
-                host.Text = Subsonic.Host;
+                _host = new TextBox();
+                _host.Bounds = new Rectangle(80, 5, 120, _host.Height);
+                _host.Text = Subsonic.Host;
 
                 var portPrompt = new Label
                 {
                     AutoSize = true,
                     Location = new Point(212, 8),
-                    Text = "Port:"
+                    Text = @"Port:"
                 };
-                port = new TextBox();
-                port.Bounds = new Rectangle(250, 5, 32, port.Height);
-                port.Text = Subsonic.Port;
+                _port = new TextBox();
+                _port.Bounds = new Rectangle(250, 5, 32, _port.Height);
+                _port.Text = Subsonic.Port;
 
                 var basePathPrompt = new Label
                 {
                     AutoSize = true,
                     Location = new Point(297, 8),
-                    Text = "Path:"
+                    Text = @"Path:"
                 };
-                basePath = new TextBox();
-                basePath.Bounds = new Rectangle(337, 5, 70, basePath.Height);
-                basePath.Text = Subsonic.BasePath;
+                _basePath = new TextBox();
+                _basePath.Bounds = new Rectangle(337, 5, 70, _basePath.Height);
+                _basePath.Text = Subsonic.BasePath;
 
                 var usernamePrompt = new Label
                 {
                     AutoSize = true,
                     Location = new Point(0, 34),
-                    Text = "Username:"
+                    Text = @"Username:"
                 };
-                username = new TextBox();
-                username.Bounds = new Rectangle(80, 31, 120, username.Height);
-                username.Text = Subsonic.Username;
+                _username = new TextBox();
+                _username.Bounds = new Rectangle(80, 31, 120, _username.Height);
+                _username.Text = Subsonic.Username;
 
                 var passwordPrompt = new Label
                 {
                     AutoSize = true,
                     Location = new Point(0, 60),
-                    Text = "Password:"
+                    Text = @"Password:"
                 };
-                password = new TextBox();
-                password.Bounds = new Rectangle(80, 57, 120, password.Height);
-                password.Text = Subsonic.Password;
-                password.PasswordChar = '*';
+                _password = new TextBox();
+                _password.Bounds = new Rectangle(80, 57, 120, _password.Height);
+                _password.Text = Subsonic.Password;
+                _password.PasswordChar = '*';
 
-                transcode = new CheckBox()
+                _transcode = new CheckBox()
                 {
                     AutoSize = true,
                     Checked = Subsonic.Transcode,
-                    Text = "Transcode Streams"
+                    Text = @"Transcode Streams"
                 };
 
-                configPanel.Controls.AddRange(new Control[] { host, hostPrompt, portPrompt, port, basePath, basePathPrompt, username, usernamePrompt, password, passwordPrompt, transcode });
-                configPanel.Width = basePath.Right + 10;
-                transcode.Location = new Point(basePath.Right - TextRenderer.MeasureText(transcode.Text, configPanel.Font).Width - 12, passwordPrompt.Top -1);
+                configPanel.Controls.AddRange(new Control[] { _host, hostPrompt, portPrompt, _port, _basePath, basePathPrompt, _username, usernamePrompt, _password, passwordPrompt, _transcode });
+                configPanel.Width = _basePath.Right + 10;
+                _transcode.Location = new Point(_basePath.Right - TextRenderer.MeasureText(_transcode.Text, configPanel.Font).Width - 12, passwordPrompt.Top -1);
             }
             return false;
         }
@@ -121,15 +121,15 @@ namespace MusicBeePlugin
         public void SaveSettings()
         {
             // save any persistent settings in a sub-folder of this path
-            var dataPath = mbApiInterface.Setting_GetPersistentStoragePath();
+            var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
 
-            var setHostSuccess = Subsonic.SetHost(host.Text.Trim(), port.Text.Trim(), basePath.Text.Trim(), username.Text.Trim(), password.Text.Trim(), transcode.Checked);
+            var setHostSuccess = Subsonic.SetHost(_host.Text.Trim(), _port.Text.Trim(), _basePath.Text.Trim(), _username.Text.Trim(), _password.Text.Trim(), _transcode.Checked);
             if (!setHostSuccess)
             {
                 var message = Subsonic.GetError().Message;
                 if (!string.IsNullOrEmpty(message))
                 {
-                    MessageBox.Show(host, $"Error: {message}     ", "Subsonic Plugin", MessageBoxButtons.OK,
+                    MessageBox.Show(_host, $"Error: {message}     ", @"Subsonic Plugin", MessageBoxButtons.OK,
                         MessageBoxIcon.Exclamation);
                 }
             }
@@ -164,16 +164,11 @@ namespace MusicBeePlugin
                 //        break;
                 //}
                 //break;
-                Subsonic.CacheUrl = mbApiInterface.Setting_GetPersistentStoragePath() + @"\subsonicCache.dat";
-                Subsonic.SettingsUrl = mbApiInterface.Setting_GetPersistentStoragePath() + @"\subsonicSettings.dat";
-                if (Subsonic.Initialize())
-                {
-                    Subsonic.SendNotificationHandler.Invoke(CallbackType.StorageReady);
-                }
-                else
-                {
-                    Subsonic.SendNotificationHandler.Invoke(CallbackType.StorageFailed);
-                }
+                Subsonic.CacheUrl = _mbApiInterface.Setting_GetPersistentStoragePath() + @"\subsonicCache.dat";
+                Subsonic.SettingsUrl = _mbApiInterface.Setting_GetPersistentStoragePath() + @"\subsonicSettings.dat";
+                Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
+                    ? CallbackType.StorageReady
+                    : CallbackType.StorageFailed);
 
                 //case NotificationType.TrackChanged:
                 //    string artist = mbApiInterface.NowPlaying_GetFileTag(MetaDataType.Artist);
@@ -215,14 +210,9 @@ namespace MusicBeePlugin
             }
             else
             {
-                if (Subsonic.Initialize())
-                {
-                    Subsonic.SendNotificationHandler.Invoke(CallbackType.StorageReady);
-                }
-                else
-                {
-                    Subsonic.SendNotificationHandler.Invoke(CallbackType.StorageFailed);
-                }
+                Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
+                    ? CallbackType.StorageReady
+                    : CallbackType.StorageFailed);
             }
         }
 
@@ -244,7 +234,7 @@ namespace MusicBeePlugin
             return Subsonic.FolderExists(path);
         }
 
-        public string GetFolders(string path)
+        public string[] GetFolders(string path)
         {
             return Subsonic.GetFolders(path);
         }
@@ -254,7 +244,7 @@ namespace MusicBeePlugin
             return Subsonic.GetFiles(path);
         }
 
-        public KeyValuePair<byte, string> GetFile(string url)
+        public KeyValuePair<byte, string>[] GetFile(string url)
         {
             return Subsonic.GetFile(url);
         }
@@ -269,7 +259,7 @@ namespace MusicBeePlugin
             return Subsonic.GetFileArtwork(url);
         }
 
-        public KeyValuePair<string, string> GetPlaylists()
+        public KeyValuePair<string, string>[] GetPlaylists()
         {
             return Subsonic.GetPlaylists();
         }
