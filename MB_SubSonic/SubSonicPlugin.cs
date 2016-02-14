@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Text;
-using System.Linq;
+using System.IO;
+using System.Reflection;
 using System.Resources;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace MusicBeePlugin
@@ -102,7 +100,7 @@ namespace MusicBeePlugin
                 _password.Text = Subsonic.Password;
                 _password.PasswordChar = '*';
 
-                _transcode = new CheckBox()
+                _transcode = new CheckBox
                 {
                     AutoSize = true,
                     Checked = Subsonic.Transcode,
@@ -223,7 +221,7 @@ namespace MusicBeePlugin
 
         public Image GetIcon()
         {
-            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            var assembly = Assembly.GetExecutingAssembly();
             var resourceManager = new ResourceManager("Resources.Images", assembly);
             var icon = resourceManager.GetObject("Subsonic");
             return (Image) icon;
@@ -269,7 +267,7 @@ namespace MusicBeePlugin
             return Subsonic.GetPlaylistFiles(id);
         }
 
-        public System.IO.Stream GetStream(string url)
+        public Stream GetStream(string url)
         {
             return Subsonic.GetStream(url);
         }
