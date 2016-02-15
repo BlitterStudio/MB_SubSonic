@@ -1,5 +1,8 @@
 # MB_SubSonic
 MusicBee SubSonic plugin
+
+Description
+===========
 With this plugin MusicBee acts as a Subsonic player.
 Based on the original work by Steven Mayall. The code was converted from VB.NET to C# with the aim to to futher develop, the plugin, since Steven did not wish to continue working on it.
 
