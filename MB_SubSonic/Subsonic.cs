@@ -24,14 +24,14 @@ namespace MusicBeePlugin
         public static Plugin.MB_SendNotificationDelegate SendNotificationsHandler;
         private static string _serverName;
         private static Exception _lastEx;
-        private static object _cacheFileLock = new object();
-        private static object _cacheLock = new object();
+        private static readonly object CacheFileLock = new object();
+        private static readonly object CacheLock = new object();
         private static KeyValuePair<byte, string>[][] _cachedFiles;
         private static Thread _retrieveThread;
         private static string[] _collectionNames;
-        private static Dictionary<string, ulong> _lastModified = new Dictionary<string, ulong>();
-        private static object _folderLookupLock = new object();
-        private static Dictionary<string, string> _folderLookup = new Dictionary<string, string>();
+        private static readonly Dictionary<string, ulong> LastModified = new Dictionary<string, ulong>();
+        private static readonly object FolderLookupLock = new object();
+        private static readonly Dictionary<string, string> FolderLookup = new Dictionary<string, string>();
 
         public static bool Initialize()
         {
@@ -62,42 +62,11 @@ namespace MusicBeePlugin
 
         private static bool SetServerName()
         {
-            bool isPingOk;
-            string xml;
             try
             {
-                var httpRequest =
-                    (HttpWebRequest) WebRequest.Create("http://" + Host + ":" + Port + BasePath);
-                httpRequest.Method = "GET";
-                httpRequest.Timeout = 5000;
-                var responseHost = ((HttpWebResponse) httpRequest.GetResponse()).ResponseUri.Host;
-                //_serverName = "http://" + responseHost + ":" + Port + BasePath;
-                _serverName = "http://" + Host + ":" + Port + BasePath;
-                xml = GetHttpRequestXml("ping.view", null, 5000);
-                isPingOk = xml.IndexOf(@"status=""ok""", StringComparison.Ordinal) != -1;
-                if (isPingOk)
-                {
-                    return true;
-                }
-                if (string.Compare(responseHost, Host, StringComparison.OrdinalIgnoreCase).Equals(0))
-                {
-                    _lastEx = new IOException(GetErrorMessage(xml));
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                _lastEx = ex;
-            }
-            try
-            {
-                _serverName = "http://" + Host + ":" + Port + BasePath;
-                xml = GetHttpRequestXml("ping.view", null, 5000);
-                isPingOk = xml.IndexOf(@"status=""ok""", StringComparison.Ordinal) != -1;
-                if (!isPingOk)
-                {
-                    _lastEx = new IOException(GetErrorMessage(xml));
-                }
+                _serverName = $"http://{Host}:{Port}{BasePath}";
+                var xml = GetHttpRequestXml("ping.view", null, 5000);
+                var isPingOk = xml.IndexOf(@"status=""ok""", StringComparison.Ordinal) != -1;
                 return isPingOk;
             }
             catch (Exception ex)
@@ -109,11 +78,9 @@ namespace MusicBeePlugin
 
         public static void Close()
         {
-            if (_retrieveThread != null && _retrieveThread.IsAlive)
-            {
-                _retrieveThread.Abort();
-                _retrieveThread = null;
-            }
+            if (_retrieveThread == null || !_retrieveThread.IsAlive) return;
+            _retrieveThread.Abort();
+            _retrieveThread = null;
         }
 
         public static bool SetHost(string host, string port, string basePath, string username, string password,
@@ -247,7 +214,9 @@ namespace MusicBeePlugin
                 if (folderId != null)
                 {
                     var isDirty = false;
-                    list.AddRange(GetRootFolders(folderId, path.Substring(0, path.Length - 1), false, false, ref isDirty).Select(folder => folder.Key));
+                    list.AddRange(
+                        GetRootFolders(folderId, path.Substring(0, path.Length - 1), false, false, ref isDirty)
+                            .Select(folder => folder.Key));
                 }
                 folders = list.ToArray();
             }
@@ -264,7 +233,7 @@ namespace MusicBeePlugin
                 }
                 else
                 {
-                    using (var stream = GetHttpRequestStream("getMusicDirectory.view", "id=" + folderId))
+                    using (var stream = GetHttpRequestStream("getMusicDirectory.view", $"id={folderId}"))
                     using (var xmlReader = new XmlTextReader(stream))
                     {
                         var list = new List<string>();
@@ -280,9 +249,9 @@ namespace MusicBeePlugin
                                     folderId = xmlReader.GetAttribute("id");
                                     var folderName = path + xmlReader.GetAttribute("title");
                                     list.Add(folderName);
-                                    if (!_folderLookup.ContainsKey(folderName))
+                                    if (!FolderLookup.ContainsKey(folderName))
                                     {
-                                        _folderLookup.Add(folderName, folderId);
+                                        FolderLookup.Add(folderName, folderId);
                                     }
                                 }
                             }
@@ -350,7 +319,7 @@ namespace MusicBeePlugin
             if (_cachedFiles == null)
             {
                 KeyValuePair<byte, string>[][] files;
-                lock (_cacheFileLock)
+                lock (CacheFileLock)
                 {
                     using (
                         var stream = new FileStream(CacheUrl, FileMode.Open, FileAccess.Read, FileShare.Read, 4096,
@@ -376,16 +345,16 @@ namespace MusicBeePlugin
                             for (var index = 1; index <= count; index++)
                             {
                                 var collectionName = reader.ReadString();
-                                if (!_lastModified.ContainsKey(collectionName))
+                                if (!LastModified.ContainsKey(collectionName))
                                 {
-                                    _lastModified.Add(collectionName, reader.ReadUInt64());
+                                    LastModified.Add(collectionName, reader.ReadUInt64());
                                 }
                             }
                         }
                         reader.Close();
                     }
                 }
-                lock (_cacheLock)
+                lock (CacheLock)
                 {
                     if (_cachedFiles == null)
                     {
@@ -430,7 +399,7 @@ namespace MusicBeePlugin
                     }
                     var files = list.ToArray();
                     KeyValuePair<byte, string>[][] oldCachedFiles;
-                    lock (_cacheLock)
+                    lock (CacheLock)
                     {
                         oldCachedFiles = _cachedFiles;
                         _cachedFiles = files;
@@ -444,13 +413,10 @@ namespace MusicBeePlugin
                             var tags2 = oldCachedFiles[index];
                             for (var tagIndex = 0; tagIndex <= TagCount - 1; tagIndex++)
                             {
-                                if (
-                                    string.Compare(tags1[tagIndex].Value, tags2[tagIndex].Value,
-                                        StringComparison.Ordinal) != 0)
-                                {
-                                    anyChanges = true;
-                                    break;
-                                }
+                                if (string.Compare(tags1[tagIndex].Value, tags2[tagIndex].Value,
+                                    StringComparison.Ordinal) == 0) continue;
+                                anyChanges = true;
+                                break;
                             }
                         }
                     }
@@ -477,7 +443,7 @@ namespace MusicBeePlugin
                         }
                         try
                         {
-                            lock (_cacheFileLock)
+                            lock (CacheFileLock)
                             {
                                 using (
                                     var stream = new FileStream(CacheUrl, FileMode.Create, FileAccess.Write,
@@ -496,8 +462,8 @@ namespace MusicBeePlugin
                                             writer.Write(tag.Value);
                                         }
                                     }
-                                    writer.Write(_lastModified.Count);
-                                    foreach (var item in _lastModified)
+                                    writer.Write(LastModified.Count);
+                                    foreach (var item in LastModified)
                                     {
                                         writer.Write(item.Key);
                                         writer.Write(item.Value);
@@ -535,9 +501,9 @@ namespace MusicBeePlugin
             bool dirtyOnly)
         {
             var folders = new List<KeyValuePair<string, string>>();
-            lock (_folderLookupLock)
+            lock (FolderLookupLock)
             {
-                if (refresh || _folderLookup.Count.Equals(0))
+                if (refresh || FolderLookup.Count.Equals(0))
                 {
                     folders = new List<KeyValuePair<string, string>>();
                     var collection = new List<KeyValuePair<string, string>>();
@@ -551,13 +517,13 @@ namespace MusicBeePlugin
                             {
                                 var folderId = xmlReader.GetAttribute("id");
                                 var folderName = xmlReader.GetAttribute("name");
-                                if (folderName != null && _folderLookup.ContainsKey(folderName))
+                                if (folderName != null && FolderLookup.ContainsKey(folderName))
                                 {
-                                    _folderLookup[folderName] = folderId;
+                                    FolderLookup[folderName] = folderId;
                                 }
                                 else
                                 {
-                                    if (folderName != null) _folderLookup.Add(folderName, folderId);
+                                    if (folderName != null) FolderLookup.Add(folderName, folderId);
                                 }
                                 collection.Add(new KeyValuePair<string, string>(folderId, folderName));
                             }
@@ -591,7 +557,7 @@ namespace MusicBeePlugin
             bool indices, bool updateIsDirty, ref bool isDirty)
         {
             var folders = new List<KeyValuePair<string, string>>();
-            using (var stream = GetHttpRequestStream("getIndexes.view", "musicFolderId=" + collectionId))
+            using (var stream = GetHttpRequestStream("getIndexes.view", $"musicFolderId={collectionId}"))
             using (var xmlReader = new XmlTextReader(stream))
             {
                 while (xmlReader.Read())
@@ -601,14 +567,14 @@ namespace MusicBeePlugin
                         if (string.Compare(xmlReader.Name, "artist", StringComparison.Ordinal).Equals(0))
                         {
                             var folderId = xmlReader.GetAttribute("id");
-                            var folderName = collectionName + @"\" + xmlReader.GetAttribute("name");
-                            if (_folderLookup.ContainsKey(folderName))
+                            var folderName = $"{collectionName}\\{xmlReader.GetAttribute("name")}";
+                            if (FolderLookup.ContainsKey(folderName))
                             {
-                                _folderLookup[folderName] = folderId;
+                                FolderLookup[folderName] = folderId;
                             }
                             else
                             {
-                                _folderLookup.Add(folderName, folderId);
+                                FolderLookup.Add(folderName, folderId);
                             }
                             folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
                         }
@@ -618,18 +584,18 @@ namespace MusicBeePlugin
                             ulong serverLastModified;
                             if (ulong.TryParse(xmlReader.GetAttribute("lastModified"), out serverLastModified))
                             {
-                                lock (_cacheFileLock)
+                                lock (CacheFileLock)
                                 {
                                     ulong clientLastModified;
-                                    if (!_lastModified.TryGetValue(collectionName, out clientLastModified))
+                                    if (!LastModified.TryGetValue(collectionName, out clientLastModified))
                                     {
                                         isDirty = true;
-                                        _lastModified.Add(collectionName, serverLastModified);
+                                        LastModified.Add(collectionName, serverLastModified);
                                     }
                                     else if (serverLastModified > clientLastModified)
                                     {
                                         isDirty = true;
-                                        _lastModified[collectionName] = serverLastModified;
+                                        LastModified[collectionName] = serverLastModified;
                                     }
                                 }
                             }
@@ -643,7 +609,7 @@ namespace MusicBeePlugin
         private static void GetFolderFiles(string baseFolderName, string folderId,
             ICollection<KeyValuePair<byte, string>[]> files)
         {
-            using (var stream = GetHttpRequestStream("getMusicDirectory.view", "id=" + folderId))
+            using (var stream = GetHttpRequestStream("getMusicDirectory.view", $"id={folderId}"))
             using (var xmlReader = new XmlTextReader(stream))
             {
                 while (xmlReader.Read())
@@ -692,12 +658,12 @@ namespace MusicBeePlugin
             {
                 throw new ArgumentException();
             }
-            if (_folderLookup.Count.Equals(0))
+            if (FolderLookup.Count.Equals(0))
             {
                 GetRootFolders(false, false, false);
             }
             string folderId;
-            if (!_folderLookup.TryGetValue(url.Substring(0, charIndex), out folderId))
+            if (!FolderLookup.TryGetValue(url.Substring(0, charIndex), out folderId))
             {
                 var sectionStartIndex = url.IndexOf(@"\", StringComparison.Ordinal) + 1;
                 charIndex = url.IndexOf(@"\", sectionStartIndex, StringComparison.Ordinal);
@@ -708,14 +674,14 @@ namespace MusicBeePlugin
                 while (charIndex != -1)
                 {
                     string subFolderId;
-                    if (_folderLookup.TryGetValue(url.Substring(0, charIndex), out subFolderId))
+                    if (FolderLookup.TryGetValue(url.Substring(0, charIndex), out subFolderId))
                     {
                         folderId = subFolderId;
                     }
                     else
                     {
                         var folderName = url.Substring(sectionStartIndex, charIndex - sectionStartIndex);
-                        using (var stream = GetHttpRequestStream("getMusicDirectory.view", "id=" + folderId))
+                        using (var stream = GetHttpRequestStream("getMusicDirectory.view", $"id={folderId}"))
                         using (var xmlReader = new XmlTextReader(stream))
                         {
                             while (xmlReader.Read())
@@ -730,7 +696,7 @@ namespace MusicBeePlugin
                                             StringComparison.Ordinal).Equals(0))
                                     {
                                         folderId = xmlReader.GetAttribute("id");
-                                        _folderLookup.Add(url.Substring(0, charIndex), folderId);
+                                        FolderLookup.Add(url.Substring(0, charIndex), folderId);
                                         break;
                                     }
                                 }
@@ -755,7 +721,7 @@ namespace MusicBeePlugin
             var folderId = GetFolderId(url);
             if (folderId != null)
             {
-                using (var stream = GetHttpRequestStream("getMusicDirectory.view", "id=" + folderId))
+                using (var stream = GetHttpRequestStream("getMusicDirectory.view", $"id={folderId}"))
                 using (var xmlReader = new XmlTextReader(stream))
                 {
                     var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
@@ -780,7 +746,7 @@ namespace MusicBeePlugin
 
         private static string GetResolvedUrl(string url)
         {
-            if (_folderLookup.Count.Equals(0))
+            if (FolderLookup.Count.Equals(0))
             {
                 GetRootFolders(false, false, false);
             }
@@ -822,7 +788,7 @@ namespace MusicBeePlugin
             var folderId = GetFolderId(url);
             if (folderId != null)
             {
-                using (var stream = GetHttpRequestStream("getMusicDirectory.view", "id=" + folderId))
+                using (var stream = GetHttpRequestStream("getMusicDirectory.view", $"id={folderId}"))
                 using (var xmlReader = new XmlTextReader(stream))
                 {
                     var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
@@ -855,7 +821,7 @@ namespace MusicBeePlugin
             var folderId = GetFolderId(url);
             if (folderId != null)
             {
-                using (var stream = GetHttpRequestStream("getMusicDirectory.view", "id=" + folderId))
+                using (var stream = GetHttpRequestStream("getMusicDirectory.view", $"id={folderId}"))
                 using (var xmlReader = new XmlTextReader(stream))
                 {
                     var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
@@ -878,7 +844,7 @@ namespace MusicBeePlugin
             return null;
         }
 
-        private static KeyValuePair<byte, string>[] GetTags(XmlTextReader xmlReader, string baseFolderName)
+        private static KeyValuePair<byte, string>[] GetTags(XmlReader xmlReader, string baseFolderName)
         {
             if (string.Compare(xmlReader.GetAttribute("isVideo"), "true", StringComparison.Ordinal).Equals(0))
             {
@@ -891,14 +857,7 @@ namespace MusicBeePlugin
             {
                 path = attribute.Replace(@"/", @"\");
             }
-            if (baseFolderName == null)
-            {
-                path = GetResolvedUrl(path);
-            }
-            else
-            {
-                path = baseFolderName + @"\" + path;
-            }
+            path = baseFolderName == null ? GetResolvedUrl(path) : $"{baseFolderName}\\{path}";
             tags[0] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Url, path);
             tags[1] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Artist, xmlReader.GetAttribute("artist"));
             tags[2] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.TrackTitle,
@@ -938,7 +897,7 @@ namespace MusicBeePlugin
                 var id = GetCoverArtId(url);
                 if (id != null)
                 {
-                    using (var stream = GetHttpRequestStream("getCoverArt.view", "id=" + id))
+                    using (var stream = GetHttpRequestStream("getCoverArt.view", $"id={id}"))
                     {
                         if (string.Compare(stream.ContentType, "text/xml", StringComparison.Ordinal) != 0)
                         {
@@ -982,7 +941,7 @@ namespace MusicBeePlugin
         public static KeyValuePair<byte, string>[][] GetPlaylistFiles(string id)
         {
             _lastEx = null;
-            using (var stream = GetHttpRequestStream("getPlaylist.view", "id=" + id))
+            using (var stream = GetHttpRequestStream("getPlaylist.view", $"id={id}"))
             using (var xmlReader = new XmlTextReader(stream))
             {
                 var files = new List<KeyValuePair<byte, string>[]>();
@@ -1013,7 +972,7 @@ namespace MusicBeePlugin
             }
             else
             {
-                var stream = GetHttpRequestStream(Transcode ? "stream.view" : "download.view", "id=" + id);
+                var stream = GetHttpRequestStream(Transcode ? "stream.view" : "download.view", $"id={id}");
                 if (string.Compare(stream.ContentType, "text/xml", StringComparison.Ordinal) != 0)
                 {
                     return stream;
@@ -1043,8 +1002,7 @@ namespace MusicBeePlugin
         {
             return
                 new ConnectStream(
-                    _serverName + "rest/" + query + "?u=" + Username + "&p=" + Password + "&v=1.0.0&c=MusicBee" +
-                    (string.IsNullOrEmpty(parameters) ? "" : "&" + parameters), timeout);
+                    $"{_serverName}rest/{query}?u={Username}&p={Password}&v=1.0.0&c=MusicBee{(string.IsNullOrEmpty(parameters) ? "" : "&" + parameters)}", timeout);
         }
 
         private sealed class FileSorter : Comparer<KeyValuePair<byte, string>[]>
@@ -1094,7 +1052,8 @@ namespace MusicBeePlugin
             }
 
             /// <summary>
-            /// Closes the current stream and releases any resources (such as sockets and file handles) associated with the current stream. Instead of calling this method, ensure that the stream is properly disposed.
+            ///     Closes the current stream and releases any resources (such as sockets and file handles) associated with the current
+            ///     stream. Instead of calling this method, ensure that the stream is properly disposed.
             /// </summary>
             /// <filterpriority>1</filterpriority>
             public override void Close()
