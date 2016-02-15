@@ -1,6 +1,10 @@
 # MB_SubSonic
 MusicBee SubSonic plugin
 With this plugin MusicBee acts as a Subsonic player.
+Based on the original work by Steven Mayall. The code was converted from VB.NET to C# with the aim to to futher develop, the plugin, since Steven did not wish to continue working on it.
+
+Once a stable and tested version is ready, it will be available in the Releases section.
+From that point onwards, any bugs or improvement suggestions can be reported in the Issues section.
 
 Requirements
 ============
@@ -17,10 +21,3 @@ Configuration
 You will find the configuration section in MusicBee's "Preferences" window -> Plugins.
 The necessary information you need to provide is "Hostname", "Port", "Username" and "Password".
 You can optionally specify a "Path" as well, if your Subsonic server needs one. Otherwise the default "/" will be used.
-
-Note: this readme will be updated and completed as the project evolves :)
-
-Based on the original work by Steven Mayall. The code was converted from VB.NET to C# with the aim to to futher develop, the plugin, since Steven did not wish to continue working on it.
-
-Once a stable and tested version is ready, it will be available in the Releases section.
-From that point onwards, any bugs or improvement suggestions can be reported in the Issues section.
