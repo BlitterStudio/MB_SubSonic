@@ -24,14 +24,14 @@ namespace MusicBeePlugin
         public static Plugin.MB_SendNotificationDelegate SendNotificationsHandler;
         private static string _serverName;
         private static Exception _lastEx;
-        private static object _cacheFileLock;
-        private static object _cacheLock;
+        private static object _cacheFileLock = new object();
+        private static object _cacheLock = new object();
         private static KeyValuePair<byte, string>[][] _cachedFiles;
         private static Thread _retrieveThread;
         private static string[] _collectionNames;
-        private static Dictionary<string, ulong> _lastModified;
-        private static object _folderLookupLock;
-        private static Dictionary<string, string> _folderLookup;
+        private static Dictionary<string, ulong> _lastModified = new Dictionary<string, ulong>();
+        private static object _folderLookupLock = new object();
+        private static Dictionary<string, string> _folderLookup = new Dictionary<string, string>();
 
         public static bool Initialize()
         {
@@ -71,14 +71,15 @@ namespace MusicBeePlugin
                 httpRequest.Method = "GET";
                 httpRequest.Timeout = 5000;
                 var responseHost = ((HttpWebResponse) httpRequest.GetResponse()).ResponseUri.Host;
-                _serverName = "http://" + responseHost + ":" + Port + BasePath;
+                //_serverName = "http://" + responseHost + ":" + Port + BasePath;
+                _serverName = "http://" + Host + ":" + Port + BasePath;
                 xml = GetHttpRequestXml("ping.view", null, 5000);
                 isPingOk = xml.IndexOf(@"status=""ok""", StringComparison.Ordinal) != -1;
                 if (isPingOk)
                 {
                     return true;
                 }
-                if (string.Compare(responseHost, Host, StringComparison.OrdinalIgnoreCase) == 0)
+                if (string.Compare(responseHost, Host, StringComparison.OrdinalIgnoreCase).Equals(0))
                 {
                     _lastEx = new IOException(GetErrorMessage(xml));
                     return false;
@@ -358,11 +359,11 @@ namespace MusicBeePlugin
                     {
                         var version = reader.ReadInt32();
                         var count = reader.ReadInt32();
-                        files = new KeyValuePair<byte, string>[count - 1][];
-                        for (var index = 0; index < count - 1; index++)
+                        files = new KeyValuePair<byte, string>[count][];
+                        for (var index = 0; index <= count - 1; index++)
                         {
-                            var tags = new KeyValuePair<byte, string>[TagCount];
-                            for (var tagIndex = 0; tagIndex < TagCount; tagIndex++)
+                            var tags = new KeyValuePair<byte, string>[TagCount + 1];
+                            for (var tagIndex = 0; tagIndex <= TagCount; tagIndex++)
                             {
                                 var tagType = reader.ReadByte();
                                 tags[tagIndex] = new KeyValuePair<byte, string>(tagType, reader.ReadString());
@@ -372,7 +373,7 @@ namespace MusicBeePlugin
                         if (version.Equals(2))
                         {
                             count = reader.ReadInt32();
-                            for (var index = 1; index < count; index++)
+                            for (var index = 1; index <= count; index++)
                             {
                                 var collectionName = reader.ReadString();
                                 if (!_lastModified.ContainsKey(collectionName))
@@ -403,7 +404,7 @@ namespace MusicBeePlugin
             {
                 path += @"\";
             }
-            for (var index = 0; index < files.Length - 1; index++)
+            for (var index = 0; index <= files.Length - 1; index++)
             {
                 if (files[index][0].Value.StartsWith(path))
                 {
@@ -437,11 +438,11 @@ namespace MusicBeePlugin
                     var anyChanges = oldCachedFiles == null || _cachedFiles.Length != oldCachedFiles.Length;
                     if (!anyChanges)
                     {
-                        for (var index = 0; index < _cachedFiles.Length - 1; index++)
+                        for (var index = 0; index <= _cachedFiles.Length - 1; index++)
                         {
                             var tags1 = _cachedFiles[index];
                             var tags2 = oldCachedFiles[index];
-                            for (var tagIndex = 0; tagIndex < TagCount - 1; tagIndex++)
+                            for (var tagIndex = 0; tagIndex <= TagCount - 1; tagIndex++)
                             {
                                 if (
                                     string.Compare(tags1[tagIndex].Value, tags2[tagIndex].Value,
@@ -485,10 +486,10 @@ namespace MusicBeePlugin
                                 {
                                     writer.Write(2); // version
                                     writer.Write(files.Length);
-                                    for (var index = 0; index < files.Length - 1; index++)
+                                    for (var index = 0; index <= files.Length - 1; index++)
                                     {
                                         var tags = files[index];
-                                        for (var tagIndex = 0; tagIndex < TagCount; tagIndex++)
+                                        for (var tagIndex = 0; tagIndex <= TagCount; tagIndex++)
                                         {
                                             var tag = tags[tagIndex];
                                             writer.Write(tag.Key);
@@ -562,8 +563,8 @@ namespace MusicBeePlugin
                             }
                         }
                     }
-                    _collectionNames = new string[collection.Count - 1];
-                    for (var index = 0; index < collection.Count - 1; index++)
+                    _collectionNames = new string[collection.Count];
+                    for (var index = 0; index <= collection.Count - 1; index++)
                     {
                         _collectionNames[index] = collection[index].Value + @"\";
                     }
@@ -790,7 +791,7 @@ namespace MusicBeePlugin
             var path = url.Substring(0, url.LastIndexOf(@"\", StringComparison.Ordinal));
             string lastMatch = null;
             var count = 0;
-            for (var index = 0; index < _collectionNames.Length - 1; index++)
+            for (var index = 0; index <= _collectionNames.Length - 1; index++)
             {
                 if (GetFolderId(_collectionNames[index] + path) != null)
                 {
@@ -802,7 +803,7 @@ namespace MusicBeePlugin
             {
                 return lastMatch;
             }
-            for (var index = 0; index < _collectionNames.Length - 1; index++)
+            for (var index = 0; index <= _collectionNames.Length - 1; index++)
             {
                 if (GetFolderId(_collectionNames[index] + path) != null)
                 {
@@ -883,7 +884,7 @@ namespace MusicBeePlugin
             {
                 return null;
             }
-            var tags = new KeyValuePair<byte, string>[TagCount];
+            var tags = new KeyValuePair<byte, string>[TagCount + 1];
             var path = string.Empty;
             var attribute = xmlReader.GetAttribute("path");
             if (attribute != null)
@@ -918,7 +919,7 @@ namespace MusicBeePlugin
             tags[10] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Artwork,
                 string.IsNullOrEmpty(xmlReader.GetAttribute("coverArt")) ? "" : "Y");
 
-            for (var tagIndex = 1; tagIndex < TagCount - 2; tagIndex++)
+            for (var tagIndex = 1; tagIndex <= TagCount - 2; tagIndex++)
             {
                 if (tags[tagIndex].Value == null)
                 {
@@ -1124,7 +1125,7 @@ namespace MusicBeePlugin
                 }
                 using (var memoryStream = new MemoryStream(length))
                 {
-                    var buffer = new byte[4095];
+                    var buffer = new byte[4096];
                     do
                     {
                         var bytes = _responseStream.Read(buffer, 0, 4096);

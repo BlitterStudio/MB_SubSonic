@@ -5,6 +5,7 @@ using System.IO;
 using System.Reflection;
 using System.Resources;
 using System.Windows.Forms;
+using MusicBeePlugin.Properties;
 
 namespace MusicBeePlugin
 {
@@ -50,6 +51,12 @@ namespace MusicBeePlugin
             if (panelHandle != IntPtr.Zero)
             {
                 var configPanel = (Panel)Control.FromHandle(panelHandle);
+                var hostTextBoxWidth = TextRenderer.MeasureText(@"my-server-name.subsonic.org", configPanel.Font).Width;
+                var portTextBoxWidth = TextRenderer.MeasureText(@"8443", configPanel.Font).Width;
+                var pathTextBoxWidth = TextRenderer.MeasureText(@"/musicfolder/", configPanel.Font).Width;
+                var usernameTextBoxWidth = TextRenderer.MeasureText(@"UsernameMayBeLong", configPanel.Font).Width;
+                var passwordTextBoxWidth = TextRenderer.MeasureText(@"PasswordMayBeLong", configPanel.Font).Width;
+
                 var hostPrompt = new Label
                 {
                     AutoSize = true,
@@ -57,7 +64,7 @@ namespace MusicBeePlugin
                     Text = @"Hostname:"
                 };
                 _host = new TextBox();
-                _host.Bounds = new Rectangle(hostPrompt.Left + TextRenderer.MeasureText(hostPrompt.Text, configPanel.Font).Width, 5, 200, _host.Height);
+                _host.Bounds = new Rectangle(hostPrompt.Left + TextRenderer.MeasureText(hostPrompt.Text, configPanel.Font).Width, 5, hostTextBoxWidth, _host.Height);
                 _host.Text = Subsonic.Host;
 
                 var portPrompt = new Label
@@ -67,7 +74,7 @@ namespace MusicBeePlugin
                     Text = @"Port:"
                 };
                 _port = new TextBox();
-                _port.Bounds = new Rectangle(portPrompt.Left + TextRenderer.MeasureText(portPrompt.Text, configPanel.Font).Width, 5, 60, _port.Height);
+                _port.Bounds = new Rectangle(portPrompt.Left + TextRenderer.MeasureText(portPrompt.Text, configPanel.Font).Width, 5, portTextBoxWidth, _port.Height);
                 _port.Text = Subsonic.Port;
 
                 var basePathPrompt = new Label
@@ -77,7 +84,7 @@ namespace MusicBeePlugin
                     Text = @"Path:"
                 };
                 _basePath = new TextBox();
-                _basePath.Bounds = new Rectangle(basePathPrompt.Left + TextRenderer.MeasureText(basePathPrompt.Text, configPanel.Font).Width, 5, 70, _basePath.Height);
+                _basePath.Bounds = new Rectangle(basePathPrompt.Left + TextRenderer.MeasureText(basePathPrompt.Text, configPanel.Font).Width, 5, pathTextBoxWidth, _basePath.Height);
                 _basePath.Text = Subsonic.BasePath;
 
                 var usernamePrompt = new Label
@@ -87,7 +94,7 @@ namespace MusicBeePlugin
                     Text = @"Username:"
                 };
                 _username = new TextBox();
-                _username.Bounds = new Rectangle(_host.Left, 50, 120, _username.Height);
+                _username.Bounds = new Rectangle(_host.Left, 50, usernameTextBoxWidth, _username.Height);
                 _username.Text = Subsonic.Username;
 
                 var passwordPrompt = new Label
@@ -97,7 +104,7 @@ namespace MusicBeePlugin
                     Text = @"Password:"
                 };
                 _password = new TextBox();
-                _password.Bounds = new Rectangle(_host.Left, 95, 120, _password.Height);
+                _password.Bounds = new Rectangle(_host.Left, 95, passwordTextBoxWidth, _password.Height);
                 _password.Text = Subsonic.Password;
                 _password.PasswordChar = '*';
 
@@ -222,10 +229,11 @@ namespace MusicBeePlugin
 
         public Image GetIcon()
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var resourceManager = new ResourceManager("Resources.Images", assembly);
-            var icon = resourceManager.GetObject("Subsonic");
-            return (Image) icon;
+            var icon = Resources.SubSonic;
+            //var assembly = Assembly.GetExecutingAssembly();
+            //var resourceManager = new ResourceManager("Properties.Resources.Images", assembly);
+            //var icon = resourceManager.GetObject("Subsonic");
+            return icon;
         }
 
         public bool FolderExists(string path)
