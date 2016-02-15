@@ -11,7 +11,7 @@ From that point onwards, any bugs or improvement suggestions can be reported in 
 
 Requirements
 ============
-- MusicBee (v2.x or 3.x beta) - get it from http://getmusicbee.org
+- MusicBee (v2.x or 3.x beta) - get it from http://getmusicbee.com
 - .NET Framework 4.5.2 - normally delivered through Windows Update automatically
 - Subsonic server (tested with v5.x and 6.x beta) - more information at http://www.subsonic.org
 
