@@ -6,8 +6,7 @@ Description
 With this plugin MusicBee acts as a Subsonic player.
 Based on the original work by Steven Mayall. The code was converted from VB.NET to C# with the aim to to futher develop, the plugin, since Steven did not wish to continue working on it.
 
-Once a stable and tested version is ready, it will be available in the Releases section.
-From that point onwards, any bugs or improvement suggestions can be reported in the Issues section.
+Any bugs or improvement suggestions can be reported in the Issues section.
 
 Requirements
 ============
@@ -17,7 +16,10 @@ Requirements
 
 Installation
 ============
-Once a release version is ready, all you will need to do is download the binary (DLL) file and copy it in your MusicBee "plugins" folder (the default is "C:\Program Files (x86)\MusicBee\Plugins\"). After that simply (re)start MusicBee.
+- Download the latest binary file from the Releases section.
+- Extract the archive and copy the DLL file in your MusicBee "plugins" folder (the default is "C:\Program Files (x86)\MusicBee\Plugins\"). 
+- (Re)start MusicBee.
+- Go to Preferences -> Plugins to configure it to connect to your Subsonic server.
 
 Configuration
 =============
