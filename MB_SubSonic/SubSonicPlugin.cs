@@ -49,82 +49,81 @@ namespace MusicBeePlugin
             // panelHandle will only be set if you set about.ConfigurationPanelHeight to a non-zero value
             // keep in mind the panel width is scaled according to the font the user has selected
             // if about.ConfigurationPanelHeight is set to 0, you can display your own popup window
-            if (panelHandle != IntPtr.Zero)
+            if (panelHandle == IntPtr.Zero) return false;
+
+            var configPanel = (Panel)Control.FromHandle(panelHandle);
+            var hostTextBoxWidth = TextRenderer.MeasureText(@"my-server-name.subsonic.org", configPanel.Font).Width;
+            var portTextBoxWidth = TextRenderer.MeasureText(@"8443", configPanel.Font).Width;
+            var pathTextBoxWidth = TextRenderer.MeasureText(@"/folder/", configPanel.Font).Width;
+            var usernameTextBoxWidth = TextRenderer.MeasureText(@"UsernameMayBeLong", configPanel.Font).Width;
+            var passwordTextBoxWidth = usernameTextBoxWidth;
+            var spacer = TextRenderer.MeasureText("X", configPanel.Font).Width;
+            const int firstRowPosY = 0;
+            var secondRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height * 2;
+            var thirdRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height * 4;
+            var fourthRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height * 6;
+
+            var hostPrompt = new Label
             {
-                var configPanel = (Panel)Control.FromHandle(panelHandle);
-                var hostTextBoxWidth = TextRenderer.MeasureText(@"my-server-name.subsonic.org", configPanel.Font).Width;
-                var portTextBoxWidth = TextRenderer.MeasureText(@"8443", configPanel.Font).Width;
-                var pathTextBoxWidth = TextRenderer.MeasureText(@"/folder/", configPanel.Font).Width;
-                var usernameTextBoxWidth = TextRenderer.MeasureText(@"UsernameMayBeLong", configPanel.Font).Width;
-                var passwordTextBoxWidth = usernameTextBoxWidth;
-                var spacer = TextRenderer.MeasureText("X", configPanel.Font).Width;
-                var firstRowPosY = 0;
-                var secondRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height * 2;
-                var thirdRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height * 4;
-                var fourthRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height * 6;
+                AutoSize = true,
+                Location = new Point(0, firstRowPosY + 2),
+                Text = @"Hostname:"
+            };
+            _host = new TextBox();
+            _host.Bounds = new Rectangle(hostPrompt.Left + TextRenderer.MeasureText(hostPrompt.Text, configPanel.Font).Width, firstRowPosY, hostTextBoxWidth, _host.Height);
+            _host.Text = Subsonic.Host;
 
-                var hostPrompt = new Label
-                {
-                    AutoSize = true,
-                    Location = new Point(0, firstRowPosY + 2),
-                    Text = @"Hostname:"
-                };
-                _host = new TextBox();
-                _host.Bounds = new Rectangle(hostPrompt.Left + TextRenderer.MeasureText(hostPrompt.Text, configPanel.Font).Width, firstRowPosY, hostTextBoxWidth, _host.Height);
-                _host.Text = Subsonic.Host;
+            var portPrompt = new Label
+            {
+                AutoSize = true,
+                Location = new Point(_host.Left + _host.Width + spacer, hostPrompt.Top),
+                Text = @"Port:"
+            };
+            _port = new TextBox();
+            _port.Bounds = new Rectangle(portPrompt.Left + TextRenderer.MeasureText(portPrompt.Text, configPanel.Font).Width, firstRowPosY, portTextBoxWidth, _port.Height);
+            _port.Text = Subsonic.Port;
 
-                var portPrompt = new Label
-                {
-                    AutoSize = true,
-                    Location = new Point(_host.Left + _host.Width + spacer, hostPrompt.Top),
-                    Text = @"Port:"
-                };
-                _port = new TextBox();
-                _port.Bounds = new Rectangle(portPrompt.Left + TextRenderer.MeasureText(portPrompt.Text, configPanel.Font).Width, firstRowPosY, portTextBoxWidth, _port.Height);
-                _port.Text = Subsonic.Port;
+            var basePathPrompt = new Label
+            {
+                AutoSize = true,
+                Location = new Point(hostPrompt.Left, secondRowPosY + 2),
+                Text = @"Path:"
+            };
+            _basePath = new TextBox();
+            _basePath.Bounds = new Rectangle(_host.Left, secondRowPosY, pathTextBoxWidth, _basePath.Height);
+            _basePath.Text = Subsonic.BasePath;
 
-                var basePathPrompt = new Label
-                {
-                    AutoSize = true,
-                    Location = new Point(hostPrompt.Left, secondRowPosY + 2),
-                    Text = @"Path:"
-                };
-                _basePath = new TextBox();
-                _basePath.Bounds = new Rectangle(_host.Left, secondRowPosY, pathTextBoxWidth, _basePath.Height);
-                _basePath.Text = Subsonic.BasePath;
+            var usernamePrompt = new Label
+            {
+                AutoSize = true,
+                Location = new Point(hostPrompt.Left, thirdRowPosY + 2),
+                Text = @"Username:"
+            };
+            _username = new TextBox();
+            _username.Bounds = new Rectangle(_host.Left, thirdRowPosY, usernameTextBoxWidth, _username.Height);
+            _username.Text = Subsonic.Username;
 
-                var usernamePrompt = new Label
-                {
-                    AutoSize = true,
-                    Location = new Point(hostPrompt.Left, thirdRowPosY + 2),
-                    Text = @"Username:"
-                };
-                _username = new TextBox();
-                _username.Bounds = new Rectangle(_host.Left, thirdRowPosY, usernameTextBoxWidth, _username.Height);
-                _username.Text = Subsonic.Username;
+            var passwordPrompt = new Label
+            {
+                AutoSize = true,
+                Location = new Point(hostPrompt.Left, fourthRowPosY + 2),
+                Text = @"Password:"
+            };
+            _password = new TextBox();
+            _password.Bounds = new Rectangle(_host.Left, fourthRowPosY, passwordTextBoxWidth, _password.Height);
+            _password.Text = Subsonic.Password;
+            _password.PasswordChar = '*';
 
-                var passwordPrompt = new Label
-                {
-                    AutoSize = true,
-                    Location = new Point(hostPrompt.Left, fourthRowPosY + 2),
-                    Text = @"Password:"
-                };
-                _password = new TextBox();
-                _password.Bounds = new Rectangle(_host.Left, fourthRowPosY, passwordTextBoxWidth, _password.Height);
-                _password.Text = Subsonic.Password;
-                _password.PasswordChar = '*';
+            _transcode = new CheckBox
+            {
+                AutoSize = true,
+                Checked = Subsonic.Transcode,
+                Text = @"Transcode Streams"
+            };
 
-                _transcode = new CheckBox
-                {
-                    AutoSize = true,
-                    Checked = Subsonic.Transcode,
-                    Text = @"Transcode Streams"
-                };
-
-                configPanel.Controls.AddRange(new Control[] { _host, hostPrompt, portPrompt, _port, _basePath, basePathPrompt, _username, usernamePrompt, _password, passwordPrompt, _transcode });
-                _transcode.Location = new Point(_port.Left, passwordPrompt.Top -2);
-                configPanel.Width = _transcode.Right + spacer;
-            }
+            configPanel.Controls.AddRange(new Control[] { _host, hostPrompt, portPrompt, _port, _basePath, basePathPrompt, _username, usernamePrompt, _password, passwordPrompt, _transcode });
+            _transcode.Location = new Point(_port.Left, passwordPrompt.Top -2);
+            configPanel.Width = _transcode.Right + spacer;
             return false;
         }
 
@@ -136,14 +135,13 @@ namespace MusicBeePlugin
             var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
 
             var setHostSuccess = Subsonic.SetHost(_host.Text.Trim(), _port.Text.Trim(), _basePath.Text.Trim(), _username.Text.Trim(), _password.Text.Trim(), _transcode.Checked);
-            if (!setHostSuccess)
+            if (setHostSuccess) return;
+
+            var message = Subsonic.GetError().Message;
+            if (!string.IsNullOrEmpty(message))
             {
-                var message = Subsonic.GetError().Message;
-                if (!string.IsNullOrEmpty(message))
-                {
-                    MessageBox.Show(_host, $"Error: {message}     ", @"Subsonic Plugin", MessageBoxButtons.OK,
-                        MessageBoxIcon.Exclamation);
-                }
+                MessageBox.Show(_host, $"Error: {message}     ", @"Subsonic Plugin", MessageBoxButtons.OK,
+                    MessageBoxIcon.Exclamation);
             }
         }
 
@@ -164,29 +162,28 @@ namespace MusicBeePlugin
         {
             // perform some action depending on the notification type
             //switch (type)
-            if (type == NotificationType.PluginStartup)
-            {
-                //case NotificationType.PluginStartup:
-                // perform startup initialisation
-                //switch (mbApiInterface.Player_GetPlayState())
-                //{
-                //    case PlayState.Playing:
-                //    case PlayState.Paused:
-                //        // ...
-                //        break;
-                //}
-                //break;
-                Subsonic.CacheUrl = _mbApiInterface.Setting_GetPersistentStoragePath() + @"\subsonicCache.dat";
-                Subsonic.SettingsUrl = _mbApiInterface.Setting_GetPersistentStoragePath() + @"\subsonicSettings.dat";
-                Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
-                    ? CallbackType.StorageReady
-                    : CallbackType.StorageFailed);
+            if (type != NotificationType.PluginStartup) return;
 
-                //case NotificationType.TrackChanged:
-                //    string artist = mbApiInterface.NowPlaying_GetFileTag(MetaDataType.Artist);
-                //    // ...
-                //    break;
-            }
+            //case NotificationType.PluginStartup:
+            // perform startup initialisation
+            //switch (mbApiInterface.Player_GetPlayState())
+            //{
+            //    case PlayState.Playing:
+            //    case PlayState.Paused:
+            //        // ...
+            //        break;
+            //}
+            //break;
+            Subsonic.CacheUrl = _mbApiInterface.Setting_GetPersistentStoragePath() + @"\subsonicCache.dat";
+            Subsonic.SettingsUrl = _mbApiInterface.Setting_GetPersistentStoragePath() + @"\subsonicSettings.dat";
+            Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
+                ? CallbackType.StorageReady
+                : CallbackType.StorageFailed);
+
+            //case NotificationType.TrackChanged:
+            //    string artist = mbApiInterface.NowPlaying_GetFileTag(MetaDataType.Artist);
+            //    // ...
+            //    break;
         }
 
 

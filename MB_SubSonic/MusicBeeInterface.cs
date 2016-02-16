@@ -19,20 +19,31 @@ namespace MusicBeePlugin
             public void Initialise(IntPtr apiInterfacePtr)
             {
                 CopyMemory(ref this, apiInterfacePtr, 4);
-                if (MusicBeeVersion == MusicBeeVersion.v2_0)
-                    // MusicBee version 2.0 - Api methods > revision 25 are not available
-                    CopyMemory(ref this, apiInterfacePtr, 456);
-                else if (MusicBeeVersion == MusicBeeVersion.v2_1)
-                    CopyMemory(ref this, apiInterfacePtr, 516);
-                else if (MusicBeeVersion == MusicBeeVersion.v2_2)
-                    CopyMemory(ref this, apiInterfacePtr, 584);
-                else if (MusicBeeVersion == MusicBeeVersion.v2_3)
-                    CopyMemory(ref this, apiInterfacePtr, 596);
-                else if (MusicBeeVersion == MusicBeeVersion.v2_4)
-                    CopyMemory(ref this, apiInterfacePtr, 604);
-                else
-                    CopyMemory(ref this, apiInterfacePtr, Marshal.SizeOf(this));
+                switch (MusicBeeVersion)
+                {
+                    case MusicBeeVersion.v2_0:
+                        CopyMemory(ref this, apiInterfacePtr, 456);
+                        break;
+                    case MusicBeeVersion.v2_1:
+                        CopyMemory(ref this, apiInterfacePtr, 516);
+                        break;
+                    case MusicBeeVersion.v2_2:
+                        CopyMemory(ref this, apiInterfacePtr, 584);
+                        break;
+                    case MusicBeeVersion.v2_3:
+                        CopyMemory(ref this, apiInterfacePtr, 596);
+                        break;
+                    case MusicBeeVersion.v2_4:
+                        CopyMemory(ref this, apiInterfacePtr, 604);
+                        break;
+                    case MusicBeeVersion.v2_5:
+                        break;
+                    default:
+                        CopyMemory(ref this, apiInterfacePtr, Marshal.SizeOf(this));
+                        break;
+                }
             }
+
             public MusicBeeVersion MusicBeeVersion
             {
                 get
