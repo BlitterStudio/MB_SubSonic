@@ -37,7 +37,7 @@ namespace MusicBeePlugin
             _about.Revision = 1;
             _about.MinInterfaceVersion = MinInterfaceVersion;
             _about.MinApiRevision = MinApiRevision;
-            _about.ReceiveNotifications = ReceiveNotificationFlags.PlayerEvents | ReceiveNotificationFlags.TagEvents;
+            _about.ReceiveNotifications = ReceiveNotificationFlags.StartupOnly;
             _about.ConfigurationPanelHeight = TextRenderer.MeasureText("FirstRowText", SystemFonts.DefaultFont).Height*
                                               10;
                 // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
@@ -176,18 +176,10 @@ namespace MusicBeePlugin
             //switch (type)
             if (type != NotificationType.PluginStartup) return;
 
-            //case NotificationType.PluginStartup:
-            // perform startup initialisation
-            //switch (mbApiInterface.Player_GetPlayState())
-            //{
-            //    case PlayState.Playing:
-            //    case PlayState.Paused:
-            //        // ...
-            //        break;
-            //}
-            //break;
-            Subsonic.CacheUrl = _mbApiInterface.Setting_GetPersistentStoragePath() + @"\subsonicCache.dat";
-            Subsonic.SettingsUrl = _mbApiInterface.Setting_GetPersistentStoragePath() + @"\subsonicSettings.dat";
+            var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
+            Subsonic.CacheUrl = dataPath + @"\subsonicCache.dat";
+            Subsonic.SettingsUrl = dataPath + @"\subsonicSettings.dat";
+
             Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
                 ? CallbackType.StorageReady
                 : CallbackType.StorageFailed);
