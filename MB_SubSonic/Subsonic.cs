@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Xml;
@@ -12,6 +13,7 @@ namespace MusicBeePlugin
     public static class Subsonic
     {
         private const int TagCount = 10;
+        private const string ApiVersion = "1.13.0";
         public static string Host = "localhost";
         public static string Port = "80";
         public static string BasePath = "/";
@@ -951,10 +953,41 @@ namespace MusicBeePlugin
 
         private static ConnectStream GetHttpRequestStream(string query, string parameters, int timeout = 30000)
         {
+            var salt = NewSalt();
+            var token = NewToken(Password, salt);
             return
                 new ConnectStream(
-                    $"{_serverName}rest/{query}?u={Username}&p={Password}&v=1.0.0&c=MusicBee{(string.IsNullOrEmpty(parameters) ? "" : "&" + parameters)}", timeout);
+                    $"{_serverName}rest/{query}?u={Username}&t={token}&s={salt}&v={ApiVersion}&c=MusicBee{(string.IsNullOrEmpty(parameters) ? "" : "&" + parameters)}", timeout);
         }
+
+        private static byte[] NewSalt()
+        {
+            // Define min and max salt sizes.
+            var minSaltSize = 6;
+            var maxSaltSize = 12;
+
+            // Generate a random number for the size of the salt.
+            var random = new Random();
+            var saltSize = random.Next(minSaltSize, maxSaltSize);
+            // Allocate a byte array, which will hold the salt.
+            var saltBytes = new byte[saltSize];
+            // Initialize a random number generator.
+            var rng = new RNGCryptoServiceProvider();
+            // Fill the salt with cryptographically strong byte values.
+            rng.GetNonZeroBytes(saltBytes);
+
+            return saltBytes;
+        }
+
+        private static string NewToken(string password, byte[] saltBytes)
+        {
+            var passwordBytes = Encoding.UTF8.GetBytes(password);
+            var md5 = new HMACMD5(saltBytes);
+            var saltedPassword = md5.ComputeHash(passwordBytes);
+            var result = Encoding.UTF8.GetString(saltedPassword);
+            return result;
+        }
+
 
         private sealed class FileSorter : Comparer<KeyValuePair<byte, string>[]>
         {
