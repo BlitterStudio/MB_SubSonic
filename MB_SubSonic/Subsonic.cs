@@ -954,13 +954,13 @@ namespace MusicBeePlugin
         private static ConnectStream GetHttpRequestStream(string query, string parameters, int timeout = 30000)
         {
             var salt = NewSalt();
-            var token = NewToken(Password, salt);
+            var token = Md5(Password + salt);
             return
                 new ConnectStream(
                     $"{_serverName}rest/{query}?u={Username}&t={token}&s={salt}&v={ApiVersion}&c=MusicBee{(string.IsNullOrEmpty(parameters) ? "" : "&" + parameters)}", timeout);
         }
 
-        private static byte[] NewSalt()
+        private static string NewSalt()
         {
             // Define min and max salt sizes.
             var minSaltSize = 6;
@@ -975,17 +975,15 @@ namespace MusicBeePlugin
             var rng = new RNGCryptoServiceProvider();
             // Fill the salt with cryptographically strong byte values.
             rng.GetNonZeroBytes(saltBytes);
-
-            return saltBytes;
+            return BitConverter.ToString(saltBytes).Replace("-", string.Empty).ToLower();
         }
 
-        private static string NewToken(string password, byte[] saltBytes)
+        private static string Md5(string saltedPassword)
         {
-            var passwordBytes = Encoding.UTF8.GetBytes(password);
-            var md5 = new HMACMD5(saltBytes);
-            var saltedPassword = md5.ComputeHash(passwordBytes);
-            var result = Encoding.UTF8.GetString(saltedPassword);
-            return result;
+            //Create a byte array from source data.
+            var tmpSource = Encoding.ASCII.GetBytes(saltedPassword);
+            var result = new MD5CryptoServiceProvider().ComputeHash(tmpSource);
+            return BitConverter.ToString(result).Replace("-", string.Empty).ToLower();
         }
 
 
