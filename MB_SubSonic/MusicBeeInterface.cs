@@ -739,6 +739,7 @@ namespace MusicBeePlugin
                         CopyMemory(ref this, apiInterfacePtr, 604);
                         break;
                     case MusicBeeVersion.v2_5:
+                        CopyMemory(ref this, apiInterfacePtr, Marshal.SizeOf(this));
                         break;
                     default:
                         CopyMemory(ref this, apiInterfacePtr, Marshal.SizeOf(this));

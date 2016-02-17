@@ -30,7 +30,7 @@ namespace MusicBeePlugin
             _about.Description = "Access files and playlists on a SubSonic Server";
             _about.Author = "Dimitris Panokostas";
             _about.TargetApplication = "Subsonic";
-                // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
+            // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
             _about.Type = PluginType.Storage;
             _about.VersionMajor = 2; // your plugin version
             _about.VersionMinor = 0;
@@ -40,7 +40,7 @@ namespace MusicBeePlugin
             _about.ReceiveNotifications = ReceiveNotificationFlags.StartupOnly;
             _about.ConfigurationPanelHeight = TextRenderer.MeasureText("FirstRowText", SystemFonts.DefaultFont).Height*
                                               10;
-                // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
+            // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
             return _about;
         }
 
