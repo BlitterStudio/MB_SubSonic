@@ -146,7 +146,7 @@ namespace MusicBeePlugin
                 }
                 using (var writer = new StreamWriter(SettingsUrl))
                 {
-                    writer.WriteAsync(host);
+                    writer.WriteLine(host);
                     writer.WriteLine(port);
                     writer.WriteLine(basePath);
                     writer.WriteLine(username);
