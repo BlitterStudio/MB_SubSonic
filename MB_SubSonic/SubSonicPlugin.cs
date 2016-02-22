@@ -166,6 +166,29 @@ namespace MusicBeePlugin
         // uninstall this plugin - clean up any persisted files
         public void Uninstall()
         {
+            var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
+            if (File.Exists(Path.Combine(dataPath, "subsonicCache.dat")))
+            {
+                try
+                {
+                    File.Delete(Path.Combine(dataPath, "subsonicCache.dat"));
+                }
+                catch (Exception)
+                {
+                    MessageBox.Show(@"An error has occurred while trying to delete the Subsonic cache file.\nPlease try deleting the file manually.", @"An error has occurred", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            if (File.Exists(Path.Combine(dataPath, "subsonicSettings.dat")))
+            {
+                try
+                {
+                    File.Delete(Path.Combine(dataPath, "subsonicSettings.dat"));
+                }
+                catch (Exception)
+                {
+                    MessageBox.Show(@"An error has occurred while trying to delete the Subsonic settings file.\nPlease try deleting the file manually.", @"An error has occurred", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
         }
 
         // receive event notifications from MusicBee
@@ -177,8 +200,8 @@ namespace MusicBeePlugin
             if (type != NotificationType.PluginStartup) return;
 
             var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
-            Subsonic.CacheUrl = dataPath + @"\subsonicCache.dat";
-            Subsonic.SettingsUrl = dataPath + @"\subsonicSettings.dat";
+            Subsonic.CacheUrl = Path.Combine(dataPath, "subsonicCache.dat");
+            Subsonic.SettingsUrl = Path.Combine(dataPath, "subsonicSettings.dat");
 
             Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
                 ? CallbackType.StorageReady
