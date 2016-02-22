@@ -35,6 +35,7 @@ namespace MusicBeePlugin
         private static readonly Dictionary<string, ulong> LastModified = new Dictionary<string, ulong>();
         private static readonly object FolderLookupLock = new object();
         private static readonly Dictionary<string, string> FolderLookup = new Dictionary<string, string>();
+        private const string Passphrase = "changeMe";
 
         public static bool Initialize()
         {
@@ -45,12 +46,18 @@ namespace MusicBeePlugin
                 {
                     using (var reader = new StreamReader(SettingsUrl))
                     {
-                        Host = reader.ReadLine();
-                        Port = reader.ReadLine();
-                        BasePath = reader.ReadLine();
-                        Username = reader.ReadLine();
-                        Password = reader.ReadLine();
-                        Transcode = reader.ReadLine() == "Y";
+                        var encHost = reader.ReadLine();
+                        Host = AesEncryption.Decrypt(encHost, Passphrase);
+                        var encPort = reader.ReadLine();
+                        Port = AesEncryption.Decrypt(encPort, Passphrase);
+                        var encBasePath = reader.ReadLine();
+                        BasePath = AesEncryption.Decrypt(encBasePath, Passphrase);
+                        var encUsername = reader.ReadLine();
+                        Username = AesEncryption.Decrypt(encUsername, Passphrase);
+                        var encPassword = reader.ReadLine();
+                        Password = AesEncryption.Decrypt(encPassword, Passphrase);
+                        var encTranscode = reader.ReadLine();
+                        Transcode = AesEncryption.Decrypt(encTranscode, Passphrase) == "Y";
                     }
                 }
                 IsInitialized = SetServerName();
@@ -147,12 +154,12 @@ namespace MusicBeePlugin
                 }
                 using (var writer = new StreamWriter(SettingsUrl))
                 {
-                    writer.WriteLine(host);
-                    writer.WriteLine(port);
-                    writer.WriteLine(basePath);
-                    writer.WriteLine(username);
-                    writer.WriteLine(password);
-                    writer.WriteLine(transcode ? "Y" : "N");
+                    writer.WriteLine(AesEncryption.Encrypt(host, Passphrase));
+                    writer.WriteLine(AesEncryption.Encrypt(port, Passphrase));
+                    writer.WriteLine(AesEncryption.Encrypt(basePath, Passphrase));
+                    writer.WriteLine(AesEncryption.Encrypt(username, Passphrase));
+                    writer.WriteLine(AesEncryption.Encrypt(password, Passphrase));
+                    writer.WriteLine(transcode ? AesEncryption.Encrypt("Y", Passphrase) : AesEncryption.Encrypt("N", Passphrase));
                 }
                 Transcode = transcode;
                 try
