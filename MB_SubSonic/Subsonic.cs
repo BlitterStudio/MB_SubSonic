@@ -6,6 +6,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using System.Windows.Forms;
 using System.Xml;
 
 namespace MusicBeePlugin
@@ -312,7 +313,7 @@ namespace MusicBeePlugin
         private static KeyValuePair<byte, string>[][] GetCachedFiles()
         {
             if (_cachedFiles != null) return _cachedFiles;
-            KeyValuePair<byte, string>[][] files;
+            KeyValuePair<byte, string>[][] files = null;
             lock (CacheFileLock)
             {
                 using (
@@ -320,37 +321,44 @@ namespace MusicBeePlugin
                         FileOptions.SequentialScan))
                 using (var reader = new BinaryReader(stream))
                 {
-                    var version = reader.ReadInt32();
-                    var count = reader.ReadInt32();
-                    files = new KeyValuePair<byte, string>[count][];
-                    for (var index = 0; index < count; index++)
+                    try
                     {
-                        var tags = new KeyValuePair<byte, string>[TagCount + 1];
-                        for (var tagIndex = 0; tagIndex <= TagCount; tagIndex++)
+                        var version = reader.ReadInt32();
+                        var count = reader.ReadInt32();
+                        files = new KeyValuePair<byte, string>[count][];
+                        for (var index = 0; index < count; index++)
                         {
-                            var tagType = reader.ReadByte();
-                            tags[tagIndex] = new KeyValuePair<byte, string>(tagType, reader.ReadString());
-                        }
-                        files[index] = tags;
-                    }
-                    if (version.Equals(2))
-                    {
-                        count = reader.ReadInt32();
-                        for (var index = 1; index <= count; index++)
-                        {
-                            var collectionName = reader.ReadString();
-                            if (!LastModified.ContainsKey(collectionName))
+                            var tags = new KeyValuePair<byte, string>[TagCount + 1];
+                            for (var tagIndex = 0; tagIndex <= TagCount; tagIndex++)
                             {
-                                LastModified.Add(collectionName, reader.ReadUInt64());
+                                var tagType = reader.ReadByte();
+                                tags[tagIndex] = new KeyValuePair<byte, string>(tagType, reader.ReadString());
+                            }
+                            files[index] = tags;
+                        }
+                        if (version.Equals(2))
+                        {
+                            count = reader.ReadInt32();
+                            for (var index = 1; index <= count; index++)
+                            {
+                                var collectionName = reader.ReadString();
+                                if (!LastModified.ContainsKey(collectionName))
+                                {
+                                    LastModified.Add(collectionName, reader.ReadUInt64());
+                                }
                             }
                         }
+                        reader.Close();
                     }
-                    reader.Close();
+                    catch (EndOfStreamException)
+                    {
+                        MessageBox.Show(@"The Cache file seems to be empty!");
+                    }
                 }
             }
             lock (CacheLock)
             {
-                if (_cachedFiles == null)
+                if (_cachedFiles == null && files != null)
                 {
                     _cachedFiles = files;
                 }
