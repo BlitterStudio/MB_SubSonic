@@ -838,7 +838,7 @@ namespace MusicBeePlugin
             tags[10] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Artwork,
                 string.IsNullOrEmpty(xmlReader.GetAttribute("coverArt")) ? "" : "Y");
 
-            for (var tagIndex = 1; tagIndex <= TagCount - 2; tagIndex++)
+            for (var tagIndex = 1; tagIndex < TagCount; tagIndex++)
             {
                 if (tags[tagIndex].Value == null)
                 {
