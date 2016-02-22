@@ -35,7 +35,7 @@ namespace MusicBeePlugin
         private static readonly Dictionary<string, ulong> LastModified = new Dictionary<string, ulong>();
         private static readonly object FolderLookupLock = new object();
         private static readonly Dictionary<string, string> FolderLookup = new Dictionary<string, string>();
-        private const string Passphrase = "changeMe";
+        private const string Passphrase = "PeekAndPoke";
 
         public static bool Initialize()
         {
