@@ -138,7 +138,8 @@ namespace MusicBeePlugin
             _protocol.Bounds = new Rectangle(_host.Left, firstRowPosY, protocolWidth, _protocol.Height);
             _protocol.Items.Add("HTTP");
             _protocol.Items.Add("HTTPS");
-            _protocol.SelectedIndex = 0;
+            _protocol.SelectedItem = Subsonic.Protocol;
+            _protocol.DropDownStyle = ComboBoxStyle.DropDownList;
 
             configPanel.Controls.AddRange(new Control[]
             {
