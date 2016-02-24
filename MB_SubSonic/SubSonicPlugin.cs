@@ -18,6 +18,7 @@ namespace MusicBeePlugin
         private TextBox _port;
         private CheckBox _transcode;
         private TextBox _username;
+        private ComboBox _protocol;
 
         // ReSharper disable once UnusedMember.Global
         public PluginInfo Initialise(IntPtr apiInterfacePtr)
@@ -33,13 +34,12 @@ namespace MusicBeePlugin
             // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
             _about.Type = PluginType.Storage;
             _about.VersionMajor = 2; // your plugin version
-            _about.VersionMinor = 0;
+            _about.VersionMinor = 1;
             _about.Revision = 1;
             _about.MinInterfaceVersion = MinInterfaceVersion;
             _about.MinApiRevision = MinApiRevision;
             _about.ReceiveNotifications = ReceiveNotificationFlags.StartupOnly;
-            _about.ConfigurationPanelHeight = TextRenderer.MeasureText("FirstRowText", SystemFonts.DefaultFont).Height*
-                                              10;
+            _about.ConfigurationPanelHeight = TextRenderer.MeasureText("FirstRowText", SystemFonts.DefaultFont).Height * 12;
             // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
             return _about;
         }
@@ -47,14 +47,13 @@ namespace MusicBeePlugin
         // ReSharper disable once UnusedMember.Global
         public bool Configure(IntPtr panelHandle)
         {
-            // save any persistent settings in a sub-folder of this path
-            var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
             // panelHandle will only be set if you set about.ConfigurationPanelHeight to a non-zero value
             // keep in mind the panel width is scaled according to the font the user has selected
             // if about.ConfigurationPanelHeight is set to 0, you can display your own popup window
             if (panelHandle == IntPtr.Zero) return false;
 
             var configPanel = (Panel) Control.FromHandle(panelHandle);
+            var protocolWidth = TextRenderer.MeasureText(@"HTTPS", configPanel.Font).Width*2;
             var hostTextBoxWidth = TextRenderer.MeasureText(@"my-server-name.subsonic.org", configPanel.Font).Width;
             var portTextBoxWidth = TextRenderer.MeasureText(@"8443", configPanel.Font).Width;
             var pathTextBoxWidth = TextRenderer.MeasureText(@"/folder/", configPanel.Font).Width;
@@ -65,17 +64,18 @@ namespace MusicBeePlugin
             var secondRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height*2;
             var thirdRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height*4;
             var fourthRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height*6;
+            var fifthRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height*8;
 
             var hostPrompt = new Label
             {
                 AutoSize = true,
-                Location = new Point(0, firstRowPosY + 2),
+                Location = new Point(0, secondRowPosY + 2),
                 Text = @"Hostname:"
             };
             _host = new TextBox();
             _host.Bounds =
                 new Rectangle(hostPrompt.Left + TextRenderer.MeasureText(hostPrompt.Text, configPanel.Font).Width,
-                    firstRowPosY, hostTextBoxWidth, _host.Height);
+                    secondRowPosY, hostTextBoxWidth, _host.Height);
             _host.Text = Subsonic.Host;
 
             var portPrompt = new Label
@@ -87,37 +87,37 @@ namespace MusicBeePlugin
             _port = new TextBox();
             _port.Bounds =
                 new Rectangle(portPrompt.Left + TextRenderer.MeasureText(portPrompt.Text, configPanel.Font).Width,
-                    firstRowPosY, portTextBoxWidth, _port.Height);
+                    secondRowPosY, portTextBoxWidth, _port.Height);
             _port.Text = Subsonic.Port;
 
             var basePathPrompt = new Label
             {
                 AutoSize = true,
-                Location = new Point(hostPrompt.Left, secondRowPosY + 2),
+                Location = new Point(hostPrompt.Left, thirdRowPosY + 2),
                 Text = @"Path:"
             };
             _basePath = new TextBox();
-            _basePath.Bounds = new Rectangle(_host.Left, secondRowPosY, pathTextBoxWidth, _basePath.Height);
+            _basePath.Bounds = new Rectangle(_host.Left, thirdRowPosY, pathTextBoxWidth, _basePath.Height);
             _basePath.Text = Subsonic.BasePath;
 
             var usernamePrompt = new Label
             {
                 AutoSize = true,
-                Location = new Point(hostPrompt.Left, thirdRowPosY + 2),
+                Location = new Point(hostPrompt.Left, fourthRowPosY + 2),
                 Text = @"Username:"
             };
             _username = new TextBox();
-            _username.Bounds = new Rectangle(_host.Left, thirdRowPosY, usernameTextBoxWidth, _username.Height);
+            _username.Bounds = new Rectangle(_host.Left, fourthRowPosY, usernameTextBoxWidth, _username.Height);
             _username.Text = Subsonic.Username;
 
             var passwordPrompt = new Label
             {
                 AutoSize = true,
-                Location = new Point(hostPrompt.Left, fourthRowPosY + 2),
+                Location = new Point(hostPrompt.Left, fifthRowPosY + 2),
                 Text = @"Password:"
             };
             _password = new TextBox();
-            _password.Bounds = new Rectangle(_host.Left, fourthRowPosY, passwordTextBoxWidth, _password.Height);
+            _password.Bounds = new Rectangle(_host.Left, fifthRowPosY, passwordTextBoxWidth, _password.Height);
             _password.Text = Subsonic.Password;
             _password.PasswordChar = '*';
 
@@ -128,14 +128,26 @@ namespace MusicBeePlugin
                 Text = @"Transcode Streams"
             };
 
+            var protocolLabel = new Label
+            {
+                AutoSize = true,
+                Location = new Point(hostPrompt.Left, firstRowPosY + 2),
+                Text = @"Protocol:"
+            };
+            _protocol = new ComboBox();
+            _protocol.Bounds = new Rectangle(_host.Left, firstRowPosY, protocolWidth, _protocol.Height);
+            _protocol.Items.Add("HTTP");
+            _protocol.Items.Add("HTTPS");
+            _protocol.SelectedIndex = 0;
+
             configPanel.Controls.AddRange(new Control[]
             {
-                _host, hostPrompt, portPrompt, _port, _basePath, basePathPrompt, _username, usernamePrompt, _password,
+                protocolLabel, _protocol, _host, hostPrompt, portPrompt, _port, _basePath, basePathPrompt, _username, usernamePrompt, _password,
                 passwordPrompt, _transcode
             });
             _transcode.Location = new Point(_port.Left, passwordPrompt.Top - 2);
             configPanel.Width = _transcode.Right + spacer;
-            return false;
+            return true;
         }
 
         // called by MusicBee when the user clicks Apply or Save in the MusicBee Preferences screen.
@@ -146,7 +158,7 @@ namespace MusicBeePlugin
             var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
 
             var setHostSuccess = Subsonic.SetHost(_host.Text.Trim(), _port.Text.Trim(), _basePath.Text.Trim(),
-                _username.Text.Trim(), _password.Text.Trim(), _transcode.Checked);
+                _username.Text.Trim(), _password.Text.Trim(), _transcode.Checked, _protocol.SelectedItem.ToString());
             if (setHostSuccess) return;
 
             var message = Subsonic.GetError().Message;

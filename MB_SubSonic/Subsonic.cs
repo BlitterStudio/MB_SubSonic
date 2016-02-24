@@ -20,6 +20,7 @@ namespace MusicBeePlugin
         public static string BasePath = "/";
         public static string Username = "admin";
         public static string Password = "";
+        public static string Protocol = "http";
         public static bool Transcode;
         public static bool IsInitialized;
         public static string SettingsUrl;
@@ -46,6 +47,7 @@ namespace MusicBeePlugin
                 {
                     using (var reader = new StreamReader(SettingsUrl))
                     {
+                        Protocol = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
                         var encHost = reader.ReadLine();
                         Host = AesEncryption.Decrypt(encHost, Passphrase);
                         var encPort = reader.ReadLine();
@@ -74,7 +76,7 @@ namespace MusicBeePlugin
         {
             try
             {
-                _serverName = $"http://{Host}:{Port}{BasePath}";
+                _serverName = $"{Protocol}://{Host}:{Port}{BasePath}";
                 var xml = GetHttpRequestXml("ping.view", null, 5000);
                 var isPingOk = xml.IndexOf(@"status=""ok""", StringComparison.Ordinal) != -1;
                 return isPingOk;
@@ -94,7 +96,7 @@ namespace MusicBeePlugin
         }
 
         public static bool SetHost(string host, string port, string basePath, string username, string password,
-            bool transcode)
+            bool transcode, string protocol = "http")
         {
             _lastEx = null;
             try
@@ -103,6 +105,10 @@ namespace MusicBeePlugin
                 if (host.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
                 {
                     host = host.Substring(7);
+                }
+                else if (host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                {
+                    host = host.Substring(8);
                 }
                 port = port.Trim();
                 basePath = basePath.Trim();
@@ -114,7 +120,8 @@ namespace MusicBeePlugin
                                 !port.Equals(Port) ||
                                 !basePath.Equals(BasePath) ||
                                 !username.Equals(Username) ||
-                                !password.Equals(Password);
+                                !password.Equals(Password) ||
+                                !protocol.Equals(Protocol);
                 if (isChanged)
                 {
                     var savedHost = Host;
@@ -122,9 +129,11 @@ namespace MusicBeePlugin
                     var savedBasePath = BasePath;
                     var savedUsername = Username;
                     var savedPassword = Password;
+                    var savedProtocol = Protocol;
                     bool isPingOk;
                     try
                     {
+                        Protocol = protocol;
                         Host = host;
                         Port = port;
                         BasePath = basePath;
@@ -138,6 +147,7 @@ namespace MusicBeePlugin
                     }
                     if (!isPingOk)
                     {
+                        Protocol = savedProtocol;
                         Host = savedHost;
                         Port = savedPort;
                         BasePath = savedBasePath;
@@ -154,6 +164,7 @@ namespace MusicBeePlugin
                 }
                 using (var writer = new StreamWriter(SettingsUrl))
                 {
+                    writer.WriteLine(AesEncryption.Encrypt(protocol, Passphrase));
                     writer.WriteLine(AesEncryption.Encrypt(host, Passphrase));
                     writer.WriteLine(AesEncryption.Encrypt(port, Passphrase));
                     writer.WriteLine(AesEncryption.Encrypt(basePath, Passphrase));
