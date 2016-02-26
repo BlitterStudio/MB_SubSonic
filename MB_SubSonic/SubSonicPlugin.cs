@@ -155,9 +155,6 @@ namespace MusicBeePlugin
         // its up to you to figure out whether anything has changed and needs updating
         public void SaveSettings()
         {
-            // save any persistent settings in a sub-folder of this path
-            var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
-
             var setHostSuccess = Subsonic.SetHost(_host.Text.Trim(), _port.Text.Trim(), _basePath.Text.Trim(),
                 _username.Text.Trim(), _password.Text.Trim(), _transcode.Checked, _protocol.SelectedItem.ToString());
             if (setHostSuccess) return;

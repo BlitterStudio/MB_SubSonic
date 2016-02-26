@@ -48,21 +48,15 @@ namespace MusicBeePlugin
                     using (var reader = new StreamReader(SettingsUrl))
                     {
                         Protocol = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                        var encHost = reader.ReadLine();
-                        Host = AesEncryption.Decrypt(encHost, Passphrase);
-                        var encPort = reader.ReadLine();
-                        Port = AesEncryption.Decrypt(encPort, Passphrase);
-                        var encBasePath = reader.ReadLine();
-                        BasePath = AesEncryption.Decrypt(encBasePath, Passphrase);
-                        var encUsername = reader.ReadLine();
-                        Username = AesEncryption.Decrypt(encUsername, Passphrase);
-                        var encPassword = reader.ReadLine();
-                        Password = AesEncryption.Decrypt(encPassword, Passphrase);
-                        var encTranscode = reader.ReadLine();
-                        Transcode = AesEncryption.Decrypt(encTranscode, Passphrase) == "Y";
+                        Host = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                        Port = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                        BasePath = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                        Username = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                        Password = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                        Transcode = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "Y";
                     }
                 }
-                IsInitialized = SetServerName();
+                IsInitialized = PingServer();
             }
             catch (Exception ex)
             {
@@ -72,7 +66,7 @@ namespace MusicBeePlugin
             return IsInitialized;
         }
 
-        private static bool SetServerName()
+        private static bool PingServer()
         {
             try
             {
@@ -139,7 +133,7 @@ namespace MusicBeePlugin
                         BasePath = basePath;
                         Username = username;
                         Password = password;
-                        isPingOk = SetServerName();
+                        isPingOk = PingServer();
                     }
                     catch (Exception)
                     {
