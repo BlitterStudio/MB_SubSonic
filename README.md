@@ -14,9 +14,9 @@ Any bugs or improvement suggestions can be reported in the Issues section.
 
 Requirements
 ============
-- MusicBee (v2.x or 3.x beta) - get it from http://getmusicbee.com
+- MusicBee (v2.x or 3.x) - get it from http://getmusicbee.com
 - .NET Framework 4.5.2 - normally delivered through Windows Update automatically
-- Subsonic server (tested with v5.x and 6.x beta) - more information at http://www.subsonic.org
+- Subsonic server (tested with v5.x and 6.x) - more information at http://www.subsonic.org
 
 Installation
 ============
@@ -30,3 +30,5 @@ Configuration
 You will find the configuration section in MusicBee's "Preferences" window -> Plugins.
 The necessary information you need to provide is "Hostname", "Port", "Username" and "Password".
 You can optionally specify a "Path" as well, if your Subsonic server needs one. Otherwise the default "/" will be used.
+
+Please note that the first time it connects, it will scan through your collection and create a local cache. This operation might take a while (depending on the size of your collection and the network speed) during which you won't be able to see anything in the Subsonic node. Please be patient. :)
