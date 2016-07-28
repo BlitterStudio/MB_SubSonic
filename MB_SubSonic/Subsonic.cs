@@ -141,6 +141,22 @@ namespace MusicBeePlugin
                     }
                     if (!isPingOk)
                     {
+                        var dialog = MessageBox.Show(
+                            @"The Subsonic server did not respond as expected.
+Do you want to save these settings anyway?",
+                            @"Could not get OK from server", 
+                            MessageBoxButtons.YesNo, 
+                            MessageBoxIcon.Question,
+                            MessageBoxDefaultButton.Button2);
+
+                        if (dialog == DialogResult.Yes)
+                        {
+                            isPingOk = true;
+                        }
+                    }
+
+                    if (!isPingOk)
+                    {
                         Protocol = savedProtocol;
                         Host = savedHost;
                         Port = savedPort;

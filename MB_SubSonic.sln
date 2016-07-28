@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Subsonic", "MB_SubSonic\Subsonic.csproj", "{43FE56C9-52A8-4E86-BBEB-93A1782F01A0}"
 EndProject
@@ -9,19 +9,6 @@ Project("{911E67C6-3D85-4FCE-B560-20A9C3E3FF48}") = "MusicBee", "C:\Program File
 	ProjectSection(DebuggerProjectSystem) = preProject
 		PortSupplier = 00000000-0000-0000-0000-000000000000
 		Executable = C:\Program Files (x86)\MusicBee\MusicBee.exe
-		RemoteMachine = IT12
-		StartingDirectory = C:\Program Files (x86)\MusicBee
-		Environment = Default
-		LaunchingEngine = 00000000-0000-0000-0000-000000000000
-		UseLegacyDebugEngines = No
-		LaunchSQLEngine = No
-		AttachLaunchAction = No
-	EndProjectSection
-EndProject
-Project("{911E67C6-3D85-4FCE-B560-20A9C3E3FF48}") = "MusicBee3", "C:\Program Files (x86)\MusicBee\MusicBee3.exe", "{AD246939-A6AB-4A74-A5D3-00F9491EAC19}"
-	ProjectSection(DebuggerProjectSystem) = preProject
-		PortSupplier = 00000000-0000-0000-0000-000000000000
-		Executable = C:\Program Files (x86)\MusicBee\MusicBee3.exe
 		RemoteMachine = IT12
 		StartingDirectory = C:\Program Files (x86)\MusicBee
 		Environment = Default
@@ -51,10 +38,6 @@ Global
 		{4165A13D-0BA3-48FC-A4F4-151AA6C293CA}.Debug|x86.ActiveCfg = Release|x86
 		{4165A13D-0BA3-48FC-A4F4-151AA6C293CA}.Release|Any CPU.ActiveCfg = Release|x86
 		{4165A13D-0BA3-48FC-A4F4-151AA6C293CA}.Release|x86.ActiveCfg = Release|x86
-		{AD246939-A6AB-4A74-A5D3-00F9491EAC19}.Debug|Any CPU.ActiveCfg = Release|x86
-		{AD246939-A6AB-4A74-A5D3-00F9491EAC19}.Debug|x86.ActiveCfg = Release|x86
-		{AD246939-A6AB-4A74-A5D3-00F9491EAC19}.Release|Any CPU.ActiveCfg = Release|x86
-		{AD246939-A6AB-4A74-A5D3-00F9491EAC19}.Release|x86.ActiveCfg = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

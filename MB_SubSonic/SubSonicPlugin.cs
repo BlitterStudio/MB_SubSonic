@@ -159,7 +159,8 @@ namespace MusicBeePlugin
                 _username.Text.Trim(), _password.Text.Trim(), _transcode.Checked, _protocol.SelectedItem.ToString());
             if (setHostSuccess) return;
 
-            var message = Subsonic.GetError().Message;
+            var error = Subsonic.GetError();
+            var message = error?.Message;
             if (!string.IsNullOrEmpty(message))
             {
                 MessageBox.Show(_host, $"Error: {message}     ", @"Subsonic Plugin", MessageBoxButtons.OK,
