@@ -56,9 +56,6 @@ namespace MusicBeePlugin
             var protocolWidth = TextRenderer.MeasureText(@"HTTPS", configPanel.Font).Width*2;
             var hostTextBoxWidth = TextRenderer.MeasureText(@"my-server-name.subsonic.org", configPanel.Font).Width;
             var portTextBoxWidth = TextRenderer.MeasureText(@"8443", configPanel.Font).Width;
-            var pathTextBoxWidth = TextRenderer.MeasureText(@"/folder/", configPanel.Font).Width;
-            var usernameTextBoxWidth = TextRenderer.MeasureText(@"UsernameMayBeLong", configPanel.Font).Width;
-            var passwordTextBoxWidth = usernameTextBoxWidth;
             var spacer = TextRenderer.MeasureText("X", configPanel.Font).Width;
             const int firstRowPosY = 0;
             var secondRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height*2;
@@ -97,7 +94,7 @@ namespace MusicBeePlugin
                 Text = @"Path:"
             };
             _basePath = new TextBox();
-            _basePath.Bounds = new Rectangle(_host.Left, thirdRowPosY, pathTextBoxWidth, _basePath.Height);
+            _basePath.Bounds = new Rectangle(_host.Left, thirdRowPosY, hostTextBoxWidth, _basePath.Height);
             _basePath.Text = Subsonic.BasePath;
 
             var usernamePrompt = new Label
@@ -107,7 +104,7 @@ namespace MusicBeePlugin
                 Text = @"Username:"
             };
             _username = new TextBox();
-            _username.Bounds = new Rectangle(_host.Left, fourthRowPosY, usernameTextBoxWidth, _username.Height);
+            _username.Bounds = new Rectangle(_host.Left, fourthRowPosY, hostTextBoxWidth, _username.Height);
             _username.Text = Subsonic.Username;
 
             var passwordPrompt = new Label
@@ -117,7 +114,7 @@ namespace MusicBeePlugin
                 Text = @"Password:"
             };
             _password = new TextBox();
-            _password.Bounds = new Rectangle(_host.Left, fifthRowPosY, passwordTextBoxWidth, _password.Height);
+            _password.Bounds = new Rectangle(_host.Left, fifthRowPosY, hostTextBoxWidth, _password.Height);
             _password.Text = Subsonic.Password;
             _password.PasswordChar = '*';
 
