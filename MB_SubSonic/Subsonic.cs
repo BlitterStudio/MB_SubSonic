@@ -15,6 +15,7 @@ namespace MusicBeePlugin
     {
         private const int TagCount = 10;
         private const string ApiVersion = "1.13.0";
+        private const string Passphrase = "PeekAndPoke";
         public static string Host = "localhost";
         public static string Port = "80";
         public static string BasePath = "/";
@@ -36,7 +37,6 @@ namespace MusicBeePlugin
         private static readonly Dictionary<string, ulong> LastModified = new Dictionary<string, ulong>();
         private static readonly object FolderLookupLock = new object();
         private static readonly Dictionary<string, string> FolderLookup = new Dictionary<string, string>();
-        private const string Passphrase = "PeekAndPoke";
 
         public static bool Initialize()
         {
@@ -56,7 +56,7 @@ namespace MusicBeePlugin
                         Transcode = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "Y";
                     }
                 }
-                IsInitialized = PingServer();
+                IsInitialized = PingServer(Protocol, Host, Port, BasePath);
             }
             catch (Exception ex)
             {
@@ -66,11 +66,11 @@ namespace MusicBeePlugin
             return IsInitialized;
         }
 
-        private static bool PingServer()
+        private static bool PingServer(string protocol, string host, string port, string basepath)
         {
             try
             {
-                _serverName = $"{Protocol}://{Host}:{Port}{BasePath}";
+                _serverName = $"{protocol}://{host}:{port}{basepath}";
                 var xml = GetHttpRequestXml("ping.view", null, 5000);
                 var isPingOk = xml.IndexOf(@"status=""ok""", StringComparison.Ordinal) != -1;
                 return isPingOk;
@@ -93,111 +93,97 @@ namespace MusicBeePlugin
             bool transcode, string protocol = "http")
         {
             _lastEx = null;
-            try
+
+            host = host.Trim();
+            if (host.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
             {
-                host = host.Trim();
-                if (host.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
-                {
-                    host = host.Substring(7);
-                }
-                else if (host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                {
-                    host = host.Substring(8);
-                }
-                port = port.Trim();
-                basePath = basePath.Trim();
-                if (!basePath.EndsWith(@"/"))
-                {
-                    basePath += @"/";
-                }
-                var isChanged = !host.Equals(Host) ||
-                                !port.Equals(Port) ||
-                                !basePath.Equals(BasePath) ||
-                                !username.Equals(Username) ||
-                                !password.Equals(Password) ||
-                                !protocol.Equals(Protocol);
-                if (isChanged)
-                {
-                    var savedHost = Host;
-                    var savedPort = Port;
-                    var savedBasePath = BasePath;
-                    var savedUsername = Username;
-                    var savedPassword = Password;
-                    var savedProtocol = Protocol;
-                    bool isPingOk;
-                    try
-                    {
-                        Protocol = protocol;
-                        Host = host;
-                        Port = port;
-                        BasePath = basePath;
-                        Username = username;
-                        Password = password;
-                        isPingOk = PingServer();
-                    }
-                    catch (Exception)
-                    {
-                        isPingOk = false;
-                    }
-                    if (!isPingOk)
-                    {
-                        var dialog = MessageBox.Show(
-                            @"The Subsonic server did not respond as expected.
-Do you want to save these settings anyway?",
-                            @"Could not get OK from server", 
-                            MessageBoxButtons.YesNo, 
-                            MessageBoxIcon.Question,
-                            MessageBoxDefaultButton.Button2);
-
-                        if (dialog == DialogResult.Yes)
-                        {
-                            isPingOk = true;
-                        }
-                    }
-
-                    if (!isPingOk)
-                    {
-                        Protocol = savedProtocol;
-                        Host = savedHost;
-                        Port = savedPort;
-                        BasePath = savedBasePath;
-                        Username = savedUsername;
-                        Password = savedPassword;
-                        return false;
-                    }
-                    IsInitialized = true;
-                }
-                isChanged = isChanged || Transcode;
-                if (!isChanged)
-                {
-                    return true;
-                }
-                using (var writer = new StreamWriter(SettingsUrl))
-                {
-                    writer.WriteLine(AesEncryption.Encrypt(protocol, Passphrase));
-                    writer.WriteLine(AesEncryption.Encrypt(host, Passphrase));
-                    writer.WriteLine(AesEncryption.Encrypt(port, Passphrase));
-                    writer.WriteLine(AesEncryption.Encrypt(basePath, Passphrase));
-                    writer.WriteLine(AesEncryption.Encrypt(username, Passphrase));
-                    writer.WriteLine(AesEncryption.Encrypt(password, Passphrase));
-                    writer.WriteLine(transcode ? AesEncryption.Encrypt("Y", Passphrase) : AesEncryption.Encrypt("N", Passphrase));
-                }
-                Transcode = transcode;
+                host = host.Substring(7);
+            }
+            else if (host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                host = host.Substring(8);
+            }
+            port = port.Trim();
+            basePath = basePath.Trim();
+            if (!basePath.EndsWith(@"/"))
+            {
+                basePath += @"/";
+            }
+            var isChanged = !host.Equals(Host) ||
+                            !port.Equals(Port) ||
+                            !basePath.Equals(BasePath) ||
+                            !username.Equals(Username) ||
+                            !password.Equals(Password) ||
+                            !protocol.Equals(Protocol);
+            if (isChanged)
+            {
+                bool isPingOk;
                 try
                 {
-                    SendNotificationsHandler.Invoke(Plugin.CallbackType.SettingsUpdated);
+                    isPingOk = PingServer(protocol, host, port, basePath);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    _lastEx = ex;
+                    isPingOk = false;
                 }
+                if (!isPingOk)
+                {
+                    var dialog = MessageBox.Show(
+                        @"The Subsonic server did not respond as expected, do you want to save these settings anyway?",
+                        @"Could not get OK from server",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question,
+                        MessageBoxDefaultButton.Button2);
+
+                    if (dialog == DialogResult.Yes)
+                    {
+                        isPingOk = true;
+                    }
+                }
+
+                if (!isPingOk)
+                {
+                    return false;
+                }
+                else
+                {
+                    Protocol = protocol;
+                    Host = host;
+                    Port = port;
+                    BasePath = basePath;
+                    Username = username;
+                    Password = password;
+                }
+                IsInitialized = true;
+            }
+            isChanged = isChanged || Transcode;
+            if (!isChanged)
+            {
                 return true;
+            }
+            using (var writer = new StreamWriter(SettingsUrl))
+            {
+                writer.WriteLine(AesEncryption.Encrypt(protocol, Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(host, Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(port, Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(basePath, Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(username, Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(password, Passphrase));
+                writer.WriteLine(transcode
+                    ? AesEncryption.Encrypt("Y", Passphrase)
+                    : AesEncryption.Encrypt("N", Passphrase));
+            }
+            Transcode = transcode;
+            try
+            {
+                SendNotificationsHandler.Invoke(Plugin.CallbackType.SettingsUpdated);
             }
             catch (Exception ex)
             {
                 _lastEx = ex;
                 return false;
             }
+            return true;
         }
 
         private static string GetErrorMessage(string xml)

@@ -152,15 +152,15 @@ namespace MusicBeePlugin
         // its up to you to figure out whether anything has changed and needs updating
         public void SaveSettings()
         {
-            var setHostSuccess = Subsonic.SetHost(_host.Text.Trim(), _port.Text.Trim(), _basePath.Text.Trim(),
-                _username.Text.Trim(), _password.Text.Trim(), _transcode.Checked, _protocol.SelectedItem.ToString());
+            var setHostSuccess = Subsonic.SetHost(_host.Text, _port.Text, _basePath.Text,
+                _username.Text, _password.Text, _transcode.Checked, _protocol.SelectedItem.ToString());
             if (setHostSuccess) return;
 
             var error = Subsonic.GetError();
             var message = error?.Message;
             if (!string.IsNullOrEmpty(message))
             {
-                MessageBox.Show(_host, $"Error: {message}     ", @"Subsonic Plugin", MessageBoxButtons.OK,
+                MessageBox.Show(_host, $"Error: {message}", @"Subsonic Plugin", MessageBoxButtons.OK,
                     MessageBoxIcon.Exclamation);
             }
         }
