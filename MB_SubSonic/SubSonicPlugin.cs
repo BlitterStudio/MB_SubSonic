@@ -34,8 +34,8 @@ namespace MusicBeePlugin
             // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
             _about.Type = PluginType.Storage;
             _about.VersionMajor = 2; // your plugin version
-            _about.VersionMinor = 1;
-            _about.Revision = 1;
+            _about.VersionMinor = 2;
+            _about.Revision = 0;
             _about.MinInterfaceVersion = MinInterfaceVersion;
             _about.MinApiRevision = MinApiRevision;
             _about.ReceiveNotifications = ReceiveNotificationFlags.StartupOnly;
