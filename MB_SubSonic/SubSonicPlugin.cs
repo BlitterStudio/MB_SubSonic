@@ -55,7 +55,7 @@ namespace MusicBeePlugin
             var configPanel = (Panel) Control.FromHandle(panelHandle);
             var protocolWidth = TextRenderer.MeasureText(@"HTTPS", configPanel.Font).Width*2;
             var hostTextBoxWidth = TextRenderer.MeasureText(@"my-server-name.subsonic.org", configPanel.Font).Width;
-            var portTextBoxWidth = TextRenderer.MeasureText(@"8443", configPanel.Font).Width;
+            var portTextBoxWidth = TextRenderer.MeasureText(@"844345", configPanel.Font).Width;
             var spacer = TextRenderer.MeasureText("X", configPanel.Font).Width;
             const int firstRowPosY = 0;
             var secondRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height*2;
@@ -154,7 +154,12 @@ namespace MusicBeePlugin
         {
             var setHostSuccess = Subsonic.SetHost(_host.Text, _port.Text, _basePath.Text,
                 _username.Text, _password.Text, _transcode.Checked, _protocol.SelectedItem.ToString());
-            if (setHostSuccess) return;
+            if (setHostSuccess)
+            {
+                DeleteCacheFile();
+                Refresh();
+                return;
+            }
 
             var error = Subsonic.GetError();
             var message = error?.Message;
@@ -165,14 +170,7 @@ namespace MusicBeePlugin
             }
         }
 
-        // MusicBee is closing the plugin (plugin is being disabled by user or MusicBee is shutting down)
-        public void Close(PluginCloseReason reason)
-        {
-            Subsonic.Close();
-        }
-
-        // uninstall this plugin - clean up any persisted files
-        public void Uninstall()
+        private void DeleteCacheFile()
         {
             var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
             if (File.Exists(Path.Combine(dataPath, "subsonicCache.dat")))
@@ -186,6 +184,20 @@ namespace MusicBeePlugin
                     MessageBox.Show(@"An error has occurred while trying to delete the Subsonic cache file.\nPlease try deleting the file manually.", @"An error has occurred", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
+        }
+
+        // MusicBee is closing the plugin (plugin is being disabled by user or MusicBee is shutting down)
+        public void Close(PluginCloseReason reason)
+        {
+            Subsonic.Close();
+        }
+
+        // uninstall this plugin - clean up any persisted files
+        public void Uninstall()
+        {
+            DeleteCacheFile();
+
+            var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
             if (File.Exists(Path.Combine(dataPath, "subsonicSettings.dat")))
             {
                 try
