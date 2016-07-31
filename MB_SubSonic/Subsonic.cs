@@ -566,7 +566,7 @@ namespace MusicBeePlugin
                 var error = result.Item as Error;
                 if (error != null)
                 {
-                    MessageBox.Show($"An error has occurred:\n{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show($"An error has occurred:\n{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return null;
                 }
                 var content = (MusicFolders)result.Item;
@@ -649,7 +649,7 @@ namespace MusicBeePlugin
             var error = result.Item as Error;
             if (error != null)
             {
-                MessageBox.Show($"An error has occurred:\n{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"An error has occurred:\n{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return null;
             }
             var content = result.Item as Indexes;
@@ -753,7 +753,7 @@ namespace MusicBeePlugin
             var error = result.Item as Error;
             if (error != null)
             {
-                MessageBox.Show($"An error has occurred:\n{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"An error has occurred:\n{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             var content = result.Item as Directory;
@@ -1287,9 +1287,10 @@ namespace MusicBeePlugin
             {
                 var request = new RestRequest
                 {
-                    Resource = Transcode ? "stream.view" : "download.view",
+                    Resource = "stream.view"
                 };
                 request.AddParameter("id", id);
+                request.AddParameter("format", Transcode ? "mp3" : "raw");
                 var data = DownloadData(request);
                 if (data != null)
                 {
