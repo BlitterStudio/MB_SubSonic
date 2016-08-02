@@ -123,6 +123,8 @@ namespace MusicBeePlugin
 
         public delegate void MB_TraceDelegate(string p1);
 
+        public delegate bool MB_UninistallPluginDelegate(string pluginFilename, string password);
+
         public delegate IntPtr MB_WindowHandleDelegate();
 
         public delegate string NowPlaying_GetArtistPictureDelegate(int fadingPercent);
@@ -526,7 +528,8 @@ namespace MusicBeePlugin
             v2_2 = 2,
             v2_3 = 3,
             v2_4 = 4,
-            v2_5 = 5
+            v2_5 = 5,
+            v3_0 = 6
         }
 
         public enum NotificationType
@@ -688,7 +691,25 @@ namespace MusicBeePlugin
             PlayCountTriggerPercent = 7,
             PlayCountTriggerSeconds = 8,
             SkipCountTriggerPercent = 9,
-            SkipCountTriggerSeconds = 10
+            SkipCountTriggerSeconds = 10,
+            CustomWebLinkName1 = 11,
+            CustomWebLinkName2 = 12,
+            CustomWebLinkName3 = 13,
+            CustomWebLinkName4 = 14,
+            CustomWebLinkName5 = 15,
+            CustomWebLinkName6 = 16,
+            CustomWebLink1 = 17,
+            CustomWebLink2 = 18,
+            CustomWebLink3 = 19,
+            CustomWebLink4 = 20,
+            CustomWebLink5 = 21,
+            CustomWebLink6 = 22,
+            CustomWebLinkNowPlaying1 = 23,
+            CustomWebLinkNowPlaying2 = 24,
+            CustomWebLinkNowPlaying3 = 25,
+            CustomWebLinkNowPlaying4 = 26,
+            CustomWebLinkNowPlaying5 = 27,
+            CustomWebLinkNowPlaying6 = 28
         }
 
         public enum SkinElement
@@ -708,8 +729,8 @@ namespace MusicBeePlugin
         }
 
         public const short PluginInfoVersion = 1;
-        public const short MinInterfaceVersion = 35;
-        public const short MinApiRevision = 47;
+        public const short MinInterfaceVersion = 36;
+        public const short MinApiRevision = 48;
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport("kernel32.dll")]
@@ -721,30 +742,21 @@ namespace MusicBeePlugin
             public void Initialise(IntPtr apiInterfacePtr)
             {
                 CopyMemory(ref this, apiInterfacePtr, 4);
-                switch (MusicBeeVersion)
-                {
-                    case MusicBeeVersion.v2_0:
-                        CopyMemory(ref this, apiInterfacePtr, 456);
-                        break;
-                    case MusicBeeVersion.v2_1:
-                        CopyMemory(ref this, apiInterfacePtr, 516);
-                        break;
-                    case MusicBeeVersion.v2_2:
-                        CopyMemory(ref this, apiInterfacePtr, 584);
-                        break;
-                    case MusicBeeVersion.v2_3:
-                        CopyMemory(ref this, apiInterfacePtr, 596);
-                        break;
-                    case MusicBeeVersion.v2_4:
-                        CopyMemory(ref this, apiInterfacePtr, 604);
-                        break;
-                    case MusicBeeVersion.v2_5:
-                        CopyMemory(ref this, apiInterfacePtr, Marshal.SizeOf(this));
-                        break;
-                    default:
-                        CopyMemory(ref this, apiInterfacePtr, Marshal.SizeOf(this));
-                        break;
-                }
+                if (MusicBeeVersion == MusicBeeVersion.v2_0)
+                    // MusicBee version 2.0 - Api methods > revision 25 are not available
+                    CopyMemory(ref this, apiInterfacePtr, 456);
+                else if (MusicBeeVersion == MusicBeeVersion.v2_1)
+                    CopyMemory(ref this, apiInterfacePtr, 516);
+                else if (MusicBeeVersion == MusicBeeVersion.v2_2)
+                    CopyMemory(ref this, apiInterfacePtr, 584);
+                else if (MusicBeeVersion == MusicBeeVersion.v2_3)
+                    CopyMemory(ref this, apiInterfacePtr, 596);
+                else if (MusicBeeVersion == MusicBeeVersion.v2_4)
+                    CopyMemory(ref this, apiInterfacePtr, 604);
+                else if (MusicBeeVersion == MusicBeeVersion.v2_5)
+                    CopyMemory(ref this, apiInterfacePtr, 648);
+                else
+                    CopyMemory(ref this, apiInterfacePtr, Marshal.SizeOf(this));
             }
 
             public MusicBeeVersion MusicBeeVersion
@@ -761,7 +773,9 @@ namespace MusicBeePlugin
                         return MusicBeeVersion.v2_3;
                     if (ApiRevision <= 43)
                         return MusicBeeVersion.v2_4;
-                    return MusicBeeVersion.v2_5;
+                    if (ApiRevision <= 47)
+                        return MusicBeeVersion.v2_5;
+                    return MusicBeeVersion.v3_0;
                 }
             }
 
@@ -956,6 +970,8 @@ namespace MusicBeePlugin
             public MB_ShowPluginViewDelegate MB_ShowPluginView;
             public Player_GetOutputDevicesDelegate Player_GetOutputDevices;
             public Player_SetOutputDeviceDelegate Player_SetOutputDevice;
+            // api version 48
+            public MB_UninistallPluginDelegate MB_UninstallPlugin;
         }
 
         [StructLayout(LayoutKind.Sequential)]

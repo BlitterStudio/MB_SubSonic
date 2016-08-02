@@ -1072,7 +1072,7 @@ namespace MusicBeePlugin
             {
                 if (childEntry.path == filePath)
                 {
-                    return GetTags(childEntry, null);
+                    return GetTags(childEntry, childEntry.path);
                 }
             }
 
