@@ -283,32 +283,6 @@ namespace MusicBeePlugin
                         }
                     }
                     folders = list.ToArray();
-
-                    //GetRestResponse("getMusicDirectory.view", $"id={folderId}");
-                    //var content = response.Content;
-
-                    //using (var response = request.GetResponse())
-                    //using (var stream = response.GetResponseStream())
-                    //using (var xmlReader = new XmlTextReader(stream))
-                    //{
-                    //    var list = new List<string>();
-                    //    while (xmlReader.Read() && xmlReader.NodeType != XmlNodeType.EndElement)
-                    //    {
-                    //        if (!xmlReader.NodeType.Equals(XmlNodeType.Element) ||
-                    //            !string.Compare(xmlReader.Name, "child", StringComparison.Ordinal).Equals(0) ||
-                    //            !string.Compare(xmlReader.GetAttribute("isDir"), "true", StringComparison.Ordinal)
-                    //                .Equals(0)) continue;
-                    //        folderId = xmlReader.GetAttribute("id");
-                    //        var folderName = path + xmlReader.GetAttribute("title");
-                    //        list.Add(folderName);
-                    //        if (!FolderLookup.ContainsKey(folderName))
-                    //        {
-                    //            FolderLookup.Add(folderName, folderId);
-                    //        }
-                    //    }
-                    //    xmlReader.Close();
-                    //    folders = list.ToArray();
-                    //}
                 }
             }
             return folders;
@@ -587,30 +561,6 @@ namespace MusicBeePlugin
                     collection.Add(new KeyValuePair<string, string>(folderId, folderName));
                 }
 
-                //var request = GetHttpRequest("getMusicFolders.view", null);
-                //using (var response = request.GetResponse())
-                //using (var stream = response.GetResponseStream())
-                //using (var xmlReader = new XmlTextReader(stream))
-                //{
-                //    while (xmlReader.Read() && xmlReader.NodeType != XmlNodeType.EndElement)
-                //    {
-                //        if (!xmlReader.NodeType.Equals(XmlNodeType.Element) ||
-                //            !string.Compare(xmlReader.Name, "musicFolder", StringComparison.Ordinal).Equals(0))
-                //            continue;
-                //        var folderId = xmlReader.GetAttribute("id");
-                //        var folderName = xmlReader.GetAttribute("name");
-                //        if (folderName != null && FolderLookup.ContainsKey(folderName))
-                //        {
-                //            FolderLookup[folderName] = folderId;
-                //        }
-                //        else
-                //        {
-                //            if (folderName != null) FolderLookup.Add(folderName, folderId);
-                //        }
-                //        collection.Add(new KeyValuePair<string, string>(folderId, folderName));
-                //    }
-                //}
-
                 _collectionNames = new string[collection.Count];
                 for (var index = 0; index < collection.Count; index++)
                 {
@@ -692,51 +642,6 @@ namespace MusicBeePlugin
                 }
             }
 
-            //var request = GetHttpRequest("getIndexes.view", $"musicFolderId={collectionId}");
-            //using (var response = request.GetResponse())
-            //using (var stream = response.GetResponseStream())
-            //using (var xmlReader = new XmlTextReader(stream))
-            //{
-            //    while (xmlReader.Read() && xmlReader.NodeType != XmlNodeType.EndElement)
-            //    {
-            //        if (!xmlReader.NodeType.Equals(XmlNodeType.Element)) continue;
-            //        if (string.Compare(xmlReader.Name, "artist", StringComparison.Ordinal).Equals(0))
-            //        {
-            //            var folderId = xmlReader.GetAttribute("id");
-            //            var folderName = $"{collectionName}\\{xmlReader.GetAttribute("name")}";
-            //            if (FolderLookup.ContainsKey(folderName))
-            //            {
-            //                FolderLookup[folderName] = folderId;
-            //            }
-            //            else
-            //            {
-            //                FolderLookup.Add(folderName, folderId);
-            //            }
-            //            folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
-            //        }
-            //        else if (updateIsDirty &&
-            //                 string.Compare(xmlReader.Name, "indexes", StringComparison.Ordinal).Equals(0))
-            //        {
-            //            ulong serverLastModified;
-            //            if (!ulong.TryParse(xmlReader.GetAttribute("lastModified"), out serverLastModified)) continue;
-            //            lock (CacheFileLock)
-            //            {
-            //                ulong clientLastModified;
-            //                if (!LastModified.TryGetValue(collectionName, out clientLastModified))
-            //                {
-            //                    isDirty = true;
-            //                    LastModified.Add(collectionName, serverLastModified);
-            //                }
-            //                else if (serverLastModified > clientLastModified)
-            //                {
-            //                    isDirty = true;
-            //                    LastModified[collectionName] = serverLastModified;
-            //                }
-            //            }
-            //        }
-            //    }
-            //}
-
             return folders;
         }
 
@@ -774,31 +679,6 @@ namespace MusicBeePlugin
                     }
                 }
             }
-
-            //var request = GetHttpRequest("getMusicDirectory.view", $"id={folderId}");
-            //using (var response = request.GetResponse())
-            //using (var stream = response.GetResponseStream())
-            //using (var xmlReader = new XmlTextReader(stream))
-            //{
-            //    while (xmlReader.Read() && xmlReader.NodeType != XmlNodeType.EndElement)
-            //    {
-            //        if (!xmlReader.NodeType.Equals(XmlNodeType.Element) ||
-            //            !string.Compare(xmlReader.Name, "child", StringComparison.Ordinal).Equals(0)) continue;
-            //        if (string.Compare(xmlReader.GetAttribute("isDir"), "true", StringComparison.Ordinal).Equals(0))
-            //        {
-            //            GetFolderFiles(baseFolderName, xmlReader.GetAttribute("id"), files);
-            //        }
-            //        else
-            //        {
-            //            var tags = GetTags(xmlReader, baseFolderName);
-            //            if (tags != null)
-            //            {
-            //                files.Add(tags);
-            //            }
-            //        }
-            //    }
-            //    xmlReader.Close();
-            //}
         }
 
         private static KeyValuePair<byte, string>[][] GetFolderFiles(string path)
@@ -871,26 +751,6 @@ namespace MusicBeePlugin
                             break;
                         }
                     }
-
-                    //var request = GetHttpRequest("getMusicDirectory.view", $"id={folderId}");
-                    //using (var response = request.GetResponse())
-                    //using (var stream = response.GetResponseStream())
-                    //using (var xmlReader = new XmlTextReader(stream))
-                    //{
-                    //    while (xmlReader.Read() && xmlReader.NodeType != XmlNodeType.EndElement)
-                    //    {
-                    //        if (!xmlReader.NodeType.Equals(XmlNodeType.Element) ||
-                    //            !string.Compare(xmlReader.Name, "child", StringComparison.Ordinal).Equals(0) ||
-                    //            !string.Compare(xmlReader.GetAttribute("isDir"), "true", StringComparison.Ordinal)
-                    //                .Equals(0) || !string.Compare(xmlReader.GetAttribute("title"), folderName,
-                    //                    StringComparison.Ordinal).Equals(0)) continue;
-                    //        folderId = xmlReader.GetAttribute("id");
-                    //        FolderLookup.Add(url.Substring(0, charIndex), folderId);
-                    //        break;
-                    //    }
-                    //    xmlReader.Close();
-                    //}
-
                 }
                 sectionStartIndex = charIndex + 1;
                 charIndex = url.IndexOf(@"\", sectionStartIndex, StringComparison.Ordinal);
@@ -933,25 +793,6 @@ namespace MusicBeePlugin
                     return childEntry.id;
                 }
             }
-
-            //var request = GetHttpRequest("getMusicDirectory.view", $"id={folderId}");
-            //using (var response = request.GetResponse())
-            //using (var stream = response.GetResponseStream())
-            //using (var xmlReader = new XmlTextReader(stream))
-            //{
-            //    var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
-            //    while (xmlReader.Read() && xmlReader.NodeType != XmlNodeType.EndElement)
-            //    {
-            //        if (xmlReader.NodeType.Equals(XmlNodeType.Element) &&
-            //            string.Compare(xmlReader.Name, "child", StringComparison.Ordinal).Equals(0) &&
-            //            string.Compare(xmlReader.GetAttribute("path"), filePath, StringComparison.Ordinal)
-            //                .Equals(0))
-            //        {
-            //            return xmlReader.GetAttribute("id");
-            //        }
-            //    }
-            //    xmlReader.Close();
-            //}
             return null;
         }
 
@@ -1018,25 +859,6 @@ namespace MusicBeePlugin
                 }
             }
 
-            //var request = GetHttpRequest("getMusicDirectory.view", $"id={folderId}");
-            //using (var response = request.GetResponse())
-            //using (var stream = response.GetResponseStream())
-            //using (var xmlReader = new XmlTextReader(stream))
-            //{
-            //    var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
-            //    while (xmlReader.Read() && xmlReader.NodeType != XmlNodeType.EndElement)
-            //    {
-            //        if (xmlReader.NodeType.Equals(XmlNodeType.Element) &&
-            //            string.Compare(xmlReader.Name, "child", StringComparison.Ordinal).Equals(0) &&
-            //            string.Compare(xmlReader.GetAttribute("path"), filePath, StringComparison.Ordinal)
-            //                .Equals(0))
-            //        {
-            //            return xmlReader.GetAttribute("coverArt");
-            //        }
-            //    }
-            //    xmlReader.Close();
-            //}
-
             return null;
         }
 
@@ -1075,25 +897,6 @@ namespace MusicBeePlugin
                     return GetTags(childEntry, childEntry.path);
                 }
             }
-
-            //var request = GetHttpRequest("getMusicDirectory.view", $"id={folderId}");
-            //using (var response = request.GetResponse())
-            //using (var stream = response.GetResponseStream())
-            //using (var xmlReader = new XmlTextReader(stream))
-            //{
-            //    var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
-            //    while (xmlReader.Read() && xmlReader.NodeType != XmlNodeType.EndElement)
-            //    {
-            //        if (xmlReader.NodeType.Equals(XmlNodeType.Element) &&
-            //            string.Compare(xmlReader.Name, "child", StringComparison.Ordinal).Equals(0) &&
-            //            string.Compare(xmlReader.GetAttribute("path"), filePath, StringComparison.Ordinal)
-            //                .Equals(0))
-            //        {
-            //            return GetTags(xmlReader, null);
-            //        }
-            //    }
-            //    xmlReader.Close();
-            //}
 
             return null;
         }
@@ -1150,24 +953,6 @@ namespace MusicBeePlugin
                     };
                     request.AddParameter("id", id);
                     bytes = DownloadData(request);
-
-                    //var request = GetHttpRequest("getCoverArt.view", $"id={id}");
-                    //using (var response = request.GetResponse())
-                    //{
-                    //    if (string.Compare(response.ContentType, "text/xml", StringComparison.Ordinal) != 0)
-                    //    {
-                    //        using (var stream = response.GetResponseStream())
-                    //            bytes = StreamToArray(stream);
-                    //    }
-                    //    else
-                    //    {
-                    //        using (var stream = response.GetResponseStream())
-                    //            _lastEx =
-                    //                new InvalidDataException(
-                    //                    GetErrorMessage(Encoding.UTF8.GetString(StreamToArray(stream))));
-                    //    }
-                    //}
-
                 }
             }
             catch (Exception ex)
@@ -1202,25 +987,6 @@ namespace MusicBeePlugin
                 playlists.Add(new KeyValuePair<string, string>(playlistEntry.id, playlistEntry.name));
             }
 
-            //var request = GetHttpRequest("getPlaylists.view", null);
-            //using (var response = request.GetResponse())
-            //using (var stream = response.GetResponseStream())
-            //using (var xmlReader = new XmlTextReader(stream))
-            //{
-            //    xmlReader.XmlResolver = null;
-            //    xmlReader.WhitespaceHandling = WhitespaceHandling.None;
-
-            //    while (xmlReader.Read() && xmlReader.NodeType != XmlNodeType.EndElement)
-            //    {
-            //        if (xmlReader.NodeType.Equals(XmlNodeType.Element) &&
-            //            string.Compare(xmlReader.Name, "playlist", StringComparison.Ordinal).Equals(0))
-            //        {
-            //            playlists.Add(new KeyValuePair<string, string>(xmlReader.GetAttribute("id"),
-            //                xmlReader.GetAttribute("name")));
-            //        }
-            //    }
-            //}
-
             return playlists.ToArray();
         }
 
@@ -1253,26 +1019,6 @@ namespace MusicBeePlugin
                 }
             }
             return files.ToArray();
-
-            //var request = GetHttpRequest("getPlaylist.view", $"id={id}");
-            //using (var response = request.GetResponse())
-            //using (var stream = response.GetResponseStream())
-            //using (var xmlReader = new XmlTextReader(stream))
-            //{
-            //    var files = new List<KeyValuePair<byte, string>[]>();
-            //    while (xmlReader.Read() && xmlReader.NodeType != XmlNodeType.EndElement)
-            //    {
-            //        if (!xmlReader.NodeType.Equals(XmlNodeType.Element) ||
-            //            !string.Compare(xmlReader.Name, "entry", StringComparison.Ordinal).Equals(0)) continue;
-            //        var tags = GetTags(xmlReader, null);
-            //        if (tags != null)
-            //        {
-            //            files.Add(tags);
-            //        }
-            //    }
-            //    xmlReader.Close();
-            //    return files.ToArray();
-            //}
         }
 
         public static Stream GetStream(string url)
@@ -1298,19 +1044,6 @@ namespace MusicBeePlugin
                     return stream;
                 }
                 return null;
-
-                //var request = GetHttpRequest(Transcode ? "stream.view" : "download.view", $"id={id}");
-                //using (var response = request.GetResponse())
-                //using (var stream = response.GetResponseStream())
-                //    if (string.Compare(response.ContentType, "text/xml", StringComparison.Ordinal) != 0)
-                //    {
-                //        return stream;
-                //    }
-                //    else
-                //    {
-                //        _lastEx = new InvalidDataException(GetErrorMessage(Encoding.UTF8.GetString(StreamToArray(stream))));
-                //    }
-
             }
             return null;
         }

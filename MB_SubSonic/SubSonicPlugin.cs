@@ -122,7 +122,7 @@ namespace MusicBeePlugin
             {
                 AutoSize = true,
                 Checked = Subsonic.Transcode,
-                Text = @"Transcode Streams"
+                Text = @"Transcode as mp3"
             };
 
             var protocolLabel = new Label
