@@ -746,7 +746,8 @@ namespace MusicBeePlugin
                         if (childEntry.isDir && childEntry.title == folderName)
                         {
                             folderId = childEntry.id;
-                            FolderLookup.Add(url.Substring(0, charIndex), folderId);
+                                if (!FolderLookup.ContainsKey(url.Substring(0, charIndex)))
+                                    FolderLookup.Add(url.Substring(0, charIndex), folderId);
                             break;
                         }
                     }
@@ -1065,7 +1066,8 @@ namespace MusicBeePlugin
                 var stream = new ConnectStream(uri);
                 if (stream.ContentType.StartsWith("text/xml"))
                 {
-                    _lastEx = new InvalidDataException();
+                    using (stream)
+                        _lastEx = new InvalidDataException();
                 }
                 else
                 {
