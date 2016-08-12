@@ -2,12 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
-using System.Xml;
+using MusicBeePlugin.Domain;
 using RestSharp;
 
 namespace MusicBeePlugin
@@ -1021,6 +1020,33 @@ namespace MusicBeePlugin
             return files.ToArray();
         }
 
+        //public static Stream GetStream(string url)
+        //{
+        //    _lastEx = null;
+        //    var id = GetFileId(url);
+        //    if (id == null)
+        //    {
+        //        _lastEx = new FileNotFoundException();
+        //    }
+        //    else
+        //    {
+        //        var request = new RestRequest
+        //        {
+        //            Resource = "stream.view"
+        //        };
+        //        request.AddParameter("id", id);
+        //        request.AddParameter("format", Transcode ? "mp3" : "raw");
+        //        var data = DownloadData(request);
+        //        if (data != null)
+        //        {
+        //            var stream = new MemoryStream(data);
+        //            return stream;
+        //        }
+        //        return null;
+        //    }
+        //    return null;
+        //}
+
         public static Stream GetStream(string url)
         {
             _lastEx = null;
@@ -1031,19 +1057,20 @@ namespace MusicBeePlugin
             }
             else
             {
-                var request = new RestRequest
+                var salt = NewSalt();
+                var token = Md5(Password + salt);
+                var encoding = Transcode ? "mp3" : "raw";
+                var uri = new Uri($"{_serverName}rest/stream.view?u={Username}&t={token}&s={salt}&v={ApiVersion}&c=MusicBee&id={id}&format={encoding}");
+
+                var stream = new ConnectStream(uri);
+                if (stream.ContentType.StartsWith("text/xml"))
                 {
-                    Resource = "stream.view"
-                };
-                request.AddParameter("id", id);
-                request.AddParameter("format", Transcode ? "mp3" : "raw");
-                var data = DownloadData(request);
-                if (data != null)
+                    _lastEx = new InvalidDataException();
+                }
+                else
                 {
-                    var stream = new MemoryStream(data);
                     return stream;
                 }
-                return null;
             }
             return null;
         }

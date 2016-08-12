@@ -44,6 +44,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AesEncryption.cs" />
+    <Compile Include="Domain\ConnectStream.cs" />
     <Compile Include="Domain\subsonic-rest-api-1.14.0.Designer.cs" />
     <Compile Include="MusicBeeInterface.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
