@@ -14,7 +14,7 @@ namespace MusicBeePlugin
     public static class Subsonic
     {
         private const int TagCount = 10;
-        private const string ApiVersion = "1.14.0";
+        private const string ApiVersion = "1.13.0";
         private const string Passphrase = "PeekAndPoke";
         public static string Host = "localhost";
         public static string Port = "80";
