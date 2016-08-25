@@ -21,7 +21,8 @@ namespace MusicBeePlugin
         public static string BasePath = "/";
         public static string Username = "admin";
         public static string Password = "";
-        public static string Protocol = "http";
+        public static SubsonicSettings.ConnectionProtocol Protocol = SubsonicSettings.ConnectionProtocol.Http;
+        public static SubsonicSettings.AuthMethod AuthMethod = SubsonicSettings.AuthMethod.Token;
         public static bool Transcode;
         public static bool IsInitialized;
         public static string SettingsUrl;
@@ -47,13 +48,19 @@ namespace MusicBeePlugin
                 {
                     using (var reader = new StreamReader(SettingsUrl))
                     {
-                        Protocol = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                        var protocolText = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                        Protocol = protocolText.Equals("HTTP")
+                            ? SubsonicSettings.ConnectionProtocol.Http
+                            : SubsonicSettings.ConnectionProtocol.Https;
                         Host = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
                         Port = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
                         BasePath = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
                         Username = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
                         Password = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
                         Transcode = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "Y";
+                        AuthMethod = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "HexPass"
+                            ? SubsonicSettings.AuthMethod.HexPass
+                            : SubsonicSettings.AuthMethod.Token;
                     }
                 }
                 IsInitialized = PingServer();
@@ -68,7 +75,7 @@ namespace MusicBeePlugin
 
         private static bool PingServer()
         {
-            _serverName = $"{Protocol}://{Host}:{Port}{BasePath}";
+            _serverName = $"{Protocol.ToFriendlyString()}://{Host}:{Port}{BasePath}";
             try
             {
                 var request = new RestRequest
@@ -94,32 +101,32 @@ namespace MusicBeePlugin
             _retrieveThread = null;
         }
 
-        public static bool SetHost(string host, string port, string basePath, string username, string password,
-            bool transcode, string protocol = "http")
+        public static bool SetHost(SubsonicSettings settings)
         {
             _lastEx = null;
 
-            host = host.Trim();
-            if (host.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+            settings.Host = settings.Host.Trim();
+            if (settings.Host.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
             {
-                host = host.Substring(7);
+                settings.Host = settings.Host.Substring(7);
             }
-            else if (host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            else if (settings.Host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
-                host = host.Substring(8);
+                settings.Host = settings.Host.Substring(8);
             }
-            port = port.Trim();
-            basePath = basePath.Trim();
-            if (!basePath.EndsWith(@"/"))
+            settings.Port = settings.Port.Trim();
+            settings.BasePath = settings.BasePath.Trim();
+            if (!settings.BasePath.EndsWith(@"/"))
             {
-                basePath += @"/";
+                settings.BasePath += @"/";
             }
-            var isChanged = !host.Equals(Host) ||
-                            !port.Equals(Port) ||
-                            !basePath.Equals(BasePath) ||
-                            !username.Equals(Username) ||
-                            !password.Equals(Password) ||
-                            !protocol.Equals(Protocol);
+            var isChanged = !settings.Host.Equals(Host) ||
+                            !settings.Port.Equals(Port) ||
+                            !settings.BasePath.Equals(BasePath) ||
+                            !settings.Username.Equals(Username) ||
+                            !settings.Password.Equals(Password) ||
+                            !settings.Protocol.Equals(Protocol) ||
+                            !settings.Auth.Equals(AuthMethod);
             if (isChanged)
             {
                 bool isPingOk;
@@ -132,12 +139,13 @@ namespace MusicBeePlugin
 
                 try
                 {
-                    Protocol = protocol;
-                    Host = host;
-                    Port = port;
-                    BasePath = basePath;
-                    Username = username;
-                    Password = password;
+                    Protocol = settings.Protocol;
+                    Host = settings.Host;
+                    Port = settings.Port;
+                    BasePath = settings.BasePath;
+                    Username = settings.Username;
+                    Password = settings.Password;
+                    AuthMethod = settings.Auth;
 
                     isPingOk = PingServer();
                 }
@@ -180,17 +188,18 @@ namespace MusicBeePlugin
             }
             using (var writer = new StreamWriter(SettingsUrl))
             {
-                writer.WriteLine(AesEncryption.Encrypt(protocol, Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(host, Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(port, Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(basePath, Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(username, Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(password, Passphrase));
-                writer.WriteLine(transcode
+                writer.WriteLine(AesEncryption.Encrypt(settings.Protocol == SubsonicSettings.ConnectionProtocol.Http? "HTTP" : "HTTPS", Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.Host, Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.Port, Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.BasePath, Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.Username, Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.Password, Passphrase));
+                writer.WriteLine(settings.Transcode
                     ? AesEncryption.Encrypt("Y", Passphrase)
                     : AesEncryption.Encrypt("N", Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.Auth == SubsonicSettings.AuthMethod.HexPass ? "HexPass" : "Token", Passphrase));
             }
-            Transcode = transcode;
+            Transcode = settings.Transcode;
             try
             {
                 SendNotificationsHandler.Invoke(Plugin.CallbackType.SettingsUpdated);
@@ -264,7 +273,8 @@ namespace MusicBeePlugin
                     var error = result.Item as Error;
                     if (error != null)
                     {
-                        MessageBox.Show($"An error has occurred:\n{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return null;
                     }
                     var content = result.Item as Directory;
@@ -539,7 +549,8 @@ namespace MusicBeePlugin
                 var error = result.Item as Error;
                 if (error != null)
                 {
-                    MessageBox.Show($"An error has occurred:\n{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return null;
                 }
                 var content = (MusicFolders)result.Item;
@@ -598,7 +609,8 @@ namespace MusicBeePlugin
             var error = result.Item as Error;
             if (error != null)
             {
-                MessageBox.Show($"An error has occurred:\n{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return null;
             }
             var content = result.Item as Indexes;
@@ -657,7 +669,8 @@ namespace MusicBeePlugin
             var error = result.Item as Error;
             if (error != null)
             {
-                MessageBox.Show($"An error has occurred:\n{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             var content = result.Item as Directory;
@@ -735,7 +748,8 @@ namespace MusicBeePlugin
                     var error = result.Item as Error;
                     if (error != null)
                     {
-                        MessageBox.Show($"An error has occurred:\n{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return null;
                     }
                     var content = result.Item as Directory;
@@ -778,7 +792,8 @@ namespace MusicBeePlugin
             var error = result.Item as Error;
             if (error != null)
             {
-                MessageBox.Show($"An error has occurred:\n{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return null;
             }
             var content = result.Item as Directory;
@@ -844,7 +859,8 @@ namespace MusicBeePlugin
             var error = result.Item as Error;
             if (error != null)
             {
-                MessageBox.Show($"An error has occurred:\n{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return null;
             }
             var content = result.Item as Directory;
@@ -882,7 +898,8 @@ namespace MusicBeePlugin
             var error = result.Item as Error;
             if (error != null)
             {
-                MessageBox.Show($"An error has occurred:\n{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return null;
             }
             var content = result.Item as Directory;
@@ -976,7 +993,8 @@ namespace MusicBeePlugin
             var error = result.Item as Error;
             if (error != null)
             {
-                MessageBox.Show($"An error has occurred:\n{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return null;
             }
             var content = result.Item as Playlists;
@@ -1003,7 +1021,8 @@ namespace MusicBeePlugin
             var error = result.Item as Error;
             if (error != null)
             {
-                MessageBox.Show($"An error has occurred:\n{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return null;
             }
             var content = result.Item as PlaylistWithSongs;
@@ -1021,33 +1040,6 @@ namespace MusicBeePlugin
             return files.ToArray();
         }
 
-        //public static Stream GetStream(string url)
-        //{
-        //    _lastEx = null;
-        //    var id = GetFileId(url);
-        //    if (id == null)
-        //    {
-        //        _lastEx = new FileNotFoundException();
-        //    }
-        //    else
-        //    {
-        //        var request = new RestRequest
-        //        {
-        //            Resource = "stream.view"
-        //        };
-        //        request.AddParameter("id", id);
-        //        request.AddParameter("format", Transcode ? "mp3" : "raw");
-        //        var data = DownloadData(request);
-        //        if (data != null)
-        //        {
-        //            var stream = new MemoryStream(data);
-        //            return stream;
-        //        }
-        //        return null;
-        //    }
-        //    return null;
-        //}
-
         public static Stream GetStream(string url)
         {
             _lastEx = null;
@@ -1061,7 +1053,22 @@ namespace MusicBeePlugin
                 var salt = NewSalt();
                 var token = Md5(Password + salt);
                 var encoding = Transcode ? "mp3" : "raw";
-                var uri = new Uri($"{_serverName}rest/stream.view?u={Username}&t={token}&s={salt}&v={ApiVersion}&c=MusicBee&id={id}&format={encoding}");
+                string uriLine;
+                if (AuthMethod == SubsonicSettings.AuthMethod.HexPass)
+                {
+                    var ba = Encoding.Default.GetBytes(Password);
+                    var hexString = BitConverter.ToString(ba);
+                    hexString = hexString.Replace("-", "");
+                    var hexPass = $"enc:{hexString}";
+                    uriLine =
+                        $"{_serverName}rest/stream.view?u={Username}&p={hexPass}&v={ApiVersion}&c=MusicBee&id={id}&format={encoding}";
+                }
+                else
+                {
+                    uriLine =
+                        $"{_serverName}rest/stream.view?u={Username}&t={token}&s={salt}&v={ApiVersion}&c=MusicBee&id={id}&format={encoding}";
+                }
+                var uri = new Uri(uriLine);
 
                 var stream = new ConnectStream(uri);
                 if (stream.ContentType.StartsWith("text/xml"))
@@ -1082,35 +1089,62 @@ namespace MusicBeePlugin
             return _lastEx;
         }
 
-        public static string SendRequest(RestRequest request)
+        private static string SendRequest(RestRequest request)
         {
             var client = new RestClient { BaseUrl = new Uri(_serverName + "rest/") };
             request.AddParameter("u", Username);
-            var salt = NewSalt();
-            var token = Md5(Password + salt);
-            request.AddParameter("t", token);
-            request.AddParameter("s", salt);
+            if (AuthMethod == SubsonicSettings.AuthMethod.HexPass)
+            {
+                var ba = Encoding.Default.GetBytes(Password);
+                var hexString = BitConverter.ToString(ba);
+                hexString = hexString.Replace("-", "");
+                var hexPass = $"enc:{hexString}";
+                request.AddParameter("p", hexPass);
+            }
+            else
+            {
+                var salt = NewSalt();
+                var token = Md5(Password + salt);
+                request.AddParameter("t", token);
+                request.AddParameter("s", salt);
+                
+            }
             request.AddParameter("v", ApiVersion);
             request.AddParameter("c", "MusicBee");
+
             var response = client.Execute(request);
 
             if (response.ErrorException != null)
             {
                 const string message = "Error retrieving response from Subsonic server:";
-                MessageBox.Show($"{message}\n\n{response.ErrorException}", @"Subsonic Plugin Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($@"{message}
+
+{response.ErrorException}", @"Subsonic Plugin Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             return response.Content;
         }
 
-        public static byte[] DownloadData(RestRequest request)
+        private static byte[] DownloadData(RestRequest request)
         {
             var client = new RestClient { BaseUrl = new Uri(_serverName + "rest/") };
             request.AddParameter("u", Username);
 
-            var salt = NewSalt();
-            var token = Md5(Password + salt);
-            request.AddParameter("t", token);
-            request.AddParameter("s", salt);
+            if (AuthMethod == SubsonicSettings.AuthMethod.HexPass)
+            {
+                var ba = Encoding.Default.GetBytes(Password);
+                var hexString = BitConverter.ToString(ba);
+                hexString = hexString.Replace("-", "");
+                var hexPass = $"enc:{hexString}";
+                request.AddParameter("p", hexPass);
+            }
+            else
+            {
+                var salt = NewSalt();
+                var token = Md5(Password + salt);
+                request.AddParameter("t", token);
+                request.AddParameter("s", salt);
+
+            }
             request.AddParameter("v", ApiVersion);
             request.AddParameter("c", "MusicBee");
             var response = client.Execute(request);
@@ -1121,7 +1155,8 @@ namespace MusicBeePlugin
                 var error = result.Item as Error;
                 if (error != null)
                 {
-                    MessageBox.Show($"An error has occurred:\n{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return null;
                 }
             }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using MusicBeePlugin.Domain;
 using MusicBeePlugin.Properties;
 
 namespace MusicBeePlugin
@@ -19,6 +20,7 @@ namespace MusicBeePlugin
         private CheckBox _transcode;
         private TextBox _username;
         private ComboBox _protocol;
+        private ComboBox _authMethodBox;
 
         // ReSharper disable once UnusedMember.Global
         public PluginInfo Initialise(IntPtr apiInterfacePtr)
@@ -34,7 +36,7 @@ namespace MusicBeePlugin
             // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
             _about.Type = PluginType.Storage;
             _about.VersionMajor = 2; // your plugin version
-            _about.VersionMinor = 7;
+            _about.VersionMinor = 8;
             _about.Revision = 0;
             _about.MinInterfaceVersion = MinInterfaceVersion;
             _about.MinApiRevision = MinApiRevision;
@@ -56,6 +58,7 @@ namespace MusicBeePlugin
             var protocolWidth = TextRenderer.MeasureText(@"HTTPS", configPanel.Font).Width*2;
             var hostTextBoxWidth = TextRenderer.MeasureText(@"my-server-name.subsonic.org", configPanel.Font).Width;
             var portTextBoxWidth = TextRenderer.MeasureText(@"844345", configPanel.Font).Width;
+            var authMethodWidth = TextRenderer.MeasureText(@"Hex enc. password", configPanel.Font).Width;
             var spacer = TextRenderer.MeasureText("X", configPanel.Font).Width;
             const int firstRowPosY = 0;
             var secondRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height*2;
@@ -135,15 +138,29 @@ namespace MusicBeePlugin
             _protocol.Bounds = new Rectangle(_host.Left, firstRowPosY, protocolWidth, _protocol.Height);
             _protocol.Items.Add("HTTP");
             _protocol.Items.Add("HTTPS");
-            _protocol.SelectedItem = Subsonic.Protocol;
+            _protocol.SelectedItem = Subsonic.Protocol.ToFriendlyString();
             _protocol.DropDownStyle = ComboBoxStyle.DropDownList;
+
+            var authMethodLabel = new Label
+            {
+                AutoSize = true,
+                Location = new Point(_password.Left + _password.Width + spacer, fifthRowPosY + 2),
+                Text = @"Auth:"
+            };
+
+            _authMethodBox = new ComboBox();
+            _authMethodBox.Bounds = new Rectangle(authMethodLabel.Left + TextRenderer.MeasureText(authMethodLabel.Text, configPanel.Font).Width, fifthRowPosY, authMethodWidth, _authMethodBox.Height);
+            _authMethodBox.Items.Add("Token based");
+            _authMethodBox.Items.Add("Hex enc. password");
+            _authMethodBox.SelectedIndex = (int)Subsonic.AuthMethod;
+            _authMethodBox.DropDownStyle = ComboBoxStyle.DropDownList;
 
             configPanel.Controls.AddRange(new Control[]
             {
                 protocolLabel, _protocol, _host, hostPrompt, portPrompt, _port, _basePath, basePathPrompt, _username, usernamePrompt, _password,
-                passwordPrompt, _transcode
+                passwordPrompt, _transcode, _authMethodBox, authMethodLabel
             });
-            _transcode.Location = new Point(_port.Left, passwordPrompt.Top - 2);
+            _transcode.Location = new Point(_port.Left, basePathPrompt.Top - 2);
             configPanel.Width = _transcode.Right + spacer;
             return true;
         }
@@ -152,8 +169,25 @@ namespace MusicBeePlugin
         // its up to you to figure out whether anything has changed and needs updating
         public void SaveSettings()
         {
-            var setHostSuccess = Subsonic.SetHost(_host.Text, _port.Text, _basePath.Text,
-                _username.Text, _password.Text, _transcode.Checked, _protocol.SelectedItem.ToString());
+            var settings = new SubsonicSettings
+            {
+                Host = _host.Text,
+                Port = _port.Text,
+                BasePath = _basePath.Text,
+                Username = _username.Text,
+                Password = _password.Text,
+                Transcode = _transcode.Checked,
+                Protocol =
+                    _protocol.SelectedItem.ToString().Equals("HTTP")
+                        ? SubsonicSettings.ConnectionProtocol.Http
+                        : SubsonicSettings.ConnectionProtocol.Https,
+                Auth =
+                    _authMethodBox.SelectedIndex.Equals(0)
+                        ? SubsonicSettings.AuthMethod.Token
+                        : SubsonicSettings.AuthMethod.HexPass
+            };
+
+            var setHostSuccess = Subsonic.SetHost(settings);
             if (setHostSuccess)
             {
                 DeleteCacheFile();
@@ -165,7 +199,7 @@ namespace MusicBeePlugin
             var message = error?.Message;
             if (!string.IsNullOrEmpty(message))
             {
-                MessageBox.Show(_host, $"Error: {message}", @"Subsonic Plugin", MessageBoxButtons.OK,
+                MessageBox.Show(_host, $@"Error: {message}", @"Subsonic Plugin", MessageBoxButtons.OK,
                     MessageBoxIcon.Exclamation);
             }
         }
