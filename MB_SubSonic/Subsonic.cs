@@ -352,8 +352,8 @@ namespace MusicBeePlugin
         {
             if (_cachedFiles != null) return _cachedFiles;
             KeyValuePair<byte, string>[][] files = null;
-            lock (CacheFileLock)
-            {
+            //lock (CacheFileLock)
+            //{
                 using (
                     var stream = new FileStream(CacheUrl, FileMode.Open, FileAccess.Read, FileShare.Read, 4096,
                         FileOptions.SequentialScan))
@@ -393,14 +393,14 @@ namespace MusicBeePlugin
                         MessageBox.Show(@"The Cache file seems to be empty!");
                     }
                 }
-            }
-            lock (CacheLock)
-            {
+            //}
+            //lock (CacheLock)
+            //{
                 if (_cachedFiles == null && files != null)
                 {
                     _cachedFiles = files;
                 }
-            }
+            //}
             return _cachedFiles;
         }
 
@@ -435,12 +435,11 @@ namespace MusicBeePlugin
                         GetFolderFiles(folder.Value, folder.Key, list);
                     }
                     files = list.ToArray();
-                    KeyValuePair<byte, string>[][] oldCachedFiles;
-                    lock (CacheLock)
-                    {
-                        oldCachedFiles = _cachedFiles;
+                    //lock (CacheLock)
+                    //{
+                        var oldCachedFiles = _cachedFiles;
                         _cachedFiles = files;
-                    }
+                    //}
                     anyChanges = oldCachedFiles == null || _cachedFiles.Length != oldCachedFiles.Length;
                     if (!anyChanges)
                     {
@@ -481,8 +480,8 @@ namespace MusicBeePlugin
                     }
                     try
                     {
-                        lock (CacheFileLock)
-                        {
+                        //lock (CacheFileLock)
+                        //{
                             using (
                                 var stream = new FileStream(CacheUrl, FileMode.Create, FileAccess.Write,
                                     FileShare.None))
@@ -507,7 +506,7 @@ namespace MusicBeePlugin
                                 }
                                 writer.Close();
                             }
-                        }
+                        //}
                     }
                     catch (Exception ex)
                     {
@@ -537,8 +536,8 @@ namespace MusicBeePlugin
             bool dirtyOnly)
         {
             var folders = new List<KeyValuePair<string, string>>();
-            lock (FolderLookupLock)
-            {
+            //lock (FolderLookupLock)
+            //{
                 if (!refresh && !FolderLookup.Count.Equals(0)) return folders;
                 folders = new List<KeyValuePair<string, string>>();
                 var collection = new List<KeyValuePair<string, string>>();
@@ -592,7 +591,7 @@ namespace MusicBeePlugin
                 {
                     return null;
                 }
-            }
+            //}
             return folders;
         }
 
@@ -905,7 +904,6 @@ namespace MusicBeePlugin
                 return null;
             }
             var content = result.Item as Directory;
-
             var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
 
             if (content?.child != null)
