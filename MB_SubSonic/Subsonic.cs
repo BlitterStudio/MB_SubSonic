@@ -126,6 +126,7 @@ namespace MusicBeePlugin
                             !settings.Username.Equals(Username) ||
                             !settings.Password.Equals(Password) ||
                             !settings.Protocol.Equals(Protocol) ||
+                            !settings.Transcode.Equals(Transcode) ||
                             !settings.Auth.Equals(AuthMethod);
             if (isChanged)
             {
@@ -136,6 +137,7 @@ namespace MusicBeePlugin
                 var previousBasePath = BasePath;
                 var previousUsername = Username;
                 var previousPassword = Password;
+                var previousTranscode = Transcode;
 
                 try
                 {
@@ -145,6 +147,7 @@ namespace MusicBeePlugin
                     BasePath = settings.BasePath;
                     Username = settings.Username;
                     Password = settings.Password;
+                    Transcode = settings.Transcode;
                     AuthMethod = settings.Auth;
 
                     isPingOk = PingServer();
@@ -176,12 +179,12 @@ namespace MusicBeePlugin
                     BasePath = previousBasePath;
                     Username = previousUsername;
                     Password = previousPassword;
+                    Transcode = previousTranscode;
                     return false;
                 }
                 
                 IsInitialized = true;
             }
-            isChanged = isChanged || Transcode;
             if (!isChanged)
             {
                 return true;
