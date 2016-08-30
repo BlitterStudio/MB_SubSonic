@@ -411,7 +411,7 @@ namespace MusicBeePlugin
             {
                 path += @"\";
             }
-            files = files.Where(t => t[0].Value.StartsWith(path)).ToArray();
+            files = files.AsParallel().Where(t => t[0].Value.StartsWith(path)).ToArray();
             Array.Sort(files, new FileSorter());
             return files;
         }
@@ -621,8 +621,8 @@ namespace MusicBeePlugin
             if (updateIsDirty && content?.lastModified != null)
             {
                 var serverLastModified = (ulong)content.lastModified;
-                lock (CacheFileLock)
-                {
+                //lock (CacheFileLock)
+                //{
                     ulong clientLastModified;
                     if (!LastModified.TryGetValue(collectionName, out clientLastModified))
                     {
@@ -634,7 +634,7 @@ namespace MusicBeePlugin
                         isDirty = true;
                         LastModified[collectionName] = serverLastModified;
                     }
-                }                
+                //}                
             }
 
             if (content?.index != null)
@@ -791,7 +791,7 @@ namespace MusicBeePlugin
             };
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
-            var result = Response.Deserialize(response.Replace("\0", String.Empty));
+            var result = Response.Deserialize(response.Replace("\0", string.Empty));
             var error = result.Item as Error;
             if (error != null)
             {
@@ -858,7 +858,7 @@ namespace MusicBeePlugin
             };
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
-            var result = Response.Deserialize(response);
+            var result = Response.Deserialize(response.Replace("\0", string.Empty));
             var error = result.Item as Error;
             if (error != null)
             {
@@ -877,7 +877,6 @@ namespace MusicBeePlugin
                     return childEntry.coverArt;
                 }
             }
-
             return null;
         }
 
@@ -897,7 +896,7 @@ namespace MusicBeePlugin
             };
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
-            var result = Response.Deserialize(response.Replace("\0", String.Empty));
+            var result = Response.Deserialize(response.Replace("\0", string.Empty));
             var error = result.Item as Error;
             if (error != null)
             {
@@ -917,7 +916,6 @@ namespace MusicBeePlugin
                     return GetTags(childEntry, childEntry.path);
                 }
             }
-
             return null;
         }
 
@@ -986,7 +984,6 @@ namespace MusicBeePlugin
         {
             _lastEx = null;
             var playlists = new List<KeyValuePair<string, string>>();
-
             var request = new RestRequest
             {
                 Resource = "getPlaylists.view",
@@ -1092,7 +1089,7 @@ namespace MusicBeePlugin
             return _lastEx;
         }
 
-        private static string SendRequest(RestRequest request)
+        private static string SendRequest(IRestRequest request)
         {
             var client = new RestClient { BaseUrl = new Uri(_serverName + "rest/") };
             request.AddParameter("u", Username);
@@ -1127,7 +1124,7 @@ namespace MusicBeePlugin
             return response.Content;
         }
 
-        private static byte[] DownloadData(RestRequest request)
+        private static byte[] DownloadData(IRestRequest request)
         {
             var client = new RestClient { BaseUrl = new Uri(_serverName + "rest/") };
             request.AddParameter("u", Username);
