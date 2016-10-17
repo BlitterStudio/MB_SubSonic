@@ -14,6 +14,16 @@ namespace MusicBeePlugin.Domain
         public ConnectionProtocol Protocol { get; set; }
         public AuthMethod Auth { get; set; }
 
+        public ApiVersion Api { get; set; } = ApiVersion.V113;
+
+        public enum ApiVersion
+        {
+            V114,
+            V113,
+            V112,
+            V111
+        }
+
         public enum ConnectionProtocol
         {
             Http,
@@ -24,35 +34,6 @@ namespace MusicBeePlugin.Domain
         {
             Token,
             HexPass
-        }
-    }
-
-    public static class SubsonicSettingsExtensions
-    {
-        public static string ToFriendlyString(this SubsonicSettings.ConnectionProtocol me)
-        {
-            switch (me)
-            {
-                case SubsonicSettings.ConnectionProtocol.Http:
-                    return "HTTP";
-                case SubsonicSettings.ConnectionProtocol.Https:
-                    return "HTTPS";
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(me), me, null);
-            }
-        }
-
-        public static string ToFriendlyString(this SubsonicSettings.AuthMethod me)
-        {
-            switch (me)
-            {
-                case SubsonicSettings.AuthMethod.Token:
-                    return "Token";
-                case SubsonicSettings.AuthMethod.HexPass:
-                    return "HexPass";
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(me), me, null);
-            }
         }
     }
 }

@@ -14,7 +14,6 @@ namespace MusicBeePlugin
     public static class Subsonic
     {
         private const int TagCount = 10;
-        private const string ApiVersion = "1.11.0";
         private const string Passphrase = "PeekAndPoke";
         public static string Host = "localhost";
         public static string Port = "80";
@@ -23,6 +22,7 @@ namespace MusicBeePlugin
         public static string Password = "";
         public static SubsonicSettings.ConnectionProtocol Protocol = SubsonicSettings.ConnectionProtocol.Http;
         public static SubsonicSettings.AuthMethod AuthMethod = SubsonicSettings.AuthMethod.Token;
+        public static SubsonicSettings.ApiVersion Api = SubsonicSettings.ApiVersion.V113;
         public static bool Transcode;
         public static bool IsInitialized;
         public static string SettingsUrl;
@@ -30,13 +30,10 @@ namespace MusicBeePlugin
         public static Plugin.MB_SendNotificationDelegate SendNotificationsHandler;
         private static string _serverName;
         private static Exception _lastEx;
-        private static readonly object CacheFileLock = new object();
-        private static readonly object CacheLock = new object();
         private static KeyValuePair<byte, string>[][] _cachedFiles;
         private static Thread _retrieveThread;
         private static string[] _collectionNames;
         private static readonly Dictionary<string, ulong> LastModified = new Dictionary<string, ulong>();
-        private static readonly object FolderLookupLock = new object();
         private static readonly Dictionary<string, string> FolderLookup = new Dictionary<string, string>();
 
         public static bool Initialize()
@@ -61,6 +58,10 @@ namespace MusicBeePlugin
                         AuthMethod = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "HexPass"
                             ? SubsonicSettings.AuthMethod.HexPass
                             : SubsonicSettings.AuthMethod.Token;
+                        // If HexPass is selected, we need to use an older API version. Otherwise we default to 1.13
+                        Api = AuthMethod == SubsonicSettings.AuthMethod.HexPass
+                            ? SubsonicSettings.ApiVersion.V111
+                            : SubsonicSettings.ApiVersion.V113;
                     }
                 }
                 IsInitialized = PingServer();
@@ -1059,12 +1060,12 @@ namespace MusicBeePlugin
                     hexString = hexString.Replace("-", "");
                     var hexPass = $"enc:{hexString}";
                     uriLine =
-                        $"{_serverName}rest/stream.view?u={Username}&p={hexPass}&v={ApiVersion}&c=MusicBee&id={id}&format={encoding}";
+                        $"{_serverName}rest/stream.view?u={Username}&p={hexPass}&v={Api.ToFriendlyString()}&c=MusicBee&id={id}&format={encoding}";
                 }
                 else
                 {
                     uriLine =
-                        $"{_serverName}rest/stream.view?u={Username}&t={token}&s={salt}&v={ApiVersion}&c=MusicBee&id={id}&format={encoding}";
+                        $"{_serverName}rest/stream.view?u={Username}&t={token}&s={salt}&v={Api.ToFriendlyString()}&c=MusicBee&id={id}&format={encoding}";
                 }
                 var uri = new Uri(uriLine);
 
@@ -1107,7 +1108,7 @@ namespace MusicBeePlugin
                 request.AddParameter("s", salt);
                 
             }
-            request.AddParameter("v", ApiVersion);
+            request.AddParameter("v", Api.ToFriendlyString());
             request.AddParameter("c", "MusicBee");
 
             var response = client.Execute(request);
@@ -1143,7 +1144,7 @@ namespace MusicBeePlugin
                 request.AddParameter("s", salt);
 
             }
-            request.AddParameter("v", ApiVersion);
+            request.AddParameter("v", Api.ToFriendlyString());
             request.AddParameter("c", "MusicBee");
             var response = client.Execute(request);
 

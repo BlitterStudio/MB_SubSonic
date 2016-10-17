@@ -152,7 +152,7 @@ namespace MusicBeePlugin
             _authMethodBox.Bounds = new Rectangle(authMethodLabel.Left + TextRenderer.MeasureText(authMethodLabel.Text, configPanel.Font).Width, fifthRowPosY, authMethodWidth, _authMethodBox.Height);
             _authMethodBox.Items.Add("Token based");
             _authMethodBox.Items.Add("Hex enc. password");
-            _authMethodBox.SelectedIndex = (int)Subsonic.AuthMethod;
+            _authMethodBox.SelectedItem = Subsonic.AuthMethod.ToFriendlyString();
             _authMethodBox.DropDownStyle = ComboBoxStyle.DropDownList;
 
             configPanel.Controls.AddRange(new Control[]
