@@ -22,7 +22,7 @@ namespace MusicBeePlugin
         public static string Password = "";
         public static SubsonicSettings.ConnectionProtocol Protocol = SubsonicSettings.ConnectionProtocol.Http;
         public static SubsonicSettings.AuthMethod AuthMethod = SubsonicSettings.AuthMethod.Token;
-        public static SubsonicSettings.ApiVersion Api = SubsonicSettings.ApiVersion.V113;
+        public static SubsonicSettings.ApiVersion Api = SubsonicSettings.ApiVersion.V13;
         public static bool Transcode;
         public static bool IsInitialized;
         public static string SettingsUrl;
@@ -60,8 +60,8 @@ namespace MusicBeePlugin
                             : SubsonicSettings.AuthMethod.Token;
                         // If HexPass is selected, we need to use an older API version. Otherwise we default to 1.13
                         Api = AuthMethod == SubsonicSettings.AuthMethod.HexPass
-                            ? SubsonicSettings.ApiVersion.V111
-                            : SubsonicSettings.ApiVersion.V113;
+                            ? SubsonicSettings.ApiVersion.V11
+                            : SubsonicSettings.ApiVersion.V13;
                     }
                 }
                 IsInitialized = PingServer();

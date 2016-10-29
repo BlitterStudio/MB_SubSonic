@@ -38,13 +38,13 @@ namespace MusicBeePlugin.Domain
         {
             switch (me)
             {
-                case SubsonicSettings.ApiVersion.V114:
+                case SubsonicSettings.ApiVersion.V14:
                     return "1.14.0";
-                case SubsonicSettings.ApiVersion.V113:
+                case SubsonicSettings.ApiVersion.V13:
                     return "1.13.0";
-                case SubsonicSettings.ApiVersion.V112:
+                case SubsonicSettings.ApiVersion.V12:
                     return "1.12.0";
-                case SubsonicSettings.ApiVersion.V111:
+                case SubsonicSettings.ApiVersion.V11:
                     return "1.11.0";
                 default:
                     throw new ArgumentOutOfRangeException(nameof(me), me, null);

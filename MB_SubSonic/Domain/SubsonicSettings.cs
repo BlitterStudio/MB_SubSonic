@@ -14,14 +14,14 @@ namespace MusicBeePlugin.Domain
         public ConnectionProtocol Protocol { get; set; }
         public AuthMethod Auth { get; set; }
 
-        public ApiVersion Api { get; set; } = ApiVersion.V113;
+        public ApiVersion Api { get; set; } = ApiVersion.V13;
 
         public enum ApiVersion
         {
-            V114,
-            V113,
-            V112,
-            V111
+            V14,
+            V13,
+            V12,
+            V11
         }
 
         public enum ConnectionProtocol
