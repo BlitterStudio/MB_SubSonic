@@ -45,7 +45,6 @@ namespace MusicBeePlugin
             try
             {
                 if (File.Exists(SettingsUrl))
-                {
                     using (var reader = new StreamReader(SettingsUrl))
                     {
                         var protocolText = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
@@ -66,7 +65,6 @@ namespace MusicBeePlugin
                             ? SubsonicSettings.ApiVersion.V11
                             : SubsonicSettings.ApiVersion.V13;
                     }
-                }
                 IsInitialized = PingServer();
             }
             catch (Exception ex)
@@ -101,7 +99,7 @@ namespace MusicBeePlugin
 
         public static void Close()
         {
-            if (_retrieveThread == null || !_retrieveThread.IsAlive) return;
+            if ((_retrieveThread == null) || !_retrieveThread.IsAlive) return;
             _retrieveThread.Abort();
             _retrieveThread = null;
         }
@@ -112,19 +110,13 @@ namespace MusicBeePlugin
 
             settings.Host = settings.Host.Trim();
             if (settings.Host.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
-            {
                 settings.Host = settings.Host.Substring(7);
-            }
             else if (settings.Host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            {
                 settings.Host = settings.Host.Substring(8);
-            }
             settings.Port = settings.Port.Trim();
             settings.BasePath = settings.BasePath.Trim();
             if (!settings.BasePath.EndsWith(@"/"))
-            {
                 settings.BasePath += @"/";
-            }
             var isChanged = !settings.Host.Equals(Host) ||
                             !settings.Port.Equals(Port) ||
                             !settings.BasePath.Equals(BasePath) ||
@@ -171,9 +163,7 @@ namespace MusicBeePlugin
                         MessageBoxDefaultButton.Button2);
 
                     if (dialog == DialogResult.Yes)
-                    {
                         isPingOk = true;
-                    }
                 }
 
                 if (!isPingOk)
@@ -187,16 +177,16 @@ namespace MusicBeePlugin
                     Transcode = previousTranscode;
                     return false;
                 }
-                
+
                 IsInitialized = true;
             }
             if (!isChanged)
-            {
                 return true;
-            }
             using (var writer = new StreamWriter(SettingsUrl))
             {
-                writer.WriteLine(AesEncryption.Encrypt(settings.Protocol == SubsonicSettings.ConnectionProtocol.Http? "HTTP" : "HTTPS", Passphrase));
+                writer.WriteLine(
+                    AesEncryption.Encrypt(
+                        settings.Protocol == SubsonicSettings.ConnectionProtocol.Http ? "HTTP" : "HTTPS", Passphrase));
                 writer.WriteLine(AesEncryption.Encrypt(settings.Host, Passphrase));
                 writer.WriteLine(AesEncryption.Encrypt(settings.Port, Passphrase));
                 writer.WriteLine(AesEncryption.Encrypt(settings.BasePath, Passphrase));
@@ -205,7 +195,9 @@ namespace MusicBeePlugin
                 writer.WriteLine(settings.Transcode
                     ? AesEncryption.Encrypt("Y", Passphrase)
                     : AesEncryption.Encrypt("N", Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(settings.Auth == SubsonicSettings.AuthMethod.HexPass ? "HexPass" : "Token", Passphrase));
+                writer.WriteLine(
+                    AesEncryption.Encrypt(settings.Auth == SubsonicSettings.AuthMethod.HexPass ? "HexPass" : "Token",
+                        Passphrase));
             }
             Transcode = settings.Transcode;
             try
@@ -228,7 +220,7 @@ namespace MusicBeePlugin
         {
             var exists = string.IsNullOrEmpty(path) ||
                          path.Equals(@"\") ||
-                         GetFolderId(path) != null;
+                         (GetFolderId(path) != null);
             return exists;
         }
 
@@ -261,9 +253,7 @@ namespace MusicBeePlugin
             else
             {
                 if (!path.EndsWith(@"\"))
-                {
                     path += @"\";
-                }
                 var folderId = GetFolderId(path);
                 if (string.IsNullOrEmpty(folderId))
                 {
@@ -273,7 +263,7 @@ namespace MusicBeePlugin
                 {
                     var request = new RestRequest
                     {
-                        Resource = "getMusicDirectory.view",
+                        Resource = "getMusicDirectory.view"
                     };
                     request.AddParameter("id", folderId);
                     var response = SendRequest(request);
@@ -289,16 +279,14 @@ namespace MusicBeePlugin
 
                     var list = new List<string>();
                     if (content?.Child != null)
-                    foreach (var dirChild in content.Child)
-                    {
-                        folderId = dirChild.Id;
-                        var folderName = path + dirChild.Title;
-                        list.Add(folderName);
-                        if (!FolderLookup.ContainsKey(folderName))
+                        foreach (var dirChild in content.Child)
                         {
-                            FolderLookup.Add(folderName, folderId);
+                            folderId = dirChild.Id;
+                            var folderName = path + dirChild.Title;
+                            list.Add(folderName);
+                            if (!FolderLookup.ContainsKey(folderName))
+                                FolderLookup.Add(folderName, folderId);
                         }
-                    }
                     folders = list.ToArray();
                 }
             }
@@ -318,13 +306,9 @@ namespace MusicBeePlugin
             {
                 var cacheLoaded = _cachedFiles != null;
                 if (!cacheLoaded && !File.Exists(CacheUrl))
-                {
                     files = null;
-                }
                 else
-                {
                     files = GetCachedFiles();
-                }
                 var cacheUpdating = _retrieveThread != null;
                 if (!cacheUpdating && (string.IsNullOrEmpty(path) || !cacheLoaded))
                 {
@@ -334,10 +318,8 @@ namespace MusicBeePlugin
                 }
                 if (!string.IsNullOrEmpty(path))
                 {
-                    if (!cacheLoaded || cacheUpdating || files == null)
-                    {
+                    if (!cacheLoaded || cacheUpdating || (files == null))
                         return GetFolderFiles(path);
-                    }
                     files = GetPathFilteredFiles(files, path);
                 }
             }
@@ -359,9 +341,10 @@ namespace MusicBeePlugin
             KeyValuePair<byte, string>[][] files = null;
             //lock (CacheFileLock)
             //{
-                using (
-                    var stream = new FileStream(CacheUrl, FileMode.Open, FileAccess.Read, FileShare.Read, 4096,
-                        FileOptions.SequentialScan))
+            using (
+                var stream = new FileStream(CacheUrl, FileMode.Open, FileAccess.Read, FileShare.Read, 4096,
+                    FileOptions.SequentialScan))
+            {
                 using (var reader = new BinaryReader(stream))
                 {
                     try
@@ -386,9 +369,7 @@ namespace MusicBeePlugin
                             {
                                 var collectionName = reader.ReadString();
                                 if (!LastModified.ContainsKey(collectionName))
-                                {
                                     LastModified.Add(collectionName, reader.ReadUInt64());
-                                }
                             }
                         }
                         reader.Close();
@@ -398,13 +379,12 @@ namespace MusicBeePlugin
                         MessageBox.Show(@"The Cache file seems to be empty!");
                     }
                 }
+            }
             //}
             //lock (CacheLock)
             //{
-                if (_cachedFiles == null && files != null)
-                {
-                    _cachedFiles = files;
-                }
+            if ((_cachedFiles == null) && (files != null))
+                _cachedFiles = files;
             //}
             return _cachedFiles;
         }
@@ -413,9 +393,7 @@ namespace MusicBeePlugin
             string path)
         {
             if (!path.EndsWith(@"\"))
-            {
                 path += @"\";
-            }
             files = files.AsParallel().Where(t => t[0].Value.StartsWith(path)).ToArray();
             Array.Sort(files, new FileSorter());
             return files;
@@ -436,18 +414,15 @@ namespace MusicBeePlugin
                 else
                 {
                     foreach (var folder in folders)
-                    {
                         GetFolderFiles(folder.Value, folder.Key, list);
-                    }
                     files = list.ToArray();
                     //lock (CacheLock)
                     //{
-                        var oldCachedFiles = _cachedFiles;
-                        _cachedFiles = files;
+                    var oldCachedFiles = _cachedFiles;
+                    _cachedFiles = files;
                     //}
-                    anyChanges = oldCachedFiles == null || _cachedFiles.Length != oldCachedFiles.Length;
+                    anyChanges = (oldCachedFiles == null) || (_cachedFiles.Length != oldCachedFiles.Length);
                     if (!anyChanges)
-                    {
                         for (var index = 0; index < _cachedFiles.Length; index++)
                         {
                             var tags1 = _cachedFiles[index];
@@ -455,12 +430,11 @@ namespace MusicBeePlugin
                             for (var tagIndex = 0; tagIndex < TagCount; tagIndex++)
                             {
                                 if (string.Compare(tags1[tagIndex].Value, tags2[tagIndex].Value,
-                                    StringComparison.Ordinal) == 0) continue;
+                                        StringComparison.Ordinal) == 0) continue;
                                 anyChanges = true;
                                 break;
                             }
                         }
-                    }
                 }
                 if (!anyChanges)
                 {
@@ -487,22 +461,21 @@ namespace MusicBeePlugin
                     {
                         //lock (CacheFileLock)
                         //{
-                            using (
-                                var stream = new FileStream(CacheUrl, FileMode.Create, FileAccess.Write,
-                                    FileShare.None))
+                        using (
+                            var stream = new FileStream(CacheUrl, FileMode.Create, FileAccess.Write,
+                                FileShare.None))
+                        {
                             using (var writer = new BinaryWriter(stream))
                             {
                                 writer.Write(2); // version
                                 writer.Write(files.Length);
                                 foreach (var tags in files)
-                                {
                                     for (var tagIndex = 0; tagIndex <= TagCount; tagIndex++)
                                     {
                                         var tag = tags[tagIndex];
                                         writer.Write(tag.Key);
                                         writer.Write(tag.Value);
                                     }
-                                }
                                 writer.Write(LastModified.Count);
                                 foreach (var item in LastModified)
                                 {
@@ -511,6 +484,7 @@ namespace MusicBeePlugin
                                 }
                                 writer.Close();
                             }
+                        }
                         //}
                     }
                     catch (Exception ex)
@@ -543,31 +517,30 @@ namespace MusicBeePlugin
             var folders = new List<KeyValuePair<string, string>>();
             //lock (FolderLookupLock)
             //{
-                if (!refresh && !FolderLookup.Count.Equals(0)) return folders;
-                folders = new List<KeyValuePair<string, string>>();
-                var collection = new List<KeyValuePair<string, string>>();
+            if (!refresh && !FolderLookup.Count.Equals(0)) return folders;
+            folders = new List<KeyValuePair<string, string>>();
+            var collection = new List<KeyValuePair<string, string>>();
 
-                var request = new RestRequest
-                {
-                    Resource = "getMusicFolders.view",
-                };
-                var response = SendRequest(request);
-                var result = Response.Deserialize(response);
-                var error = result.Item as Error;
-                if (error != null)
-                {
-                    MessageBox.Show($@"An error has occurred:
+            var request = new RestRequest
+            {
+                Resource = "getMusicFolders.view"
+            };
+            var response = SendRequest(request);
+            var result = Response.Deserialize(response);
+            var error = result.Item as Error;
+            if (error != null)
+            {
+                MessageBox.Show($@"An error has occurred:
 {error.Message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return null;
-                }
-                var content = (MusicFolders)result.Item;
-
-                if (content.MusicFolder != null)
+                return null;
+            }
+            var content = (MusicFolders) result.Item;
+            if (content?.MusicFolder != null)
                 foreach (var folder in content.MusicFolder)
                 {
                     var folderId = folder.Id.ToString();
                     var folderName = folder.Name;
-                    if (folderName != null && FolderLookup.ContainsKey(folderName))
+                    if ((folderName != null) && FolderLookup.ContainsKey(folderName))
                     {
                         FolderLookup[folderName] = folderId;
                     }
@@ -578,24 +551,17 @@ namespace MusicBeePlugin
                     collection.Add(new KeyValuePair<string, string>(folderId, folderName));
                 }
 
-                _collectionNames = new string[collection.Count];
-                for (var index = 0; index < collection.Count; index++)
-                {
-                    _collectionNames[index] = collection[index].Value + @"\";
-                }
-                var isDirty = false;
-                foreach (var collectionItem in collection)
-                {
-                    folders.AddRange(GetRootFolders(collectionItem.Key, collectionItem.Value, true, refresh && dirtyOnly, ref isDirty));
-                }
-                if (collectionOnly)
-                {
-                    return collection;
-                }
-                if (dirtyOnly && !isDirty)
-                {
-                    return null;
-                }
+            _collectionNames = new string[collection.Count];
+            for (var index = 0; index < collection.Count; index++)
+                _collectionNames[index] = collection[index].Value + @"\";
+            var isDirty = false;
+            foreach (var collectionItem in collection)
+                folders.AddRange(GetRootFolders(collectionItem.Key, collectionItem.Value, true, refresh && dirtyOnly,
+                    ref isDirty));
+            if (collectionOnly)
+                return collection;
+            if (dirtyOnly && !isDirty)
+                return null;
             //}
             return folders;
         }
@@ -608,7 +574,7 @@ namespace MusicBeePlugin
 
             var request = new RestRequest
             {
-                Resource = "getIndexes.view",
+                Resource = "getIndexes.view"
             };
             request.AddParameter("musicFolderId", collectionId);
             var response = SendRequest(request);
@@ -622,43 +588,37 @@ namespace MusicBeePlugin
             }
             var content = result.Item as Indexes;
 
-            if (updateIsDirty && content?.LastModified != null)
+            if (updateIsDirty && (content?.LastModified != null))
             {
-                var serverLastModified = (ulong)content.LastModified;
+                var serverLastModified = (ulong) content.LastModified;
                 //lock (CacheFileLock)
                 //{
-                    ulong clientLastModified;
-                    if (!LastModified.TryGetValue(collectionName, out clientLastModified))
-                    {
-                        isDirty = true;
-                        LastModified.Add(collectionName, serverLastModified);
-                    }
-                    else if (serverLastModified > clientLastModified)
-                    {
-                        isDirty = true;
-                        LastModified[collectionName] = serverLastModified;
-                    }
+                ulong clientLastModified;
+                if (!LastModified.TryGetValue(collectionName, out clientLastModified))
+                {
+                    isDirty = true;
+                    LastModified.Add(collectionName, serverLastModified);
+                }
+                else if (serverLastModified > clientLastModified)
+                {
+                    isDirty = true;
+                    LastModified[collectionName] = serverLastModified;
+                }
                 //}                
             }
 
             if (content?.Index != null)
-            foreach (var indexChild in content.Index)
-            {
-                foreach (var artistChild in indexChild.Artist)
-                {
-                    var folderId = artistChild.Id;
-                    var folderName = $"{collectionName}\\{artistChild.Name}";
-                    if (FolderLookup.ContainsKey(folderName))
+                foreach (var indexChild in content.Index)
+                    foreach (var artistChild in indexChild.Artist)
                     {
-                        FolderLookup[folderName] = folderId;
+                        var folderId = artistChild.Id;
+                        var folderName = $"{collectionName}\\{artistChild.Name}";
+                        if (FolderLookup.ContainsKey(folderName))
+                            FolderLookup[folderName] = folderId;
+                        else
+                            FolderLookup.Add(folderName, folderId);
+                        folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
                     }
-                    else
-                    {
-                        FolderLookup.Add(folderName, folderId);
-                    }
-                    folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
-                }
-            }
 
             return folders;
         }
@@ -668,7 +628,7 @@ namespace MusicBeePlugin
         {
             var request = new RestRequest
             {
-                Resource = "getMusicDirectory.view",
+                Resource = "getMusicDirectory.view"
             };
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
@@ -683,35 +643,27 @@ namespace MusicBeePlugin
             var content = result.Item as Directory;
 
             if (content?.Child != null)
-            foreach (var childEntry in content.Child)
-            {
-                if (childEntry.IsDir)
-                {
-                    GetFolderFiles(baseFolderName, childEntry.Id, files);
-                }
-                else
-                {
-                    var tags = GetTags(childEntry, baseFolderName);
-                    if (tags != null)
+                foreach (var childEntry in content.Child)
+                    if (childEntry.IsDir)
                     {
-                        files.Add(tags);
+                        GetFolderFiles(baseFolderName, childEntry.Id, files);
                     }
-                }
-            }
+                    else
+                    {
+                        var tags = GetTags(childEntry, baseFolderName);
+                        if (tags != null)
+                            files.Add(tags);
+                    }
         }
 
         private static KeyValuePair<byte, string>[][] GetFolderFiles(string path)
         {
             if (!path.EndsWith(@"\"))
-            {
                 path += @"\";
-            }
             var folderId = GetFolderId(path);
             var files = new List<KeyValuePair<byte, string>[]>();
             if (folderId == null)
-            {
                 return new KeyValuePair<byte, string>[][] {};
-            }
             GetFolderFiles(path.Substring(0, path.IndexOf(@"\", StringComparison.Ordinal)), folderId, files);
             return files.ToArray();
         }
@@ -720,21 +672,15 @@ namespace MusicBeePlugin
         {
             var charIndex = url.LastIndexOf(@"\", StringComparison.Ordinal);
             if (charIndex.Equals(-1))
-            {
                 throw new ArgumentException();
-            }
             if (FolderLookup.Count.Equals(0))
-            {
                 GetRootFolders(false, false, false);
-            }
             string folderId;
             if (FolderLookup.TryGetValue(url.Substring(0, charIndex), out folderId)) return folderId;
             var sectionStartIndex = url.IndexOf(@"\", StringComparison.Ordinal) + 1;
             charIndex = url.IndexOf(@"\", sectionStartIndex, StringComparison.Ordinal);
             if (charIndex.Equals(-1))
-            {
                 throw new ArgumentException();
-            }
             while (charIndex != -1)
             {
                 string subFolderId;
@@ -747,7 +693,7 @@ namespace MusicBeePlugin
                     var folderName = url.Substring(sectionStartIndex, charIndex - sectionStartIndex);
                     var request = new RestRequest
                     {
-                        Resource = "getMusicDirectory.view",
+                        Resource = "getMusicDirectory.view"
                     };
                     request.AddParameter("id", folderId);
                     var response = SendRequest(request);
@@ -762,16 +708,14 @@ namespace MusicBeePlugin
                     var content = result.Item as Directory;
 
                     if (content?.Child != null)
-                    foreach (var childEntry in content.Child)
-                    {
-                        if (childEntry.IsDir && childEntry.Title == folderName)
-                        {
-                            folderId = childEntry.Id;
+                        foreach (var childEntry in content.Child)
+                            if (childEntry.IsDir && (childEntry.Title == folderName))
+                            {
+                                folderId = childEntry.Id;
                                 if (!FolderLookup.ContainsKey(url.Substring(0, charIndex)))
                                     FolderLookup.Add(url.Substring(0, charIndex), folderId);
-                            break;
-                        }
-                    }
+                                break;
+                            }
                 }
                 sectionStartIndex = charIndex + 1;
                 charIndex = url.IndexOf(@"\", sectionStartIndex, StringComparison.Ordinal);
@@ -791,7 +735,7 @@ namespace MusicBeePlugin
 
             var request = new RestRequest
             {
-                Resource = "getMusicDirectory.view",
+                Resource = "getMusicDirectory.view"
             };
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
@@ -808,26 +752,18 @@ namespace MusicBeePlugin
             var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
 
             if (content?.Child != null)
-            foreach (var childEntry in content.Child)
-            {
-                if (childEntry.Path == filePath)
-                {
-                    return childEntry.Id;
-                }
-            }
+                foreach (var childEntry in content.Child)
+                    if (childEntry.Path == filePath)
+                        return childEntry.Id;
             return null;
         }
 
         private static string GetResolvedUrl(string url)
         {
             if (FolderLookup.Count.Equals(0))
-            {
                 GetRootFolders(false, false, false);
-            }
             if (_collectionNames.Length.Equals(1))
-            {
                 return _collectionNames[0] + url;
-            }
             var path = url.Substring(0, url.LastIndexOf(@"\", StringComparison.Ordinal));
             string lastMatch = null;
             var count = 0;
@@ -837,16 +773,12 @@ namespace MusicBeePlugin
                 lastMatch = item + url;
             }
             if (count.Equals(1))
-            {
                 return lastMatch;
-            }
             foreach (var item in _collectionNames.Where(item => GetFolderId(item + path) != null))
             {
                 lastMatch = item + url;
                 if (GetFileId(lastMatch) != null)
-                {
                     return lastMatch;
-                }
             }
             return url;
         }
@@ -858,7 +790,7 @@ namespace MusicBeePlugin
 
             var request = new RestRequest
             {
-                Resource = "getMusicDirectory.view",
+                Resource = "getMusicDirectory.view"
             };
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
@@ -874,13 +806,9 @@ namespace MusicBeePlugin
 
             var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
             if (content?.Child != null)
-            foreach (var childEntry in content.Child)
-            {
-                if (childEntry.Path == filePath)
-                {
-                    return childEntry.CoverArt;
-                }
-            }
+                foreach (var childEntry in content.Child)
+                    if (childEntry.Path == filePath)
+                        return childEntry.CoverArt;
             return null;
         }
 
@@ -896,7 +824,7 @@ namespace MusicBeePlugin
 
             var request = new RestRequest
             {
-                Resource = "getMusicDirectory.view",
+                Resource = "getMusicDirectory.view"
             };
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
@@ -912,30 +840,22 @@ namespace MusicBeePlugin
             var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
 
             if (content?.Child != null)
-            foreach (var childEntry in content.Child)
-            {
-                if (childEntry.Path == filePath)
-                {
-                    return GetTags(childEntry, childEntry.Path);
-                }
-            }
+                foreach (var childEntry in content.Child)
+                    if (childEntry.Path == filePath)
+                        return GetTags(childEntry, childEntry.Path);
             return null;
         }
 
         private static KeyValuePair<byte, string>[] GetTags(Child child, string baseFolderName)
         {
             if (child.IsVideo)
-            {
                 return null;
-            }
 
             var tags = new KeyValuePair<byte, string>[TagCount + 1];
             var path = string.Empty;
             var attribute = child.Path;
             if (attribute != null)
-            {
                 path = attribute.Replace(@"/", @"\");
-            }
             path = baseFolderName == null ? GetResolvedUrl(path) : $"{baseFolderName}\\{path}";
             tags[0] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Url, path);
             tags[1] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Artist, child.Artist);
@@ -944,18 +864,16 @@ namespace MusicBeePlugin
             tags[4] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Year, child.Year.ToString());
             tags[5] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.TrackNo, child.Track.ToString());
             tags[6] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Genre, child.Genre);
-            tags[7] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Duration, (child.Duration * 1000).ToString());
+            tags[7] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Duration,
+                (child.Duration*1000).ToString());
             tags[8] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Bitrate, child.BitRate.ToString());
             tags[9] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Size, child.Size.ToString());
-            tags[10] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Artwork, string.IsNullOrEmpty(child.CoverArt) ? "" : "Y");
+            tags[10] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Artwork,
+                string.IsNullOrEmpty(child.CoverArt) ? "" : "Y");
 
             for (var tagIndex = 1; tagIndex < TagCount; tagIndex++)
-            {
                 if (tags[tagIndex].Value == null)
-                {
                     tags[tagIndex] = new KeyValuePair<byte, string>(tags[tagIndex].Key, "");
-                }
-            }
             return tags;
         }
 
@@ -970,7 +888,7 @@ namespace MusicBeePlugin
                 {
                     var request = new RestRequest
                     {
-                        Resource = "getCoverArt.view",
+                        Resource = "getCoverArt.view"
                     };
                     request.AddParameter("id", id);
                     bytes = DownloadData(request);
@@ -989,7 +907,7 @@ namespace MusicBeePlugin
             var playlists = new List<KeyValuePair<string, string>>();
             var request = new RestRequest
             {
-                Resource = "getPlaylists.view",
+                Resource = "getPlaylists.view"
             };
             var response = SendRequest(request);
             var result = Response.Deserialize(response);
@@ -1003,10 +921,8 @@ namespace MusicBeePlugin
             var content = result.Item as Playlists;
 
             if (content?.Playlist != null)
-            foreach (var playlistEntry in content.Playlist)
-            {
-                playlists.Add(new KeyValuePair<string, string>(playlistEntry.Id, playlistEntry.Name));
-            }
+                foreach (var playlistEntry in content.Playlist)
+                    playlists.Add(new KeyValuePair<string, string>(playlistEntry.Id, playlistEntry.Name));
 
             return playlists.ToArray();
         }
@@ -1016,7 +932,7 @@ namespace MusicBeePlugin
             _lastEx = null;
             var request = new RestRequest
             {
-                Resource = "getPlaylist.view",
+                Resource = "getPlaylist.view"
             };
             request.AddParameter("id", id);
             var response = SendRequest(request);
@@ -1032,14 +948,12 @@ namespace MusicBeePlugin
 
             var files = new List<KeyValuePair<byte, string>[]>();
             if (content?.Entry != null)
-            foreach (var playlistEntry in content.Entry)
-            {
-                var tags = GetTags(playlistEntry, null);
-                if (tags != null)
+                foreach (var playlistEntry in content.Entry)
                 {
-                    files.Add(tags);
+                    var tags = GetTags(playlistEntry, null);
+                    if (tags != null)
+                        files.Add(tags);
                 }
-            }
             return files.ToArray();
         }
 
@@ -1075,14 +989,12 @@ namespace MusicBeePlugin
 
                 var stream = new ConnectStream(uri);
                 if (stream.ContentType.StartsWith("text/xml"))
-                {
                     using (stream)
+                    {
                         _lastEx = new InvalidDataException();
-                }
+                    }
                 else
-                {
                     return stream;
-                }
             }
             return null;
         }
@@ -1094,7 +1006,7 @@ namespace MusicBeePlugin
 
         private static string SendRequest(IRestRequest request)
         {
-            var client = new RestClient { BaseUrl = new Uri(_serverName + "rest/") };
+            var client = new RestClient {BaseUrl = new Uri(_serverName + "rest/")};
             request.AddParameter("u", Username);
             if (AuthMethod == SubsonicSettings.AuthMethod.HexPass)
             {
@@ -1110,7 +1022,6 @@ namespace MusicBeePlugin
                 var token = Md5(Password + salt);
                 request.AddParameter("t", token);
                 request.AddParameter("s", salt);
-                
             }
             request.AddParameter("v", Api.ToFriendlyString());
             request.AddParameter("c", "MusicBee");
@@ -1130,7 +1041,7 @@ namespace MusicBeePlugin
 
         private static byte[] DownloadData(IRestRequest request)
         {
-            var client = new RestClient { BaseUrl = new Uri(_serverName + "rest/") };
+            var client = new RestClient {BaseUrl = new Uri(_serverName + "rest/")};
             request.AddParameter("u", Username);
 
             if (AuthMethod == SubsonicSettings.AuthMethod.HexPass)
@@ -1147,7 +1058,6 @@ namespace MusicBeePlugin
                 var token = Md5(Password + salt);
                 request.AddParameter("t", token);
                 request.AddParameter("s", salt);
-
             }
             request.AddParameter("v", Api.ToFriendlyString());
             request.AddParameter("c", "MusicBee");
@@ -1199,10 +1109,8 @@ namespace MusicBeePlugin
         {
             public override int Compare(KeyValuePair<byte, string>[] x, KeyValuePair<byte, string>[] y)
             {
-                if (x != null && y != null)
-                {
+                if ((x != null) && (y != null))
                     return string.Compare(x[0].Value, y[0].Value, StringComparison.OrdinalIgnoreCase);
-                }
                 return 0;
             }
         }

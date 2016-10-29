@@ -3,7 +3,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace MusicBeePlugin
+namespace MusicBeePlugin.Domain
 {
     /// <summary>
     ///     Utility class that handles encryption
@@ -33,7 +33,7 @@ namespace MusicBeePlugin
             var derivedPassword = new Rfc2898DeriveBytes(password, saltValueBytes, passwordIterations);
             var keyBytes = derivedPassword.GetBytes(keySize/8);
             var symmetricKey = new RijndaelManaged {Mode = CipherMode.CBC};
-            byte[] cipherTextBytes = null;
+            byte[] cipherTextBytes;
             using (var encryptor = symmetricKey.CreateEncryptor(keyBytes, initialVectorBytes))
             {
                 using (var memStream = new MemoryStream())
@@ -74,7 +74,7 @@ namespace MusicBeePlugin
             var keyBytes = derivedPassword.GetBytes(keySize/8);
             var symmetricKey = new RijndaelManaged {Mode = CipherMode.CBC};
             var plainTextBytes = new byte[cipherTextBytes.Length];
-            var byteCount = 0;
+            int byteCount;
             using (var decryptor = symmetricKey.CreateDecryptor(keyBytes, initialVectorBytes))
             {
                 using (var memStream = new MemoryStream(cipherTextBytes))

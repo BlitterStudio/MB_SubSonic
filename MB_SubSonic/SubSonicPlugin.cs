@@ -5,6 +5,7 @@ using System.IO;
 using System.Windows.Forms;
 using MusicBeePlugin.Domain;
 using MusicBeePlugin.Properties;
+// ReSharper disable UnusedMember.Global
 
 namespace MusicBeePlugin
 {
@@ -22,7 +23,6 @@ namespace MusicBeePlugin
         private ComboBox _protocol;
         private ComboBox _authMethodBox;
 
-        // ReSharper disable once UnusedMember.Global
         public PluginInfo Initialise(IntPtr apiInterfacePtr)
         {
             _mbApiInterface = new MusicBeeApiInterface();
@@ -46,7 +46,6 @@ namespace MusicBeePlugin
             return _about;
         }
 
-        // ReSharper disable once UnusedMember.Global
         public bool Configure(IntPtr panelHandle)
         {
             // panelHandle will only be set if you set about.ConfigurationPanelHeight to a non-zero value
