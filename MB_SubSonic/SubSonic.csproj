@@ -30,6 +30,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="RestSharp, Version=105.2.3.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\RestSharp.105.2.3\lib\net452\RestSharp.dll</HintPath>
       <Private>True</Private>
@@ -44,8 +48,267 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AesEncryption.cs" />
+    <Compile Include="API\API11\AlbumID3.cs" />
+    <Compile Include="API\API11\AlbumList.cs" />
+    <Compile Include="API\API11\AlbumList2.cs" />
+    <Compile Include="API\API11\AlbumWithSongsID3.cs" />
+    <Compile Include="API\API11\Artist.cs" />
+    <Compile Include="API\API11\ArtistID3.cs" />
+    <Compile Include="API\API11\ArtistInfo.cs" />
+    <Compile Include="API\API11\ArtistInfo2.cs" />
+    <Compile Include="API\API11\ArtistInfoBase.cs" />
+    <Compile Include="API\API11\ArtistsID3.cs" />
+    <Compile Include="API\API11\ArtistWithAlbumsID3.cs" />
+    <Compile Include="API\API11\Bookmark.cs" />
+    <Compile Include="API\API11\Bookmarks.cs" />
+    <Compile Include="API\API11\ChatMessage.cs" />
+    <Compile Include="API\API11\ChatMessages.cs" />
+    <Compile Include="API\API11\Child.cs" />
+    <Compile Include="API\API11\Directory.cs" />
+    <Compile Include="API\API11\Error.cs" />
+    <Compile Include="API\API11\Genre.cs" />
+    <Compile Include="API\API11\Genres.cs" />
+    <Compile Include="API\API11\Index.cs" />
+    <Compile Include="API\API11\Indexes.cs" />
+    <Compile Include="API\API11\IndexID3.cs" />
+    <Compile Include="API\API11\InternetRadioStation.cs" />
+    <Compile Include="API\API11\InternetRadioStations.cs" />
+    <Compile Include="API\API11\ItemChoiceType.cs" />
+    <Compile Include="API\API11\JukeboxPlaylist.cs" />
+    <Compile Include="API\API11\JukeboxStatus.cs" />
+    <Compile Include="API\API11\License.cs" />
+    <Compile Include="API\API11\Lyrics.cs" />
+    <Compile Include="API\API11\MediaType.cs" />
+    <Compile Include="API\API11\MusicFolder.cs" />
+    <Compile Include="API\API11\MusicFolders.cs" />
+    <Compile Include="API\API11\NowPlaying.cs" />
+    <Compile Include="API\API11\NowPlayingEntry.cs" />
+    <Compile Include="API\API11\Playlist.cs" />
+    <Compile Include="API\API11\Playlists.cs" />
+    <Compile Include="API\API11\PlaylistWithSongs.cs" />
+    <Compile Include="API\API11\PodcastChannel.cs" />
+    <Compile Include="API\API11\PodcastEpisode.cs" />
+    <Compile Include="API\API11\Podcasts.cs" />
+    <Compile Include="API\API11\PodcastStatus.cs" />
+    <Compile Include="API\API11\Response.cs" />
+    <Compile Include="API\API11\ResponseStatus.cs" />
+    <Compile Include="API\API11\SearchResult.cs" />
+    <Compile Include="API\API11\SearchResult2.cs" />
+    <Compile Include="API\API11\SearchResult3.cs" />
+    <Compile Include="API\API11\Share.cs" />
+    <Compile Include="API\API11\Shares.cs" />
+    <Compile Include="API\API11\SimilarSongs.cs" />
+    <Compile Include="API\API11\SimilarSongs2.cs" />
+    <Compile Include="API\API11\Songs.cs" />
+    <Compile Include="API\API11\Starred.cs" />
+    <Compile Include="API\API11\Starred2.cs" />
+    <Compile Include="API\API11\User.cs" />
+    <Compile Include="API\API11\Users.cs" />
+    <Compile Include="API\API11\Videos.cs" />
+    <Compile Include="API\API12\AlbumID3.cs" />
+    <Compile Include="API\API12\AlbumList.cs" />
+    <Compile Include="API\API12\AlbumList2.cs" />
+    <Compile Include="API\API12\AlbumWithSongsID3.cs" />
+    <Compile Include="API\API12\Artist.cs" />
+    <Compile Include="API\API12\ArtistID3.cs" />
+    <Compile Include="API\API12\ArtistInfo.cs" />
+    <Compile Include="API\API12\ArtistInfo2.cs" />
+    <Compile Include="API\API12\ArtistInfoBase.cs" />
+    <Compile Include="API\API12\ArtistsID3.cs" />
+    <Compile Include="API\API12\ArtistWithAlbumsID3.cs" />
+    <Compile Include="API\API12\Bookmark.cs" />
+    <Compile Include="API\API12\Bookmarks.cs" />
+    <Compile Include="API\API12\ChatMessage.cs" />
+    <Compile Include="API\API12\ChatMessages.cs" />
+    <Compile Include="API\API12\Child.cs" />
+    <Compile Include="API\API12\Directory.cs" />
+    <Compile Include="API\API12\Error.cs" />
+    <Compile Include="API\API12\Genre.cs" />
+    <Compile Include="API\API12\Genres.cs" />
+    <Compile Include="API\API12\Index.cs" />
+    <Compile Include="API\API12\Indexes.cs" />
+    <Compile Include="API\API12\IndexID3.cs" />
+    <Compile Include="API\API12\InternetRadioStation.cs" />
+    <Compile Include="API\API12\InternetRadioStations.cs" />
+    <Compile Include="API\API12\ItemChoiceType.cs" />
+    <Compile Include="API\API12\JukeboxPlaylist.cs" />
+    <Compile Include="API\API12\JukeboxStatus.cs" />
+    <Compile Include="API\API12\License.cs" />
+    <Compile Include="API\API12\Lyrics.cs" />
+    <Compile Include="API\API12\MediaType.cs" />
+    <Compile Include="API\API12\MusicFolder.cs" />
+    <Compile Include="API\API12\MusicFolders.cs" />
+    <Compile Include="API\API12\NowPlaying.cs" />
+    <Compile Include="API\API12\NowPlayingEntry.cs" />
+    <Compile Include="API\API12\Playlist.cs" />
+    <Compile Include="API\API12\Playlists.cs" />
+    <Compile Include="API\API12\PlaylistWithSongs.cs" />
+    <Compile Include="API\API12\PlayQueue.cs" />
+    <Compile Include="API\API12\PodcastChannel.cs" />
+    <Compile Include="API\API12\PodcastEpisode.cs" />
+    <Compile Include="API\API12\Podcasts.cs" />
+    <Compile Include="API\API12\PodcastStatus.cs" />
+    <Compile Include="API\API12\Response.cs" />
+    <Compile Include="API\API12\ResponseStatus.cs" />
+    <Compile Include="API\API12\SearchResult.cs" />
+    <Compile Include="API\API12\SearchResult2.cs" />
+    <Compile Include="API\API12\SearchResult3.cs" />
+    <Compile Include="API\API12\Share.cs" />
+    <Compile Include="API\API12\Shares.cs" />
+    <Compile Include="API\API12\SimilarSongs.cs" />
+    <Compile Include="API\API12\SimilarSongs2.cs" />
+    <Compile Include="API\API12\Songs.cs" />
+    <Compile Include="API\API12\Starred.cs" />
+    <Compile Include="API\API12\Starred2.cs" />
+    <Compile Include="API\API12\User.cs" />
+    <Compile Include="API\API12\Users.cs" />
+    <Compile Include="API\API12\Videos.cs" />
+    <Compile Include="API\API13\AlbumID3.cs" />
+    <Compile Include="API\API13\AlbumList.cs" />
+    <Compile Include="API\API13\AlbumList2.cs" />
+    <Compile Include="API\API13\AlbumWithSongsID3.cs" />
+    <Compile Include="API\API13\Artist.cs" />
+    <Compile Include="API\API13\ArtistID3.cs" />
+    <Compile Include="API\API13\ArtistInfo.cs" />
+    <Compile Include="API\API13\ArtistInfo2.cs" />
+    <Compile Include="API\API13\ArtistInfoBase.cs" />
+    <Compile Include="API\API13\ArtistsID3.cs" />
+    <Compile Include="API\API13\ArtistWithAlbumsID3.cs" />
+    <Compile Include="API\API13\Bookmark.cs" />
+    <Compile Include="API\API13\Bookmarks.cs" />
+    <Compile Include="API\API13\ChatMessage.cs" />
+    <Compile Include="API\API13\ChatMessages.cs" />
+    <Compile Include="API\API13\Child.cs" />
+    <Compile Include="API\API13\Directory.cs" />
+    <Compile Include="API\API13\Error.cs" />
+    <Compile Include="API\API13\Genre.cs" />
+    <Compile Include="API\API13\Genres.cs" />
+    <Compile Include="API\API13\Index.cs" />
+    <Compile Include="API\API13\Indexes.cs" />
+    <Compile Include="API\API13\IndexID3.cs" />
+    <Compile Include="API\API13\InternetRadioStation.cs" />
+    <Compile Include="API\API13\InternetRadioStations.cs" />
+    <Compile Include="API\API13\ItemChoiceType.cs" />
+    <Compile Include="API\API13\JukeboxPlaylist.cs" />
+    <Compile Include="API\API13\JukeboxStatus.cs" />
+    <Compile Include="API\API13\License.cs" />
+    <Compile Include="API\API13\Lyrics.cs" />
+    <Compile Include="API\API13\MediaType.cs" />
+    <Compile Include="API\API13\MusicFolder.cs" />
+    <Compile Include="API\API13\MusicFolders.cs" />
+    <Compile Include="API\API13\NewestPodcasts.cs" />
+    <Compile Include="API\API13\NowPlaying.cs" />
+    <Compile Include="API\API13\NowPlayingEntry.cs" />
+    <Compile Include="API\API13\Playlist.cs" />
+    <Compile Include="API\API13\Playlists.cs" />
+    <Compile Include="API\API13\PlaylistWithSongs.cs" />
+    <Compile Include="API\API13\PlayQueue.cs" />
+    <Compile Include="API\API13\PodcastChannel.cs" />
+    <Compile Include="API\API13\PodcastEpisode.cs" />
+    <Compile Include="API\API13\Podcasts.cs" />
+    <Compile Include="API\API13\PodcastStatus.cs" />
+    <Compile Include="API\API13\Response.cs" />
+    <Compile Include="API\API13\ResponseStatus.cs" />
+    <Compile Include="API\API13\SearchResult.cs" />
+    <Compile Include="API\API13\SearchResult2.cs" />
+    <Compile Include="API\API13\SearchResult3.cs" />
+    <Compile Include="API\API13\Share.cs" />
+    <Compile Include="API\API13\Shares.cs" />
+    <Compile Include="API\API13\SimilarSongs.cs" />
+    <Compile Include="API\API13\SimilarSongs2.cs" />
+    <Compile Include="API\API13\Songs.cs" />
+    <Compile Include="API\API13\Starred.cs" />
+    <Compile Include="API\API13\Starred2.cs" />
+    <Compile Include="API\API13\TopSongs.cs" />
+    <Compile Include="API\API13\User.cs" />
+    <Compile Include="API\API13\Users.cs" />
+    <Compile Include="API\API13\Videos.cs" />
+    <Compile Include="API\API14\AlbumID3.cs" />
+    <Compile Include="API\API14\AlbumInfo.cs" />
+    <Compile Include="API\API14\AlbumList.cs" />
+    <Compile Include="API\API14\AlbumList2.cs" />
+    <Compile Include="API\API14\AlbumWithSongsID3.cs" />
+    <Compile Include="API\API14\Artist.cs" />
+    <Compile Include="API\API14\ArtistID3.cs" />
+    <Compile Include="API\API14\ArtistInfo.cs" />
+    <Compile Include="API\API14\ArtistInfo2.cs" />
+    <Compile Include="API\API14\ArtistInfoBase.cs" />
+    <Compile Include="API\API14\ArtistsID3.cs" />
+    <Compile Include="API\API14\ArtistWithAlbumsID3.cs" />
+    <Compile Include="API\API14\AudioTrack.cs" />
+    <Compile Include="API\API14\Bookmark.cs" />
+    <Compile Include="API\API14\Bookmarks.cs" />
+    <Compile Include="API\API14\Captions.cs" />
+    <Compile Include="API\API14\ChatMessage.cs" />
+    <Compile Include="API\API14\ChatMessages.cs" />
+    <Compile Include="API\API14\Child.cs" />
+    <Compile Include="API\API14\Directory.cs" />
+    <Compile Include="API\API14\Error.cs" />
+    <Compile Include="API\API14\Genre.cs" />
+    <Compile Include="API\API14\Genres.cs" />
+    <Compile Include="API\API14\Index.cs" />
+    <Compile Include="API\API14\Indexes.cs" />
+    <Compile Include="API\API14\IndexID3.cs" />
+    <Compile Include="API\API14\InternetRadioStation.cs" />
+    <Compile Include="API\API14\InternetRadioStations.cs" />
+    <Compile Include="API\API14\ItemChoiceType.cs" />
+    <Compile Include="API\API14\JukeboxPlaylist.cs" />
+    <Compile Include="API\API14\JukeboxStatus.cs" />
+    <Compile Include="API\API14\License.cs" />
+    <Compile Include="API\API14\Lyrics.cs" />
+    <Compile Include="API\API14\MediaType.cs" />
+    <Compile Include="API\API14\MusicFolder.cs" />
+    <Compile Include="API\API14\MusicFolders.cs" />
+    <Compile Include="API\API14\NewestPodcasts.cs" />
+    <Compile Include="API\API14\NowPlaying.cs" />
+    <Compile Include="API\API14\NowPlayingEntry.cs" />
+    <Compile Include="API\API14\Playlist.cs" />
+    <Compile Include="API\API14\Playlists.cs" />
+    <Compile Include="API\API14\PlaylistWithSongs.cs" />
+    <Compile Include="API\API14\PlayQueue.cs" />
+    <Compile Include="API\API14\PodcastChannel.cs" />
+    <Compile Include="API\API14\PodcastEpisode.cs" />
+    <Compile Include="API\API14\Podcasts.cs" />
+    <Compile Include="API\API14\PodcastStatus.cs" />
+    <Compile Include="API\API14\Response.cs" />
+    <Compile Include="API\API14\ResponseStatus.cs" />
+    <Compile Include="API\API14\SearchResult.cs" />
+    <Compile Include="API\API14\SearchResult2.cs" />
+    <Compile Include="API\API14\SearchResult3.cs" />
+    <Compile Include="API\API14\Share.cs" />
+    <Compile Include="API\API14\Shares.cs" />
+    <Compile Include="API\API14\SimilarSongs.cs" />
+    <Compile Include="API\API14\SimilarSongs2.cs" />
+    <Compile Include="API\API14\Songs.cs" />
+    <Compile Include="API\API14\Starred.cs" />
+    <Compile Include="API\API14\Starred2.cs" />
+    <Compile Include="API\API14\TopSongs.cs" />
+    <Compile Include="API\API14\User.cs" />
+    <Compile Include="API\API14\Users.cs" />
+    <Compile Include="API\API14\VideoConversion.cs" />
+    <Compile Include="API\API14\VideoInfo.cs" />
+    <Compile Include="API\API14\Videos.cs" />
+    <Compile Include="API\subsonic-rest-api-1.11.0.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>subsonic-rest-api-1.11.0.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="API\subsonic-rest-api-1.12.0.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>subsonic-rest-api-1.12.0.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="API\subsonic-rest-api-1.13.0.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>subsonic-rest-api-1.13.0.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="API\subsonic-rest-api-1.14.0.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>subsonic-rest-api-1.14.0.xsd</DependentUpon>
+    </Compile>
     <Compile Include="Domain\ConnectStream.cs" />
-    <Compile Include="Domain\subsonic-rest-api-1.14.0.Designer.cs" />
     <Compile Include="Domain\SubsonicSettingsExtensions.cs" />
     <Compile Include="Domain\SubsonicSettings.cs" />
     <Compile Include="MusicBeeInterface.cs" />
@@ -65,8 +328,25 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Domain\subsonic-rest-api-1.14.0.xsd">
+    <None Include="API\subsonic-rest-api-1.11.0.xsd">
       <SubType>Designer</SubType>
+      <Generator>xsd2codecustomtool</Generator>
+      <LastGenOutput>subsonic-rest-api-1.11.0.Designer.cs</LastGenOutput>
+    </None>
+    <None Include="API\subsonic-rest-api-1.12.0.xsd">
+      <SubType>Designer</SubType>
+      <Generator>xsd2codecustomtool</Generator>
+      <LastGenOutput>subsonic-rest-api-1.12.0.Designer.cs</LastGenOutput>
+    </None>
+    <None Include="API\subsonic-rest-api-1.13.0.xsd">
+      <SubType>Designer</SubType>
+      <Generator>xsd2codecustomtool</Generator>
+      <LastGenOutput>subsonic-rest-api-1.13.0.Designer.cs</LastGenOutput>
+    </None>
+    <None Include="API\subsonic-rest-api-1.14.0.xsd">
+      <SubType>Designer</SubType>
+      <Generator>xsd2codecustomtool</Generator>
+      <LastGenOutput>subsonic-rest-api-1.14.0.Designer.cs</LastGenOutput>
     </None>
     <None Include="packages.config" />
     <None Include="SubSonic.png" />
