@@ -318,7 +318,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="Subsonic.cs" />
+    <Compile Include="Domain\Subsonic.cs" />
     <Compile Include="SubsonicPlugin.cs" />
   </ItemGroup>
   <ItemGroup>

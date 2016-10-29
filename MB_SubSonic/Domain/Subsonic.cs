@@ -7,12 +7,11 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using MusicBeePlugin.API11;
-using MusicBeePlugin.Domain;
 using RestSharp;
 using Directory = MusicBeePlugin.API11.Directory;
 using ResponseStatus = MusicBeePlugin.API11.ResponseStatus;
 
-namespace MusicBeePlugin
+namespace MusicBeePlugin.Domain
 {
     public static class Subsonic
     {
@@ -44,6 +43,7 @@ namespace MusicBeePlugin
             _lastEx = null;
             try
             {
+                // if there's a settings file found, load it
                 if (File.Exists(SettingsUrl))
                     using (var reader = new StreamReader(SettingsUrl))
                     {
@@ -65,6 +65,7 @@ namespace MusicBeePlugin
                             ? SubsonicSettings.ApiVersion.V11
                             : SubsonicSettings.ApiVersion.V13;
                     }
+                // test if the server responds to a Subsonic Ping request
                 IsInitialized = PingServer();
             }
             catch (Exception ex)
@@ -1004,10 +1005,18 @@ namespace MusicBeePlugin
             return _lastEx;
         }
 
+        /// <summary>
+        /// Send a REST request to the specified server
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns>The response Content as string</returns>
         private static string SendRequest(IRestRequest request)
         {
+            // append "rest/" at the end of the configured servername (Subsonic API specific)
             var client = new RestClient {BaseUrl = new Uri(_serverName + "rest/")};
             request.AddParameter("u", Username);
+            // depending on the authentication method selected, we use:
+            // 1) Hex-encoded password
             if (AuthMethod == SubsonicSettings.AuthMethod.HexPass)
             {
                 var ba = Encoding.Default.GetBytes(Password);
@@ -1016,6 +1025,7 @@ namespace MusicBeePlugin
                 var hexPass = $"enc:{hexString}";
                 request.AddParameter("p", hexPass);
             }
+            // 2) Token based authentication
             else
             {
                 var salt = NewSalt();
@@ -1025,6 +1035,7 @@ namespace MusicBeePlugin
             }
             request.AddParameter("v", Api.ToFriendlyString());
             request.AddParameter("c", "MusicBee");
+            // results in JSON format instead of the XML default
             request.AddParameter("f", "json");
 
             var response = client.Execute(request);
