@@ -12,9 +12,6 @@ using System.Xml.Serialization;
 using System.Collections;
 using System.Xml.Schema;
 using System.ComponentModel;
-using Newtonsoft.Json;
-using System.IO;
-using System.Text;
 using System.Xml;
 using System.Collections.Generic;
 
@@ -33,95 +30,6 @@ public partial class AlbumID3
         public System.DateTime Starred { get; set; }
         public int Year { get; set; }
         public string Genre { get; set; }
-    
-    #region Serialize/Deserialize
-    /// <summary>
-    /// Serializes current AlbumID3 object into an json string
-    /// </summary>
-    public virtual string Serialize()
-    {
-        return JsonConvert.SerializeObject(this);
-    }
-    
-    /// <summary>
-    /// Deserializes workflow markup into an AlbumID3 object
-    /// </summary>
-    /// <param name="input">string workflow markup to deserialize</param>
-    /// <param name="obj">Output AlbumID3 object</param>
-    /// <param name="exception">output Exception value if deserialize failed</param>
-    /// <returns>true if this Serializer can deserialize the object; otherwise, false</returns>
-    public static bool Deserialize(string input, out AlbumID3 obj, out Exception exception)
-    {
-        exception = null;
-        obj = default(AlbumID3);
-        try
-        {
-            obj = Deserialize(input);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            exception = ex;
-            return false;
-        }
-    }
-    
-    public static bool Deserialize(string input, out AlbumID3 obj)
-    {
-        Exception exception = null;
-        return Deserialize(input, out obj, out exception);
-    }
-    
-    public static AlbumID3 Deserialize(string input)
-    {
-        return JsonConvert.DeserializeObject<AlbumID3>(input);
-    }
-    #endregion
-    
-    public virtual void SaveToFile(string fileName)
-    {
-        StreamWriter streamWriter = null;
-        try
-        {
-            string xmlString = Serialize();
-            streamWriter = new StreamWriter(fileName, false, System.Text.Encoding.UTF8);
-            streamWriter.WriteLine(xmlString);
-            streamWriter.Close();
-        }
-        finally
-        {
-            if ((streamWriter != null))
-            {
-                streamWriter.Dispose();
-            }
-        }
-    }
-    
-    public static AlbumID3 LoadFromFile(string fileName)
-    {
-        FileStream file = null;
-        StreamReader sr = null;
-        try
-        {
-            file = new FileStream(fileName, FileMode.Open, FileAccess.Read);
-            sr = new StreamReader(file);
-            string xmlString = sr.ReadToEnd();
-            sr.Close();
-            file.Close();
-            return Deserialize(xmlString);
-        }
-        finally
-        {
-            if ((file != null))
-            {
-                file.Dispose();
-            }
-            if ((sr != null))
-            {
-                sr.Dispose();
-            }
-        }
-    }
 }
 }
 #pragma warning restore

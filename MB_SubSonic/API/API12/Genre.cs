@@ -12,7 +12,6 @@ using System.Xml.Serialization;
 using System.Collections;
 using System.Xml.Schema;
 using System.ComponentModel;
-using Newtonsoft.Json;
 using System.IO;
 using System.Text;
 using System.Xml;
@@ -22,17 +21,61 @@ using System.Collections.Generic;
 public partial class Genre
 {
     
+    private static XmlSerializer serializer;
+    
         public int SongCount { get; set; }
         public int AlbumCount { get; set; }
         public List<string> Text { get; set; }
     
+    private static XmlSerializer Serializer
+    {
+        get
+        {
+            if ((serializer == null))
+            {
+                serializer = new XmlSerializerFactory().CreateSerializer(typeof(Genre));
+            }
+            return serializer;
+        }
+    }
+    
     #region Serialize/Deserialize
     /// <summary>
-    /// Serializes current Genre object into an json string
+    /// Serializes current Genre object into an XML string
     /// </summary>
+    /// <returns>string XML value</returns>
+    public virtual string Serialize(System.Text.Encoding encoding)
+    {
+        StreamReader streamReader = null;
+        MemoryStream memoryStream = null;
+        try
+        {
+            memoryStream = new MemoryStream();
+            System.Xml.XmlWriterSettings xmlWriterSettings = new System.Xml.XmlWriterSettings();
+            xmlWriterSettings.Encoding = encoding;
+            xmlWriterSettings.Indent = false;
+            System.Xml.XmlWriter xmlWriter = XmlWriter.Create(memoryStream, xmlWriterSettings);
+            Serializer.Serialize(xmlWriter, this);
+            memoryStream.Seek(0, SeekOrigin.Begin);
+            streamReader = new StreamReader(memoryStream, encoding);
+            return streamReader.ReadToEnd();
+        }
+        finally
+        {
+            if ((streamReader != null))
+            {
+                streamReader.Dispose();
+            }
+            if ((memoryStream != null))
+            {
+                memoryStream.Dispose();
+            }
+        }
+    }
+    
     public virtual string Serialize()
     {
-        return JsonConvert.SerializeObject(this);
+        return Serialize(System.Text.Encoding.UTF8);
     }
     
     /// <summary>
@@ -66,16 +109,64 @@ public partial class Genre
     
     public static Genre Deserialize(string input)
     {
-        return JsonConvert.DeserializeObject<Genre>(input);
+        StringReader stringReader = null;
+        try
+        {
+            stringReader = new StringReader(input);
+            return ((Genre)(Serializer.Deserialize(System.Xml.XmlReader.Create(stringReader))));
+        }
+        finally
+        {
+            if ((stringReader != null))
+            {
+                stringReader.Dispose();
+            }
+        }
+    }
+    
+    public static Genre Deserialize(Stream s)
+    {
+        return ((Genre)(Serializer.Deserialize(s)));
     }
     #endregion
     
+    /// <summary>
+    /// Serializes current Genre object into file
+    /// </summary>
+    /// <param name="fileName">full path of outupt xml file</param>
+    /// <param name="exception">output Exception value if failed</param>
+    /// <returns>true if can serialize and save into file; otherwise, false</returns>
+    public virtual bool SaveToFile(string fileName, System.Text.Encoding encoding, out Exception exception)
+    {
+        exception = null;
+        try
+        {
+            SaveToFile(fileName, encoding);
+            return true;
+        }
+        catch (Exception e)
+        {
+            exception = e;
+            return false;
+        }
+    }
+    
+    public virtual bool SaveToFile(string fileName, out Exception exception)
+    {
+        return SaveToFile(fileName, System.Text.Encoding.UTF8, out exception);
+    }
+    
     public virtual void SaveToFile(string fileName)
+    {
+        SaveToFile(fileName, System.Text.Encoding.UTF8);
+    }
+    
+    public virtual void SaveToFile(string fileName, System.Text.Encoding encoding)
     {
         StreamWriter streamWriter = null;
         try
         {
-            string xmlString = Serialize();
+            string xmlString = Serialize(encoding);
             streamWriter = new StreamWriter(fileName, false, System.Text.Encoding.UTF8);
             streamWriter.WriteLine(xmlString);
             streamWriter.Close();
@@ -89,14 +180,53 @@ public partial class Genre
         }
     }
     
+    /// <summary>
+    /// Deserializes xml markup from file into an Genre object
+    /// </summary>
+    /// <param name="fileName">string xml file to load and deserialize</param>
+    /// <param name="obj">Output Genre object</param>
+    /// <param name="exception">output Exception value if deserialize failed</param>
+    /// <returns>true if this Serializer can deserialize the object; otherwise, false</returns>
+    public static bool LoadFromFile(string fileName, System.Text.Encoding encoding, out Genre obj, out Exception exception)
+    {
+        exception = null;
+        obj = default(Genre);
+        try
+        {
+            obj = LoadFromFile(fileName, encoding);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            exception = ex;
+            return false;
+        }
+    }
+    
+    public static bool LoadFromFile(string fileName, out Genre obj, out Exception exception)
+    {
+        return LoadFromFile(fileName, System.Text.Encoding.UTF8, out obj, out exception);
+    }
+    
+    public static bool LoadFromFile(string fileName, out Genre obj)
+    {
+        Exception exception = null;
+        return LoadFromFile(fileName, out obj, out exception);
+    }
+    
     public static Genre LoadFromFile(string fileName)
+    {
+        return LoadFromFile(fileName, System.Text.Encoding.UTF8);
+    }
+    
+    public static Genre LoadFromFile(string fileName, System.Text.Encoding encoding)
     {
         FileStream file = null;
         StreamReader sr = null;
         try
         {
             file = new FileStream(fileName, FileMode.Open, FileAccess.Read);
-            sr = new StreamReader(file);
+            sr = new StreamReader(file, encoding);
             string xmlString = sr.ReadToEnd();
             sr.Close();
             file.Close();

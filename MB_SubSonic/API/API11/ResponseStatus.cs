@@ -12,9 +12,6 @@ namespace MusicBeePlugin.API11
     using System.Collections;
     using System.Xml.Schema;
     using System.ComponentModel;
-    using Newtonsoft.Json;
-    using System.IO;
-    using System.Text;
     using System.Xml;
     using System.Collections.Generic;
 

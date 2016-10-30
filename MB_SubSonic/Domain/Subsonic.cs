@@ -2,14 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using MusicBeePlugin.API11;
-using RestSharp;
-using Directory = MusicBeePlugin.API11.Directory;
-using ResponseStatus = MusicBeePlugin.API11.ResponseStatus;
 
 namespace MusicBeePlugin.Domain
 {
@@ -17,6 +12,7 @@ namespace MusicBeePlugin.Domain
     {
         private const int TagCount = 10;
         private const string Passphrase = "PeekAndPoke";
+        private static SubsonicService _service;
         public static string Host = "localhost";
         public static string Port = "80";
         public static string BasePath = "/";
@@ -24,7 +20,7 @@ namespace MusicBeePlugin.Domain
         public static string Password = "";
         public static SubsonicSettings.ConnectionProtocol Protocol = SubsonicSettings.ConnectionProtocol.Http;
         public static SubsonicSettings.AuthMethod AuthMethod = SubsonicSettings.AuthMethod.Token;
-        public static SubsonicSettings.ApiVersion Api = SubsonicSettings.ApiVersion.V13;
+        private static SubsonicSettings.ApiVersion _api = SubsonicSettings.ApiVersion.V13;
         public static bool Transcode;
         public static bool IsInitialized;
         public static string SettingsUrl;
@@ -33,7 +29,7 @@ namespace MusicBeePlugin.Domain
         private static string _serverName;
         private static Exception _lastEx;
         private static KeyValuePair<byte, string>[][] _cachedFiles;
-        private static Thread _retrieveThread;
+        //private static Thread _retrieveThread;
         private static string[] _collectionNames;
         private static readonly Dictionary<string, ulong> LastModified = new Dictionary<string, ulong>();
         private static readonly Dictionary<string, string> FolderLookup = new Dictionary<string, string>();
@@ -61,10 +57,16 @@ namespace MusicBeePlugin.Domain
                             ? SubsonicSettings.AuthMethod.HexPass
                             : SubsonicSettings.AuthMethod.Token;
                         // If HexPass is selected, we need to use an older API version. Otherwise we default to 1.13
-                        Api = AuthMethod == SubsonicSettings.AuthMethod.HexPass
+                        _api = AuthMethod == SubsonicSettings.AuthMethod.HexPass
                             ? SubsonicSettings.ApiVersion.V11
                             : SubsonicSettings.ApiVersion.V13;
                     }
+
+                _serverName = $"{Protocol.ToFriendlyString()}://{Host}:{Port}{BasePath}";
+
+                _service = new SubsonicService(_serverName, Username, Password, AuthMethod, _api.ToFriendlyString(),
+                    Transcode ? "mp3" : "raw");
+
                 // test if the server responds to a Subsonic Ping request
                 IsInitialized = PingServer();
             }
@@ -78,16 +80,14 @@ namespace MusicBeePlugin.Domain
 
         private static bool PingServer()
         {
-            _serverName = $"{Protocol.ToFriendlyString()}://{Host}:{Port}{BasePath}";
             try
             {
-                var request = new RestRequest
-                {
-                    Resource = "ping.view"
-                };
-
-                var response = SendRequest(request);
-                var result = Response.Deserialize(response);
+                //var request = new RestRequest
+                //{
+                //    Resource = "ping.view"
+                //};
+                //var result = _client.Execute<Response>(request);
+                var result = Task.Run(() => _service.PingServer()).Result;
                 var isPingOk = result.Status == ResponseStatus.ok;
                 return isPingOk;
             }
@@ -100,9 +100,9 @@ namespace MusicBeePlugin.Domain
 
         public static void Close()
         {
-            if ((_retrieveThread == null) || !_retrieveThread.IsAlive) return;
-            _retrieveThread.Abort();
-            _retrieveThread = null;
+            //if ((_retrieveThread == null) || !_retrieveThread.IsAlive) return;
+            //_retrieveThread.Abort();
+            //_retrieveThread = null;
         }
 
         public static bool SetHost(SubsonicSettings settings)
@@ -262,25 +262,19 @@ namespace MusicBeePlugin.Domain
                 }
                 else
                 {
-                    var request = new RestRequest
-                    {
-                        Resource = "getMusicDirectory.view"
-                    };
-                    request.AddParameter("id", folderId);
-                    var response = SendRequest(request);
-                    var result = Response.Deserialize(response);
-                    var error = result.Item as Error;
-                    if (error != null)
-                    {
-                        MessageBox.Show($@"An error has occurred:
-{error.Message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return null;
-                    }
-                    var content = result.Item as Directory;
+                    //var request = new RestRequest
+                    //{
+                    //    Resource = "getMusicDirectory.view"
+                    //};
+                    //request.AddParameter("id", folderId);
+
+                    //var result = _client.Execute<Directory>(request);
+                    var id = folderId;
+                    var result = Task.Run(() => _service.GetMusicDirectory(id)).Result;
 
                     var list = new List<string>();
-                    if (content?.Child != null)
-                        foreach (var dirChild in content.Child)
+                    if (result?.Child != null)
+                        foreach (var dirChild in result.Child)
                         {
                             folderId = dirChild.Id;
                             var folderName = path + dirChild.Title;
@@ -296,7 +290,7 @@ namespace MusicBeePlugin.Domain
 
         public static KeyValuePair<byte, string>[][] GetFiles(string path)
         {
-            var threadStarted = false;
+            //var threadStarted = false;
             _lastEx = null;
             KeyValuePair<byte, string>[][] files;
             if (!IsInitialized)
@@ -310,21 +304,23 @@ namespace MusicBeePlugin.Domain
                     files = null;
                 else
                     files = GetCachedFiles();
-                var cacheUpdating = _retrieveThread != null;
-                if (!cacheUpdating && (string.IsNullOrEmpty(path) || !cacheLoaded))
-                {
-                    threadStarted = true;
-                    _retrieveThread = new Thread(ExecuteGetFolderFiles) {IsBackground = true};
-                    _retrieveThread.Start();
-                }
+                //var cacheUpdating = _retrieveThread != null;
+                //if (!cacheUpdating && (string.IsNullOrEmpty(path) || !cacheLoaded))
+                //{
+                //    threadStarted = true;
+                //    _retrieveThread = new Thread(ExecuteGetFolderFiles) {IsBackground = true};
+                //    _retrieveThread.Start();
+                //}
+
                 if (!string.IsNullOrEmpty(path))
                 {
-                    if (!cacheLoaded || cacheUpdating || (files == null))
+                    //if (!cacheLoaded || cacheUpdating || (files == null))
+                    if (!cacheLoaded || (files == null))
                         return GetFolderFiles(path);
                     files = GetPathFilteredFiles(files, path);
                 }
             }
-            if (threadStarted) return files;
+            //if (threadStarted) return files;
             try
             {
                 SendNotificationsHandler.Invoke(Plugin.CallbackType.FilesRetrievedNoChange);
@@ -508,7 +504,7 @@ namespace MusicBeePlugin.Domain
             }
             finally
             {
-                _retrieveThread = null;
+                //_retrieveThread = null;
             }
         }
 
@@ -522,22 +518,16 @@ namespace MusicBeePlugin.Domain
             folders = new List<KeyValuePair<string, string>>();
             var collection = new List<KeyValuePair<string, string>>();
 
-            var request = new RestRequest
-            {
-                Resource = "getMusicFolders.view"
-            };
-            var response = SendRequest(request);
-            var result = Response.Deserialize(response);
-            var error = result.Item as Error;
-            if (error != null)
-            {
-                MessageBox.Show($@"An error has occurred:
-{error.Message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
-            }
-            var content = (MusicFolders) result.Item;
-            if (content?.MusicFolder != null)
-                foreach (var folder in content.MusicFolder)
+            //var request = new RestRequest
+            //{
+            //    Resource = "getMusicFolders.view"
+            //};
+
+            //var result = _client.Execute<MusicFolders>(request);
+            var result = Task.Run(() => _service.GetMusicFolders()).Result;
+
+            if (result?.MusicFolder != null)
+                foreach (var folder in result.MusicFolder)
                 {
                     var folderId = folder.Id.ToString();
                     var folderName = folder.Name;
@@ -573,25 +563,17 @@ namespace MusicBeePlugin.Domain
         {
             var folders = new List<KeyValuePair<string, string>>();
 
-            var request = new RestRequest
-            {
-                Resource = "getIndexes.view"
-            };
-            request.AddParameter("musicFolderId", collectionId);
-            var response = SendRequest(request);
-            var result = Response.Deserialize(response);
-            var error = result.Item as Error;
-            if (error != null)
-            {
-                MessageBox.Show($@"An error has occurred:
-{error.Message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
-            }
-            var content = result.Item as Indexes;
+            //var request = new RestRequest
+            //{
+            //    Resource = "getIndexes.view"
+            //};
+            //request.AddParameter("musicFolderId", collectionId);
+            //var result = _client.Execute<Indexes>(request);
+            var result = Task.Run(() => _service.GetIndexes(collectionId)).Result;
 
-            if (updateIsDirty && (content?.LastModified != null))
+            if (updateIsDirty && (result?.LastModified != null))
             {
-                var serverLastModified = (ulong) content.LastModified;
+                var serverLastModified = (ulong) result.LastModified;
                 //lock (CacheFileLock)
                 //{
                 ulong clientLastModified;
@@ -608,8 +590,8 @@ namespace MusicBeePlugin.Domain
                 //}                
             }
 
-            if (content?.Index != null)
-                foreach (var indexChild in content.Index)
+            if (result?.Index != null)
+                foreach (var indexChild in result.Index)
                     foreach (var artistChild in indexChild.Artist)
                     {
                         var folderId = artistChild.Id;
@@ -627,24 +609,17 @@ namespace MusicBeePlugin.Domain
         private static void GetFolderFiles(string baseFolderName, string folderId,
             ICollection<KeyValuePair<byte, string>[]> files)
         {
-            var request = new RestRequest
-            {
-                Resource = "getMusicDirectory.view"
-            };
-            request.AddParameter("id", folderId);
-            var response = SendRequest(request);
-            var result = Response.Deserialize(response.Replace("\0", string.Empty));
-            var error = result.Item as Error;
-            if (error != null)
-            {
-                MessageBox.Show($@"An error has occurred:
-{error.Message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-            var content = result.Item as Directory;
+            //var request = new RestRequest
+            //{
+            //    Resource = "getMusicDirectory.view"
+            //};
+            //request.AddParameter("id", folderId);
+            //var result = _client.Execute<Directory>(request);
+            //            var result = Response.Deserialize(response.Replace("\0", string.Empty));
+            var result = Task.Run(() => _service.GetMusicDirectory(folderId)).Result;
 
-            if (content?.Child != null)
-                foreach (var childEntry in content.Child)
+            if (result?.Child != null)
+                foreach (var childEntry in result.Child)
                     if (childEntry.IsDir)
                     {
                         GetFolderFiles(baseFolderName, childEntry.Id, files);
@@ -692,24 +667,18 @@ namespace MusicBeePlugin.Domain
                 else if (folderId != null)
                 {
                     var folderName = url.Substring(sectionStartIndex, charIndex - sectionStartIndex);
-                    var request = new RestRequest
-                    {
-                        Resource = "getMusicDirectory.view"
-                    };
-                    request.AddParameter("id", folderId);
-                    var response = SendRequest(request);
-                    var result = Response.Deserialize(response.Replace("\0", string.Empty));
-                    var error = result.Item as Error;
-                    if (error != null)
-                    {
-                        MessageBox.Show($@"An error has occurred:
-{error.Message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return null;
-                    }
-                    var content = result.Item as Directory;
+                    //var request = new RestRequest
+                    //{
+                    //    Resource = "getMusicDirectory.view"
+                    //};
+                    //request.AddParameter("id", folderId);
+                    //var result = _client.Execute<Directory>(request);
+                    //                    var result = Response.Deserialize(response.Replace("\0", string.Empty));
+                    var id = folderId;
+                    var result = Task.Run(() => _service.GetMusicDirectory(id)).Result;
 
-                    if (content?.Child != null)
-                        foreach (var childEntry in content.Child)
+                    if (result?.Child != null)
+                        foreach (var childEntry in result.Child)
                             if (childEntry.IsDir && (childEntry.Title == folderName))
                             {
                                 folderId = childEntry.Id;
@@ -734,26 +703,19 @@ namespace MusicBeePlugin.Domain
             var folderId = GetFolderId(url);
             if (folderId == null) return null;
 
-            var request = new RestRequest
-            {
-                Resource = "getMusicDirectory.view"
-            };
-            request.AddParameter("id", folderId);
-            var response = SendRequest(request);
-            var result = Response.Deserialize(response.Replace("\0", string.Empty));
-            var error = result.Item as Error;
-            if (error != null)
-            {
-                MessageBox.Show($@"An error has occurred:
-{error.Message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
-            }
-            var content = result.Item as Directory;
+            //var request = new RestRequest
+            //{
+            //    Resource = "getMusicDirectory.view"
+            //};
+            //request.AddParameter("id", folderId);
+            //var result = _client.Execute<Directory>(request);
+            //            var result = Response.Deserialize(response.Replace("\0", string.Empty));
+            var result = Task.Run(() => _service.GetMusicDirectory(folderId)).Result;
 
             var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
 
-            if (content?.Child != null)
-                foreach (var childEntry in content.Child)
+            if (result?.Child != null)
+                foreach (var childEntry in result.Child)
                     if (childEntry.Path == filePath)
                         return childEntry.Id;
             return null;
@@ -789,25 +751,18 @@ namespace MusicBeePlugin.Domain
             var folderId = GetFolderId(url);
             if (folderId == null) return null;
 
-            var request = new RestRequest
-            {
-                Resource = "getMusicDirectory.view"
-            };
-            request.AddParameter("id", folderId);
-            var response = SendRequest(request);
-            var result = Response.Deserialize(response.Replace("\0", string.Empty));
-            var error = result.Item as Error;
-            if (error != null)
-            {
-                MessageBox.Show($@"An error has occurred:
-{error.Message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
-            }
-            var content = result.Item as Directory;
+            //var request = new RestRequest
+            //{
+            //    Resource = "getMusicDirectory.view"
+            //};
+            //request.AddParameter("id", folderId);
+            //var result = _client.Execute<Directory>(request);
+            //            var result = Response.Deserialize(response.Replace("\0", string.Empty));
+            var result = Task.Run(() => _service.GetMusicDirectory(folderId)).Result;
 
             var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
-            if (content?.Child != null)
-                foreach (var childEntry in content.Child)
+            if (result?.Child != null)
+                foreach (var childEntry in result.Child)
                     if (childEntry.Path == filePath)
                         return childEntry.CoverArt;
             return null;
@@ -823,25 +778,19 @@ namespace MusicBeePlugin.Domain
             var folderId = GetFolderId(url);
             if (folderId == null) return null;
 
-            var request = new RestRequest
-            {
-                Resource = "getMusicDirectory.view"
-            };
-            request.AddParameter("id", folderId);
-            var response = SendRequest(request);
-            var result = Response.Deserialize(response.Replace("\0", string.Empty));
-            var error = result.Item as Error;
-            if (error != null)
-            {
-                MessageBox.Show($@"An error has occurred:
-{error.Message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
-            }
-            var content = result.Item as Directory;
+            //var request = new RestRequest
+            //{
+            //    Resource = "getMusicDirectory.view"
+            //};
+            //request.AddParameter("id", folderId);
+            //var result = _client.Execute<Directory>(request);
+            //            var result = Response.Deserialize(response.Replace("\0", string.Empty));
+            var result = Task.Run(() => _service.GetMusicDirectory(folderId)).Result;
+
             var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
 
-            if (content?.Child != null)
-                foreach (var childEntry in content.Child)
+            if (result?.Child != null)
+                foreach (var childEntry in result.Child)
                     if (childEntry.Path == filePath)
                         return GetTags(childEntry, childEntry.Path);
             return null;
@@ -886,14 +835,7 @@ namespace MusicBeePlugin.Domain
             {
                 var id = GetCoverArtId(url);
                 if (id != null)
-                {
-                    var request = new RestRequest
-                    {
-                        Resource = "getCoverArt.view"
-                    };
-                    request.AddParameter("id", id);
-                    bytes = DownloadData(request);
-                }
+                    bytes = Task.Run(() => _service.GetCoverArt(id)).Result;
             }
             catch (Exception ex)
             {
@@ -906,23 +848,15 @@ namespace MusicBeePlugin.Domain
         {
             _lastEx = null;
             var playlists = new List<KeyValuePair<string, string>>();
-            var request = new RestRequest
-            {
-                Resource = "getPlaylists.view"
-            };
-            var response = SendRequest(request);
-            var result = Response.Deserialize(response);
-            var error = result.Item as Error;
-            if (error != null)
-            {
-                MessageBox.Show($@"An error has occurred:
-{error.Message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
-            }
-            var content = result.Item as Playlists;
-
-            if (content?.Playlist != null)
-                foreach (var playlistEntry in content.Playlist)
+            //var request = new RestRequest
+            //{
+            //    Resource = "getPlaylists.view",
+            //    //RootElement = "playlists"
+            //};
+            //var result = _client.Execute<Playlists>(request);
+            var result = Task.Run(() => _service.GetPlaylists()).Result;
+            if (result?.Playlist != null)
+                foreach (var playlistEntry in result.Playlist)
                     playlists.Add(new KeyValuePair<string, string>(playlistEntry.Id, playlistEntry.Name));
 
             return playlists.ToArray();
@@ -931,25 +865,18 @@ namespace MusicBeePlugin.Domain
         public static KeyValuePair<byte, string>[][] GetPlaylistFiles(string id)
         {
             _lastEx = null;
-            var request = new RestRequest
-            {
-                Resource = "getPlaylist.view"
-            };
-            request.AddParameter("id", id);
-            var response = SendRequest(request);
-            var result = Response.Deserialize(response.Replace("\0", string.Empty));
-            var error = result.Item as Error;
-            if (error != null)
-            {
-                MessageBox.Show($@"An error has occurred:
-{error.Message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
-            }
-            var content = result.Item as PlaylistWithSongs;
+            //var request = new RestRequest
+            //{
+            //    Resource = "getPlaylist.view"
+            //};
+            //request.AddParameter("id", id);
+            //var result = _client.Execute<PlaylistWithSongs>(request);
+            //            var result = Response.Deserialize(response.Replace("\0", string.Empty));
+            var result = Task.Run(() => _service.GetPlaylist(id)).Result;
 
             var files = new List<KeyValuePair<byte, string>[]>();
-            if (content?.Entry != null)
-                foreach (var playlistEntry in content.Entry)
+            if (result?.Entry != null)
+                foreach (var playlistEntry in result.Entry)
                 {
                     var tags = GetTags(playlistEntry, null);
                     if (tags != null)
@@ -963,40 +890,9 @@ namespace MusicBeePlugin.Domain
             _lastEx = null;
             var id = GetFileId(url);
             if (id == null)
-            {
                 _lastEx = new FileNotFoundException();
-            }
             else
-            {
-                var salt = NewSalt();
-                var token = Md5(Password + salt);
-                var encoding = Transcode ? "mp3" : "raw";
-                string uriLine;
-                if (AuthMethod == SubsonicSettings.AuthMethod.HexPass)
-                {
-                    var ba = Encoding.Default.GetBytes(Password);
-                    var hexString = BitConverter.ToString(ba);
-                    hexString = hexString.Replace("-", "");
-                    var hexPass = $"enc:{hexString}";
-                    uriLine =
-                        $"{_serverName}rest/stream.view?u={Username}&p={hexPass}&v={Api.ToFriendlyString()}&c=MusicBee&id={id}&format={encoding}";
-                }
-                else
-                {
-                    uriLine =
-                        $"{_serverName}rest/stream.view?u={Username}&t={token}&s={salt}&v={Api.ToFriendlyString()}&c=MusicBee&id={id}&format={encoding}";
-                }
-                var uri = new Uri(uriLine);
-
-                var stream = new ConnectStream(uri);
-                if (stream.ContentType.StartsWith("text/xml"))
-                    using (stream)
-                    {
-                        _lastEx = new InvalidDataException();
-                    }
-                else
-                    return stream;
-            }
+                return Task.Run(() => _service.GetStream(id)).Result;
             return null;
         }
 
@@ -1004,117 +900,6 @@ namespace MusicBeePlugin.Domain
         {
             return _lastEx;
         }
-
-        /// <summary>
-        /// Send a REST request to the specified server
-        /// </summary>
-        /// <param name="request"></param>
-        /// <returns>The response Content as string</returns>
-        private static string SendRequest(IRestRequest request)
-        {
-            // append "rest/" at the end of the configured servername (Subsonic API specific)
-            var client = new RestClient {BaseUrl = new Uri(_serverName + "rest/")};
-            request.AddParameter("u", Username);
-            // depending on the authentication method selected, we use:
-            // 1) Hex-encoded password
-            if (AuthMethod == SubsonicSettings.AuthMethod.HexPass)
-            {
-                var ba = Encoding.Default.GetBytes(Password);
-                var hexString = BitConverter.ToString(ba);
-                hexString = hexString.Replace("-", "");
-                var hexPass = $"enc:{hexString}";
-                request.AddParameter("p", hexPass);
-            }
-            // 2) Token based authentication
-            else
-            {
-                var salt = NewSalt();
-                var token = Md5(Password + salt);
-                request.AddParameter("t", token);
-                request.AddParameter("s", salt);
-            }
-            request.AddParameter("v", Api.ToFriendlyString());
-            request.AddParameter("c", "MusicBee");
-            // results in JSON format instead of the XML default
-            request.AddParameter("f", "json");
-
-            var response = client.Execute(request);
-
-            if (response.ErrorException != null)
-            {
-                const string message = "Error retrieving response from Subsonic server:";
-                MessageBox.Show($@"{message}
-
-{response.ErrorException}", @"Subsonic Plugin Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            return response.Content;
-        }
-
-        private static byte[] DownloadData(IRestRequest request)
-        {
-            var client = new RestClient {BaseUrl = new Uri(_serverName + "rest/")};
-            request.AddParameter("u", Username);
-
-            if (AuthMethod == SubsonicSettings.AuthMethod.HexPass)
-            {
-                var ba = Encoding.Default.GetBytes(Password);
-                var hexString = BitConverter.ToString(ba);
-                hexString = hexString.Replace("-", "");
-                var hexPass = $"enc:{hexString}";
-                request.AddParameter("p", hexPass);
-            }
-            else
-            {
-                var salt = NewSalt();
-                var token = Md5(Password + salt);
-                request.AddParameter("t", token);
-                request.AddParameter("s", salt);
-            }
-            request.AddParameter("v", Api.ToFriendlyString());
-            request.AddParameter("c", "MusicBee");
-            request.AddParameter("f", "json");
-            var response = client.Execute(request);
-
-            if (response.ContentType.StartsWith("text/xml"))
-            {
-                var result = Response.Deserialize(response.Content.Replace("\0", string.Empty));
-                var error = result.Item as Error;
-                if (error != null)
-                {
-                    MessageBox.Show($@"An error has occurred:
-{error.Message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return null;
-                }
-            }
-            return response.RawBytes;
-        }
-
-        private static string NewSalt()
-        {
-            // Define min and max salt sizes.
-            var minSaltSize = 6;
-            var maxSaltSize = 12;
-
-            // Generate a random number for the size of the salt.
-            var random = new Random();
-            var saltSize = random.Next(minSaltSize, maxSaltSize);
-            // Allocate a byte array, which will hold the salt.
-            var saltBytes = new byte[saltSize];
-            // Initialize a random number generator.
-            var rng = new RNGCryptoServiceProvider();
-            // Fill the salt with cryptographically strong byte values.
-            rng.GetNonZeroBytes(saltBytes);
-            return BitConverter.ToString(saltBytes).Replace("-", string.Empty).ToLower();
-        }
-
-        private static string Md5(string saltedPassword)
-        {
-            //Create a byte array from source data.
-            var tmpSource = Encoding.ASCII.GetBytes(saltedPassword);
-            var result = new MD5CryptoServiceProvider().ComputeHash(tmpSource);
-            return BitConverter.ToString(result).Replace("-", string.Empty).ToLower();
-        }
-
 
         private sealed class FileSorter : Comparer<KeyValuePair<byte, string>[]>
         {
