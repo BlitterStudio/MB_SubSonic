@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
-using MusicBeePlugin.Domain;
 using MusicBeePlugin.Properties;
+using Subsonic.Domain;
+
 // ReSharper disable UnusedMember.Global
 
 namespace MusicBeePlugin
