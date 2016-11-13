@@ -8,7 +8,7 @@ namespace Subsonic.Domain
     /// <summary>
     ///     Utility class that handles encryption
     /// </summary>
-    internal static class AesEncryption
+    public static class AesEncryption
     {
         #region Static Functions
 

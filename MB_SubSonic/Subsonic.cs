@@ -5,6 +5,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Subsonic.Domain;
+using Subsonic.Domain.API.API11;
+using static Subsonic.Domain.SubsonicSettings;
 
 namespace MusicBeePlugin
 {
@@ -18,9 +20,9 @@ namespace MusicBeePlugin
         public static string BasePath = "/";
         public static string Username = "admin";
         public static string Password = "";
-        public static SubsonicSettings.ConnectionProtocol Protocol = SubsonicSettings.ConnectionProtocol.Http;
-        public static SubsonicSettings.AuthMethod AuthMethod = SubsonicSettings.AuthMethod.Token;
-        private static SubsonicSettings.ApiVersion _api = SubsonicSettings.ApiVersion.V13;
+        public static ConnectionProtocol Protocol = ConnectionProtocol.Http;
+        public static AuthMethod AuthMethod = AuthMethod.Token;
+        private static ApiVersion _api = ApiVersion.V13;
         public static bool Transcode;
         public static bool IsInitialized;
         public static string SettingsUrl;
@@ -45,8 +47,8 @@ namespace MusicBeePlugin
                     {
                         var protocolText = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
                         Protocol = protocolText.Equals("HTTP")
-                            ? SubsonicSettings.ConnectionProtocol.Http
-                            : SubsonicSettings.ConnectionProtocol.Https;
+                            ? ConnectionProtocol.Http
+                            : ConnectionProtocol.Https;
                         Host = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
                         Port = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
                         BasePath = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
@@ -54,12 +56,12 @@ namespace MusicBeePlugin
                         Password = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
                         Transcode = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "Y";
                         AuthMethod = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "HexPass"
-                            ? SubsonicSettings.AuthMethod.HexPass
-                            : SubsonicSettings.AuthMethod.Token;
+                            ? AuthMethod.HexPass
+                            : AuthMethod.Token;
                         // If HexPass is selected, we need to use an older API version. Otherwise we default to 1.13
-                        _api = AuthMethod == SubsonicSettings.AuthMethod.HexPass
-                            ? SubsonicSettings.ApiVersion.V11
-                            : SubsonicSettings.ApiVersion.V13;
+                        _api = AuthMethod == AuthMethod.HexPass
+                            ? ApiVersion.V11
+                            : ApiVersion.V13;
                     }
 
                 _serverName = $"{Protocol.ToFriendlyString()}://{Host}:{Port}{BasePath}";
@@ -187,7 +189,7 @@ namespace MusicBeePlugin
             {
                 writer.WriteLine(
                     AesEncryption.Encrypt(
-                        settings.Protocol == SubsonicSettings.ConnectionProtocol.Http ? "HTTP" : "HTTPS", Passphrase));
+                        settings.Protocol == ConnectionProtocol.Http ? "HTTP" : "HTTPS", Passphrase));
                 writer.WriteLine(AesEncryption.Encrypt(settings.Host, Passphrase));
                 writer.WriteLine(AesEncryption.Encrypt(settings.Port, Passphrase));
                 writer.WriteLine(AesEncryption.Encrypt(settings.BasePath, Passphrase));
@@ -197,7 +199,7 @@ namespace MusicBeePlugin
                     ? AesEncryption.Encrypt("Y", Passphrase)
                     : AesEncryption.Encrypt("N", Passphrase));
                 writer.WriteLine(
-                    AesEncryption.Encrypt(settings.Auth == SubsonicSettings.AuthMethod.HexPass ? "HexPass" : "Token",
+                    AesEncryption.Encrypt(settings.Auth == AuthMethod.HexPass ? "HexPass" : "Token",
                         Passphrase));
             }
             Transcode = settings.Transcode;
