@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Blitter Studio")]
 [assembly: AssemblyProduct("MB_SubSonic")]
-[assembly: AssemblyCopyright("Copyright © Dimitris Panokostas 2016")]
+[assembly: AssemblyCopyright("Copyright © Dimitris Panokostas 2016-2017")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
