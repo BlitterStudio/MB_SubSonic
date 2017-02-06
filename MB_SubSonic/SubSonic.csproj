@@ -45,6 +45,7 @@
   <ItemGroup>
     <Compile Include="AesEncryption.cs" />
     <Compile Include="Domain\ConnectStream.cs" />
+    <Compile Include="Domain\libresonic-rest-api.Designer.cs" />
     <Compile Include="Domain\subsonic-rest-api-1.14.0.Designer.cs" />
     <Compile Include="Domain\SubsonicSettings.cs" />
     <Compile Include="MusicBeeInterface.cs" />
@@ -64,6 +65,9 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Domain\libresonic-rest-api.xsd">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="Domain\subsonic-rest-api-1.14.0.xsd">
       <SubType>Designer</SubType>
     </None>

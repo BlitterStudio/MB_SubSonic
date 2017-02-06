@@ -1,10 +1,27 @@
 ﻿using System;
-using System.Security.Policy;
 
 namespace MusicBeePlugin.Domain
 {
     public class SubsonicSettings
     {
+        public enum AuthMethod
+        {
+            Token,
+            HexPass
+        }
+
+        public enum ConnectionProtocol
+        {
+            Http,
+            Https
+        }
+
+        public enum ServerType
+        {
+            Subsonic,
+            LibreSonic
+        }
+
         public string Host { get; set; }
         public string Port { get; set; }
         public string BasePath { get; set; }
@@ -13,18 +30,6 @@ namespace MusicBeePlugin.Domain
         public bool Transcode { get; set; }
         public ConnectionProtocol Protocol { get; set; }
         public AuthMethod Auth { get; set; }
-
-        public enum ConnectionProtocol
-        {
-            Http,
-            Https
-        }
-
-        public enum AuthMethod
-        {
-            Token,
-            HexPass
-        }
     }
 
     public static class SubsonicSettingsExtensions

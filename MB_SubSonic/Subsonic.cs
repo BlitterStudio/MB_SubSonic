@@ -7,6 +7,8 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using MusicBeePlugin.Domain;
+using MusicBeePlugin.SubsonicAPI;
+using MusicBeePlugin.LibreSonicAPI;
 using RestSharp;
 
 namespace MusicBeePlugin
@@ -23,6 +25,7 @@ namespace MusicBeePlugin
         public static string Password = "";
         public static SubsonicSettings.ConnectionProtocol Protocol = SubsonicSettings.ConnectionProtocol.Http;
         public static SubsonicSettings.AuthMethod AuthMethod = SubsonicSettings.AuthMethod.Token;
+        private static SubsonicSettings.ServerType _serverType = SubsonicSettings.ServerType.Subsonic;
         public static bool Transcode;
         public static bool IsInitialized;
         public static string SettingsUrl;
@@ -45,7 +48,6 @@ namespace MusicBeePlugin
             try
             {
                 if (File.Exists(SettingsUrl))
-                {
                     using (var reader = new StreamReader(SettingsUrl))
                     {
                         var protocolText = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
@@ -62,7 +64,6 @@ namespace MusicBeePlugin
                             ? SubsonicSettings.AuthMethod.HexPass
                             : SubsonicSettings.AuthMethod.Token;
                     }
-                }
                 IsInitialized = PingServer();
             }
             catch (Exception ex)
@@ -83,8 +84,24 @@ namespace MusicBeePlugin
                     Resource = "ping.view"
                 };
                 var response = SendRequest(request);
-                var result = Response.Deserialize(response);
-                bool isPingOk = result.status == ResponseStatus.ok;
+
+                // Default is Subonic, but check if we're connected to a LibreSonic server
+                if (response.Contains("libresonic"))
+                    _serverType = SubsonicSettings.ServerType.LibreSonic;
+
+                bool isPingOk;
+
+                if (_serverType == SubsonicSettings.ServerType.Subsonic)
+                {
+                    var result = SubsonicAPI.Response.Deserialize(response);
+                    isPingOk = result.status == SubsonicAPI.ResponseStatus.ok;
+                }
+                else
+                {
+                    var result = LibreSonicAPI.Response.Deserialize(response);
+                    isPingOk = result.status == LibreSonicAPI.ResponseStatus.ok;
+                }
+
                 return isPingOk;
             }
             catch (Exception ex)
@@ -107,19 +124,13 @@ namespace MusicBeePlugin
 
             settings.Host = settings.Host.Trim();
             if (settings.Host.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
-            {
                 settings.Host = settings.Host.Substring(7);
-            }
             else if (settings.Host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            {
                 settings.Host = settings.Host.Substring(8);
-            }
             settings.Port = settings.Port.Trim();
             settings.BasePath = settings.BasePath.Trim();
             if (!settings.BasePath.EndsWith(@"/"))
-            {
                 settings.BasePath += @"/";
-            }
             var isChanged = !settings.Host.Equals(Host) ||
                             !settings.Port.Equals(Port) ||
                             !settings.BasePath.Equals(BasePath) ||
@@ -163,9 +174,7 @@ namespace MusicBeePlugin
                         MessageBoxDefaultButton.Button2);
 
                     if (dialog == DialogResult.Yes)
-                    {
                         isPingOk = true;
-                    }
                 }
 
                 if (!isPingOk)
@@ -178,17 +187,17 @@ namespace MusicBeePlugin
                     Password = previousPassword;
                     return false;
                 }
-                
+
                 IsInitialized = true;
             }
             isChanged = isChanged || Transcode;
             if (!isChanged)
-            {
                 return true;
-            }
             using (var writer = new StreamWriter(SettingsUrl))
             {
-                writer.WriteLine(AesEncryption.Encrypt(settings.Protocol == SubsonicSettings.ConnectionProtocol.Http? "HTTP" : "HTTPS", Passphrase));
+                writer.WriteLine(
+                    AesEncryption.Encrypt(
+                        settings.Protocol == SubsonicSettings.ConnectionProtocol.Http ? "HTTP" : "HTTPS", Passphrase));
                 writer.WriteLine(AesEncryption.Encrypt(settings.Host, Passphrase));
                 writer.WriteLine(AesEncryption.Encrypt(settings.Port, Passphrase));
                 writer.WriteLine(AesEncryption.Encrypt(settings.BasePath, Passphrase));
@@ -197,7 +206,9 @@ namespace MusicBeePlugin
                 writer.WriteLine(settings.Transcode
                     ? AesEncryption.Encrypt("Y", Passphrase)
                     : AesEncryption.Encrypt("N", Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(settings.Auth == SubsonicSettings.AuthMethod.HexPass ? "HexPass" : "Token", Passphrase));
+                writer.WriteLine(
+                    AesEncryption.Encrypt(settings.Auth == SubsonicSettings.AuthMethod.HexPass ? "HexPass" : "Token",
+                        Passphrase));
             }
             Transcode = settings.Transcode;
             try
@@ -253,9 +264,7 @@ namespace MusicBeePlugin
             else
             {
                 if (!path.EndsWith(@"\"))
-                {
                     path += @"\";
-                }
                 var folderId = GetFolderId(path);
                 if (string.IsNullOrEmpty(folderId))
                 {
@@ -265,32 +274,55 @@ namespace MusicBeePlugin
                 {
                     var request = new RestRequest
                     {
-                        Resource = "getMusicDirectory.view",
+                        Resource = "getMusicDirectory.view"
                     };
                     request.AddParameter("id", folderId);
                     var response = SendRequest(request);
-                    var result = Response.Deserialize(response);
-                    var error = result.Item as Error;
-                    if (error != null)
-                    {
-                        MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return null;
-                    }
-                    var content = result.Item as Directory;
 
                     var list = new List<string>();
-                    if (content?.child != null)
-                    foreach (var dirChild in content.child)
+                    if (_serverType == SubsonicSettings.ServerType.Subsonic)
                     {
-                        folderId = dirChild.id;
-                        var folderName = path + dirChild.title;
-                        list.Add(folderName);
-                        if (!FolderLookup.ContainsKey(folderName))
+                        var result = SubsonicAPI.Response.Deserialize(response);
+                        var error = result.Item as SubsonicAPI.Error;
+                        if (error != null)
                         {
-                            FolderLookup.Add(folderName, folderId);
+                            MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return null;
                         }
+                        var content = result.Item as SubsonicAPI.Directory;
+                        if (content?.child != null)
+                            foreach (var dirChild in content.child)
+                            {
+                                folderId = dirChild.id;
+                                var folderName = path + dirChild.title;
+                                list.Add(folderName);
+                                if (!FolderLookup.ContainsKey(folderName))
+                                    FolderLookup.Add(folderName, folderId);
+                            }
                     }
+                    else
+                    {
+                        var result = LibreSonicAPI.Response.Deserialize(response);
+                        var error = result.Item as LibreSonicAPI.Error;
+                        if (error != null)
+                        {
+                            MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return null;
+                        }
+                        var content = result.Item as LibreSonicAPI.Directory;
+                        if (content?.child != null)
+                            foreach (var dirChild in content.child)
+                            {
+                                folderId = dirChild.id;
+                                var folderName = path + dirChild.title;
+                                list.Add(folderName);
+                                if (!FolderLookup.ContainsKey(folderName))
+                                    FolderLookup.Add(folderName, folderId);
+                            }
+                    }
+
                     folders = list.ToArray();
                 }
             }
@@ -310,13 +342,9 @@ namespace MusicBeePlugin
             {
                 var cacheLoaded = _cachedFiles != null;
                 if (!cacheLoaded && !File.Exists(CacheUrl))
-                {
                     files = null;
-                }
                 else
-                {
                     files = GetCachedFiles();
-                }
                 var cacheUpdating = _retrieveThread != null;
                 if (!cacheUpdating && (string.IsNullOrEmpty(path) || !cacheLoaded))
                 {
@@ -327,9 +355,7 @@ namespace MusicBeePlugin
                 if (!string.IsNullOrEmpty(path))
                 {
                     if (!cacheLoaded || cacheUpdating || files == null)
-                    {
                         return GetFolderFiles(path);
-                    }
                     files = GetPathFilteredFiles(files, path);
                 }
             }
@@ -378,9 +404,7 @@ namespace MusicBeePlugin
                             {
                                 var collectionName = reader.ReadString();
                                 if (!LastModified.ContainsKey(collectionName))
-                                {
                                     LastModified.Add(collectionName, reader.ReadUInt64());
-                                }
                             }
                         }
                         reader.Close();
@@ -394,9 +418,7 @@ namespace MusicBeePlugin
             lock (CacheLock)
             {
                 if (_cachedFiles == null && files != null)
-                {
                     _cachedFiles = files;
-                }
             }
             return _cachedFiles;
         }
@@ -405,9 +427,7 @@ namespace MusicBeePlugin
             string path)
         {
             if (!path.EndsWith(@"\"))
-            {
                 path += @"\";
-            }
             files = files.Where(t => t[0].Value.StartsWith(path)).ToArray();
             Array.Sort(files, new FileSorter());
             return files;
@@ -428,9 +448,7 @@ namespace MusicBeePlugin
                 else
                 {
                     foreach (var folder in folders)
-                    {
                         GetFolderFiles(folder.Value, folder.Key, list);
-                    }
                     files = list.ToArray();
                     KeyValuePair<byte, string>[][] oldCachedFiles;
                     lock (CacheLock)
@@ -440,7 +458,6 @@ namespace MusicBeePlugin
                     }
                     anyChanges = oldCachedFiles == null || _cachedFiles.Length != oldCachedFiles.Length;
                     if (!anyChanges)
-                    {
                         for (var index = 0; index < _cachedFiles.Length; index++)
                         {
                             var tags1 = _cachedFiles[index];
@@ -448,12 +465,11 @@ namespace MusicBeePlugin
                             for (var tagIndex = 0; tagIndex < TagCount; tagIndex++)
                             {
                                 if (string.Compare(tags1[tagIndex].Value, tags2[tagIndex].Value,
-                                    StringComparison.Ordinal) == 0) continue;
+                                        StringComparison.Ordinal) == 0) continue;
                                 anyChanges = true;
                                 break;
                             }
                         }
-                    }
                 }
                 if (!anyChanges)
                 {
@@ -488,14 +504,12 @@ namespace MusicBeePlugin
                                 writer.Write(2); // version
                                 writer.Write(files.Length);
                                 foreach (var tags in files)
-                                {
                                     for (var tagIndex = 0; tagIndex <= TagCount; tagIndex++)
                                     {
                                         var tag = tags[tagIndex];
                                         writer.Write(tag.Key);
                                         writer.Write(tag.Value);
                                     }
-                                }
                                 writer.Write(LastModified.Count);
                                 foreach (var item in LastModified)
                                 {
@@ -542,53 +556,77 @@ namespace MusicBeePlugin
 
                 var request = new RestRequest
                 {
-                    Resource = "getMusicFolders.view",
+                    Resource = "getMusicFolders.view"
                 };
                 var response = SendRequest(request);
-                var result = Response.Deserialize(response);
-                var error = result.Item as Error;
-                if (error != null)
+                if (_serverType == SubsonicSettings.ServerType.Subsonic)
                 {
-                    MessageBox.Show($@"An error has occurred:
+                    var result = SubsonicAPI.Response.Deserialize(response);
+                    var error = result.Item as SubsonicAPI.Error;
+                    if (error != null)
+                    {
+                        MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return null;
-                }
-                var content = (MusicFolders)result.Item;
+                        return null;
+                    }
+                    var content = (SubsonicAPI.MusicFolders) result.Item;
 
-                if (content.musicFolder != null)
-                foreach (var folder in content.musicFolder)
+                    if (content.musicFolder != null)
+                        foreach (var folder in content.musicFolder)
+                        {
+                            var folderId = folder.id.ToString();
+                            var folderName = folder.name;
+                            if (folderName != null && FolderLookup.ContainsKey(folderName))
+                            {
+                                FolderLookup[folderName] = folderId;
+                            }
+                            else
+                            {
+                                if (folderName != null) FolderLookup.Add(folderName, folderId);
+                            }
+                            collection.Add(new KeyValuePair<string, string>(folderId, folderName));
+                        }
+                }
+                else
                 {
-                    var folderId = folder.id.ToString();
-                    var folderName = folder.name;
-                    if (folderName != null && FolderLookup.ContainsKey(folderName))
+                    var result = LibreSonicAPI.Response.Deserialize(response);
+                    var error = result.Item as LibreSonicAPI.Error;
+                    if (error != null)
                     {
-                        FolderLookup[folderName] = folderId;
+                        MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return null;
                     }
-                    else
-                    {
-                        if (folderName != null) FolderLookup.Add(folderName, folderId);
-                    }
-                    collection.Add(new KeyValuePair<string, string>(folderId, folderName));
+                    var content = (LibreSonicAPI.MusicFolders) result.Item;
+
+                    if (content.musicFolder != null)
+                        foreach (var folder in content.musicFolder)
+                        {
+                            var folderId = folder.id.ToString();
+                            var folderName = folder.name;
+                            if (folderName != null && FolderLookup.ContainsKey(folderName))
+                            {
+                                FolderLookup[folderName] = folderId;
+                            }
+                            else
+                            {
+                                if (folderName != null) FolderLookup.Add(folderName, folderId);
+                            }
+                            collection.Add(new KeyValuePair<string, string>(folderId, folderName));
+                        }
                 }
 
                 _collectionNames = new string[collection.Count];
                 for (var index = 0; index < collection.Count; index++)
-                {
                     _collectionNames[index] = collection[index].Value + @"\";
-                }
                 var isDirty = false;
                 foreach (var collectionItem in collection)
-                {
-                    folders.AddRange(GetRootFolders(collectionItem.Key, collectionItem.Value, true, refresh && dirtyOnly, ref isDirty));
-                }
+                    folders.AddRange(GetRootFolders(collectionItem.Key, collectionItem.Value, true, refresh && dirtyOnly,
+                        ref isDirty));
                 if (collectionOnly)
-                {
                     return collection;
-                }
                 if (dirtyOnly && !isDirty)
-                {
                     return null;
-                }
             }
             return folders;
         }
@@ -601,56 +639,96 @@ namespace MusicBeePlugin
 
             var request = new RestRequest
             {
-                Resource = "getIndexes.view",
+                Resource = "getIndexes.view"
             };
             request.AddParameter("musicFolderId", collectionId);
             var response = SendRequest(request);
-            var result = Response.Deserialize(response);
-            var error = result.Item as Error;
-            if (error != null)
+
+            if (_serverType == SubsonicSettings.ServerType.Subsonic)
             {
-                MessageBox.Show($@"An error has occurred:
+                var result = SubsonicAPI.Response.Deserialize(response);
+                var error = result.Item as SubsonicAPI.Error;
+                if (error != null)
+                {
+                    MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
-            }
-            var content = result.Item as Indexes;
-
-            if (updateIsDirty && content?.lastModified != null)
-            {
-                var serverLastModified = (ulong)content.lastModified;
-                lock (CacheFileLock)
-                {
-                    ulong clientLastModified;
-                    if (!LastModified.TryGetValue(collectionName, out clientLastModified))
-                    {
-                        isDirty = true;
-                        LastModified.Add(collectionName, serverLastModified);
-                    }
-                    else if (serverLastModified > clientLastModified)
-                    {
-                        isDirty = true;
-                        LastModified[collectionName] = serverLastModified;
-                    }
-                }                
-            }
-
-            if (content?.index != null)
-            foreach (var indexChild in content.index)
-            {
-                foreach (var artistChild in indexChild.artist)
-                {
-                    var folderId = artistChild.id;
-                    var folderName = $"{collectionName}\\{artistChild.name}";
-                    if (FolderLookup.ContainsKey(folderName))
-                    {
-                        FolderLookup[folderName] = folderId;
-                    }
-                    else
-                    {
-                        FolderLookup.Add(folderName, folderId);
-                    }
-                    folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
+                    return null;
                 }
+                var content = result.Item as SubsonicAPI.Indexes;
+                if (updateIsDirty && content?.lastModified != null)
+                {
+                    var serverLastModified = (ulong) content.lastModified;
+                    lock (CacheFileLock)
+                    {
+                        ulong clientLastModified;
+                        if (!LastModified.TryGetValue(collectionName, out clientLastModified))
+                        {
+                            isDirty = true;
+                            LastModified.Add(collectionName, serverLastModified);
+                        }
+                        else if (serverLastModified > clientLastModified)
+                        {
+                            isDirty = true;
+                            LastModified[collectionName] = serverLastModified;
+                        }
+                    }
+                }
+
+                if (content?.index != null)
+                    foreach (var indexChild in content.index)
+                    foreach (var artistChild in indexChild.artist)
+                    {
+                        var folderId = artistChild.id;
+                        var folderName = $"{collectionName}\\{artistChild.name}";
+                        if (FolderLookup.ContainsKey(folderName))
+                            FolderLookup[folderName] = folderId;
+                        else
+                            FolderLookup.Add(folderName, folderId);
+                        folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
+                    }
+            }
+            else
+            {
+                var result = LibreSonicAPI.Response.Deserialize(response);
+                var error = result.Item as LibreSonicAPI.Error;
+                if (error != null)
+                {
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return null;
+                }
+                var content = result.Item as LibreSonicAPI.Indexes;
+                if (updateIsDirty && content?.lastModified != null)
+                {
+                    var serverLastModified = (ulong) content.lastModified;
+                    lock (CacheFileLock)
+                    {
+                        ulong clientLastModified;
+                        if (!LastModified.TryGetValue(collectionName, out clientLastModified))
+                        {
+                            isDirty = true;
+                            LastModified.Add(collectionName, serverLastModified);
+                        }
+                        else if (serverLastModified > clientLastModified)
+                        {
+                            isDirty = true;
+                            LastModified[collectionName] = serverLastModified;
+                        }
+                    }
+                }
+
+                if (content?.index != null)
+                    foreach (var indexChild in content.index)
+                    foreach (var artistChild in indexChild.artist)
+                    {
+                        var folderId = artistChild.id;
+                        var folderName = $"{collectionName}\\{artistChild.name}";
+                        if (FolderLookup.ContainsKey(folderName))
+                            FolderLookup[folderName] = folderId;
+                        else
+                            FolderLookup.Add(folderName, folderId);
+                        folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
+                    }
             }
 
             return folders;
@@ -661,50 +739,72 @@ namespace MusicBeePlugin
         {
             var request = new RestRequest
             {
-                Resource = "getMusicDirectory.view",
+                Resource = "getMusicDirectory.view"
             };
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
-            var result = Response.Deserialize(response.Replace("\0", string.Empty));
-            var error = result.Item as Error;
-            if (error != null)
-            {
-                MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-            var content = result.Item as Directory;
 
-            if (content?.child != null)
-            foreach (var childEntry in content.child)
+            if (_serverType == SubsonicSettings.ServerType.Subsonic)
             {
-                if (childEntry.isDir)
+                var result = SubsonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
+                var error = result.Item as SubsonicAPI.Error;
+                if (error != null)
                 {
-                    GetFolderFiles(baseFolderName, childEntry.id, files);
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
                 }
-                else
-                {
-                    var tags = GetTags(childEntry, baseFolderName);
-                    if (tags != null)
-                    {
-                        files.Add(tags);
-                    }
-                }
+                var content = result.Item as SubsonicAPI.Directory;
+
+                if (content?.child != null)
+                    foreach (var childEntry in content.child)
+                        if (childEntry.isDir)
+                        {
+                            GetFolderFiles(baseFolderName, childEntry.id, files);
+                        }
+                        else
+                        {
+                            var tags = GetTags(childEntry, baseFolderName);
+                            if (tags != null)
+                                files.Add(tags);
+                        }
             }
+            else
+            {
+                var result = LibreSonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
+                var error = result.Item as LibreSonicAPI.Error;
+                if (error != null)
+                {
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                var content = result.Item as LibreSonicAPI.Directory;
+
+                if (content?.child != null)
+                    foreach (var childEntry in content.child)
+                        if (childEntry.isDir)
+                        {
+                            GetFolderFiles(baseFolderName, childEntry.id, files);
+                        }
+                        else
+                        {
+                            var tags = GetTags(childEntry, baseFolderName);
+                            if (tags != null)
+                                files.Add(tags);
+                        }
+            }
+            
         }
 
         private static KeyValuePair<byte, string>[][] GetFolderFiles(string path)
         {
             if (!path.EndsWith(@"\"))
-            {
                 path += @"\";
-            }
             var folderId = GetFolderId(path);
             var files = new List<KeyValuePair<byte, string>[]>();
             if (folderId == null)
-            {
                 return new KeyValuePair<byte, string>[][] {};
-            }
             GetFolderFiles(path.Substring(0, path.IndexOf(@"\", StringComparison.Ordinal)), folderId, files);
             return files.ToArray();
         }
@@ -713,21 +813,15 @@ namespace MusicBeePlugin
         {
             var charIndex = url.LastIndexOf(@"\", StringComparison.Ordinal);
             if (charIndex.Equals(-1))
-            {
                 throw new ArgumentException();
-            }
             if (FolderLookup.Count.Equals(0))
-            {
                 GetRootFolders(false, false, false);
-            }
             string folderId;
             if (FolderLookup.TryGetValue(url.Substring(0, charIndex), out folderId)) return folderId;
             var sectionStartIndex = url.IndexOf(@"\", StringComparison.Ordinal) + 1;
             charIndex = url.IndexOf(@"\", sectionStartIndex, StringComparison.Ordinal);
             if (charIndex.Equals(-1))
-            {
                 throw new ArgumentException();
-            }
             while (charIndex != -1)
             {
                 string subFolderId;
@@ -740,30 +834,55 @@ namespace MusicBeePlugin
                     var folderName = url.Substring(sectionStartIndex, charIndex - sectionStartIndex);
                     var request = new RestRequest
                     {
-                        Resource = "getMusicDirectory.view",
+                        Resource = "getMusicDirectory.view"
                     };
                     request.AddParameter("id", folderId);
                     var response = SendRequest(request);
-                    var result = Response.Deserialize(response.Replace("\0", string.Empty));
-                    var error = result.Item as Error;
-                    if (error != null)
-                    {
-                        MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return null;
-                    }
-                    var content = result.Item as Directory;
 
-                    if (content?.child != null)
-                    foreach (var childEntry in content.child)
+                    if (_serverType == SubsonicSettings.ServerType.Subsonic)
                     {
-                        if (childEntry.isDir && childEntry.title == folderName)
+                        var result = SubsonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
+                        var error = result.Item as SubsonicAPI.Error;
+                        if (error != null)
                         {
-                            folderId = childEntry.id;
-                                if (!FolderLookup.ContainsKey(url.Substring(0, charIndex)))
-                                    FolderLookup.Add(url.Substring(0, charIndex), folderId);
-                            break;
+                            MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return null;
                         }
+                        var content = result.Item as SubsonicAPI.Directory;
+
+                        if (content?.child != null)
+                            foreach (var childEntry in content.child)
+                                if (childEntry.isDir && childEntry.title == folderName)
+                                {
+                                    folderId = childEntry.id;
+                                    if (!FolderLookup.ContainsKey(url.Substring(0, charIndex)))
+                                        FolderLookup.Add(url.Substring(0, charIndex), folderId);
+                                    break;
+                        }
+                    
+                    }
+                    else
+                    {
+                        var result = LibreSonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
+                        var error = result.Item as LibreSonicAPI.Error;
+                        if (error != null)
+                        {
+                            MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return null;
+                        }
+                        var content = result.Item as LibreSonicAPI.Directory;
+
+                        if (content?.child != null)
+                            foreach (var childEntry in content.child)
+                                if (childEntry.isDir && childEntry.title == folderName)
+                                {
+                                    folderId = childEntry.id;
+                                    if (!FolderLookup.ContainsKey(url.Substring(0, charIndex)))
+                                        FolderLookup.Add(url.Substring(0, charIndex), folderId);
+                                    break;
+                                }
                     }
                 }
                 sectionStartIndex = charIndex + 1;
@@ -784,43 +903,58 @@ namespace MusicBeePlugin
 
             var request = new RestRequest
             {
-                Resource = "getMusicDirectory.view",
+                Resource = "getMusicDirectory.view"
             };
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
-            var result = Response.Deserialize(response.Replace("\0", String.Empty));
-            var error = result.Item as Error;
-            if (error != null)
-            {
-                MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
-            }
-            var content = result.Item as Directory;
 
-            var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
-
-            if (content?.child != null)
-            foreach (var childEntry in content.child)
+            if (_serverType == SubsonicSettings.ServerType.Subsonic)
             {
-                if (childEntry.path == filePath)
+                var result = SubsonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
+                var error = result.Item as SubsonicAPI.Error;
+                if (error != null)
                 {
-                    return childEntry.id;
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return null;
                 }
+                var content = result.Item as SubsonicAPI.Directory;
+
+                var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
+
+                if (content?.child != null)
+                    foreach (var childEntry in content.child)
+                        if (childEntry.path == filePath)
+                            return childEntry.id;
             }
+            else
+            {
+                var result = LibreSonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
+                var error = result.Item as LibreSonicAPI.Error;
+                if (error != null)
+                {
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return null;
+                }
+                var content = result.Item as LibreSonicAPI.Directory;
+
+                var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
+
+                if (content?.child != null)
+                    foreach (var childEntry in content.child)
+                        if (childEntry.path == filePath)
+                            return childEntry.id;
+            }   
             return null;
         }
 
         private static string GetResolvedUrl(string url)
         {
             if (FolderLookup.Count.Equals(0))
-            {
                 GetRootFolders(false, false, false);
-            }
             if (_collectionNames.Length.Equals(1))
-            {
                 return _collectionNames[0] + url;
-            }
             var path = url.Substring(0, url.LastIndexOf(@"\", StringComparison.Ordinal));
             string lastMatch = null;
             var count = 0;
@@ -830,16 +964,12 @@ namespace MusicBeePlugin
                 lastMatch = item + url;
             }
             if (count.Equals(1))
-            {
                 return lastMatch;
-            }
             foreach (var item in _collectionNames.Where(item => GetFolderId(item + path) != null))
             {
                 lastMatch = item + url;
                 if (GetFileId(lastMatch) != null)
-                {
                     return lastMatch;
-                }
             }
             return url;
         }
@@ -851,28 +981,46 @@ namespace MusicBeePlugin
 
             var request = new RestRequest
             {
-                Resource = "getMusicDirectory.view",
+                Resource = "getMusicDirectory.view"
             };
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
-            var result = Response.Deserialize(response);
-            var error = result.Item as Error;
-            if (error != null)
-            {
-                MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
-            }
-            var content = result.Item as Directory;
 
-            var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
-            if (content?.child != null)
-            foreach (var childEntry in content.child)
+            if (_serverType == SubsonicSettings.ServerType.Subsonic)
             {
-                if (childEntry.path == filePath)
+                var result = SubsonicAPI.Response.Deserialize(response);
+                var error = result.Item as SubsonicAPI.Error;
+                if (error != null)
                 {
-                    return childEntry.coverArt;
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return null;
                 }
+                var content = result.Item as SubsonicAPI.Directory;
+
+                var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
+                if (content?.child != null)
+                    foreach (var childEntry in content.child)
+                        if (childEntry.path == filePath)
+                            return childEntry.coverArt;
+            }
+            else
+            {
+                var result = LibreSonicAPI.Response.Deserialize(response);
+                var error = result.Item as LibreSonicAPI.Error;
+                if (error != null)
+                {
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return null;
+                }
+                var content = result.Item as LibreSonicAPI.Directory;
+
+                var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
+                if (content?.child != null)
+                    foreach (var childEntry in content.child)
+                        if (childEntry.path == filePath)
+                            return childEntry.coverArt;
             }
 
             return null;
@@ -890,48 +1038,63 @@ namespace MusicBeePlugin
 
             var request = new RestRequest
             {
-                Resource = "getMusicDirectory.view",
+                Resource = "getMusicDirectory.view"
             };
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
-            var result = Response.Deserialize(response.Replace("\0", String.Empty));
-            var error = result.Item as Error;
-            if (error != null)
-            {
-                MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
-            }
-            var content = result.Item as Directory;
 
-            var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
-
-            if (content?.child != null)
-            foreach (var childEntry in content.child)
+            if (_serverType == SubsonicSettings.ServerType.Subsonic)
             {
-                if (childEntry.path == filePath)
+                var result = SubsonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
+                var error = result.Item as SubsonicAPI.Error;
+                if (error != null)
                 {
-                    return GetTags(childEntry, childEntry.path);
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return null;
                 }
+                var content = result.Item as SubsonicAPI.Directory;
+
+                var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
+
+                if (content?.child != null)
+                    foreach (var childEntry in content.child)
+                        if (childEntry.path == filePath)
+                            return GetTags(childEntry, childEntry.path);
+            }
+            else
+            {
+                var result = LibreSonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
+                var error = result.Item as LibreSonicAPI.Error;
+                if (error != null)
+                {
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return null;
+                }
+                var content = result.Item as LibreSonicAPI.Directory;
+
+                var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
+
+                if (content?.child != null)
+                    foreach (var childEntry in content.child)
+                        if (childEntry.path == filePath)
+                            return GetTags(childEntry, childEntry.path);
             }
 
             return null;
         }
 
-        private static KeyValuePair<byte, string>[] GetTags(Child child, string baseFolderName)
+        private static KeyValuePair<byte, string>[] GetTags(SubsonicAPI.Child child, string baseFolderName)
         {
             if (child.isVideo)
-            {
                 return null;
-            }
 
             var tags = new KeyValuePair<byte, string>[TagCount + 1];
             var path = string.Empty;
             var attribute = child.path;
             if (attribute != null)
-            {
                 path = attribute.Replace(@"/", @"\");
-            }
             path = baseFolderName == null ? GetResolvedUrl(path) : $"{baseFolderName}\\{path}";
             tags[0] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Url, path);
             tags[1] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Artist, child.artist);
@@ -940,18 +1103,47 @@ namespace MusicBeePlugin
             tags[4] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Year, child.year.ToString());
             tags[5] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.TrackNo, child.track.ToString());
             tags[6] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Genre, child.genre);
-            tags[7] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Duration, (child.duration * 1000).ToString());
+            tags[7] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Duration,
+                (child.duration * 1000).ToString());
             tags[8] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Bitrate, child.bitRate.ToString());
             tags[9] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Size, child.size.ToString());
-            tags[10] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Artwork, string.IsNullOrEmpty(child.coverArt) ? "" : "Y");
+            tags[10] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Artwork,
+                string.IsNullOrEmpty(child.coverArt) ? "" : "Y");
 
             for (var tagIndex = 1; tagIndex < TagCount; tagIndex++)
-            {
                 if (tags[tagIndex].Value == null)
-                {
                     tags[tagIndex] = new KeyValuePair<byte, string>(tags[tagIndex].Key, "");
-                }
-            }
+            return tags;
+        }
+
+        private static KeyValuePair<byte, string>[] GetTags(LibreSonicAPI.Child child, string baseFolderName)
+        {
+            if (child.isVideo)
+                return null;
+
+            var tags = new KeyValuePair<byte, string>[TagCount + 1];
+            var path = string.Empty;
+            var attribute = child.path;
+            if (attribute != null)
+                path = attribute.Replace(@"/", @"\");
+            path = baseFolderName == null ? GetResolvedUrl(path) : $"{baseFolderName}\\{path}";
+            tags[0] = new KeyValuePair<byte, string>((byte)Plugin.FilePropertyType.Url, path);
+            tags[1] = new KeyValuePair<byte, string>((byte)Plugin.MetaDataType.Artist, child.artist);
+            tags[2] = new KeyValuePair<byte, string>((byte)Plugin.MetaDataType.TrackTitle, child.title);
+            tags[3] = new KeyValuePair<byte, string>((byte)Plugin.MetaDataType.Album, child.album);
+            tags[4] = new KeyValuePair<byte, string>((byte)Plugin.MetaDataType.Year, child.year.ToString());
+            tags[5] = new KeyValuePair<byte, string>((byte)Plugin.MetaDataType.TrackNo, child.track.ToString());
+            tags[6] = new KeyValuePair<byte, string>((byte)Plugin.MetaDataType.Genre, child.genre);
+            tags[7] = new KeyValuePair<byte, string>((byte)Plugin.FilePropertyType.Duration,
+                (child.duration * 1000).ToString());
+            tags[8] = new KeyValuePair<byte, string>((byte)Plugin.FilePropertyType.Bitrate, child.bitRate.ToString());
+            tags[9] = new KeyValuePair<byte, string>((byte)Plugin.FilePropertyType.Size, child.size.ToString());
+            tags[10] = new KeyValuePair<byte, string>((byte)Plugin.MetaDataType.Artwork,
+                string.IsNullOrEmpty(child.coverArt) ? "" : "Y");
+
+            for (var tagIndex = 1; tagIndex < TagCount; tagIndex++)
+                if (tags[tagIndex].Value == null)
+                    tags[tagIndex] = new KeyValuePair<byte, string>(tags[tagIndex].Key, "");
             return tags;
         }
 
@@ -966,7 +1158,7 @@ namespace MusicBeePlugin
                 {
                     var request = new RestRequest
                     {
-                        Resource = "getCoverArt.view",
+                        Resource = "getCoverArt.view"
                     };
                     request.AddParameter("id", id);
                     bytes = DownloadData(request);
@@ -986,23 +1178,41 @@ namespace MusicBeePlugin
 
             var request = new RestRequest
             {
-                Resource = "getPlaylists.view",
+                Resource = "getPlaylists.view"
             };
             var response = SendRequest(request);
-            var result = Response.Deserialize(response);
-            var error = result.Item as Error;
-            if (error != null)
-            {
-                MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
-            }
-            var content = result.Item as Playlists;
 
-            if (content?.playlist != null)
-            foreach (var playlistEntry in content.playlist)
+            if (_serverType == SubsonicSettings.ServerType.Subsonic)
             {
-                playlists.Add(new KeyValuePair<string, string>(playlistEntry.id, playlistEntry.name));
+                var result = SubsonicAPI.Response.Deserialize(response);
+                var error = result.Item as SubsonicAPI.Error;
+                if (error != null)
+                {
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return null;
+                }
+                var content = result.Item as SubsonicAPI.Playlists;
+
+                if (content?.playlist != null)
+                    foreach (var playlistEntry in content.playlist)
+                        playlists.Add(new KeyValuePair<string, string>(playlistEntry.id, playlistEntry.name));
+            }
+            else
+            {
+                var result = LibreSonicAPI.Response.Deserialize(response);
+                var error = result.Item as LibreSonicAPI.Error;
+                if (error != null)
+                {
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return null;
+                }
+                var content = result.Item as LibreSonicAPI.Playlists;
+
+                if (content?.playlist != null)
+                    foreach (var playlistEntry in content.playlist)
+                        playlists.Add(new KeyValuePair<string, string>(playlistEntry.id, playlistEntry.name));
             }
 
             return playlists.ToArray();
@@ -1011,31 +1221,53 @@ namespace MusicBeePlugin
         public static KeyValuePair<byte, string>[][] GetPlaylistFiles(string id)
         {
             _lastEx = null;
+            var files = new List<KeyValuePair<byte, string>[]>();
             var request = new RestRequest
             {
-                Resource = "getPlaylist.view",
+                Resource = "getPlaylist.view"
             };
             request.AddParameter("id", id);
             var response = SendRequest(request);
-            var result = Response.Deserialize(response.Replace("\0", string.Empty));
-            var error = result.Item as Error;
-            if (error != null)
-            {
-                MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
-            }
-            var content = result.Item as PlaylistWithSongs;
 
-            var files = new List<KeyValuePair<byte, string>[]>();
-            if (content?.entry != null)
-            foreach (var playlistEntry in content.entry)
+            if (_serverType == SubsonicSettings.ServerType.Subsonic)
             {
-                var tags = GetTags(playlistEntry, null);
-                if (tags != null)
+                var result = SubsonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
+                var error = result.Item as SubsonicAPI.Error;
+                if (error != null)
                 {
-                    files.Add(tags);
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return null;
                 }
+                var content = result.Item as SubsonicAPI.PlaylistWithSongs;
+
+                if (content?.entry != null)
+                    foreach (var playlistEntry in content.entry)
+                    {
+                        var tags = GetTags(playlistEntry, null);
+                        if (tags != null)
+                            files.Add(tags);
+                    }
+            }
+            else
+            {
+                var result = LibreSonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
+                var error = result.Item as LibreSonicAPI.Error;
+                if (error != null)
+                {
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return null;
+                }
+                var content = result.Item as LibreSonicAPI.PlaylistWithSongs;
+
+                if (content?.entry != null)
+                    foreach (var playlistEntry in content.entry)
+                    {
+                        var tags = GetTags(playlistEntry, null);
+                        if (tags != null)
+                            files.Add(tags);
+                    }
             }
             return files.ToArray();
         }
@@ -1072,14 +1304,12 @@ namespace MusicBeePlugin
 
                 var stream = new ConnectStream(uri);
                 if (stream.ContentType.StartsWith("text/xml"))
-                {
                     using (stream)
+                    {
                         _lastEx = new InvalidDataException();
-                }
+                    }
                 else
-                {
                     return stream;
-                }
             }
             return null;
         }
@@ -1091,7 +1321,7 @@ namespace MusicBeePlugin
 
         private static string SendRequest(RestRequest request)
         {
-            var client = new RestClient { BaseUrl = new Uri(_serverName + "rest/") };
+            var client = new RestClient {BaseUrl = new Uri(_serverName + "rest/")};
             request.AddParameter("u", Username);
             if (AuthMethod == SubsonicSettings.AuthMethod.HexPass)
             {
@@ -1107,7 +1337,6 @@ namespace MusicBeePlugin
                 var token = Md5(Password + salt);
                 request.AddParameter("t", token);
                 request.AddParameter("s", salt);
-                
             }
             request.AddParameter("v", ApiVersion);
             request.AddParameter("c", "MusicBee");
@@ -1126,7 +1355,7 @@ namespace MusicBeePlugin
 
         private static byte[] DownloadData(RestRequest request)
         {
-            var client = new RestClient { BaseUrl = new Uri(_serverName + "rest/") };
+            var client = new RestClient {BaseUrl = new Uri(_serverName + "rest/")};
             request.AddParameter("u", Username);
 
             if (AuthMethod == SubsonicSettings.AuthMethod.HexPass)
@@ -1143,7 +1372,6 @@ namespace MusicBeePlugin
                 var token = Md5(Password + salt);
                 request.AddParameter("t", token);
                 request.AddParameter("s", salt);
-
             }
             request.AddParameter("v", ApiVersion);
             request.AddParameter("c", "MusicBee");
@@ -1151,14 +1379,28 @@ namespace MusicBeePlugin
 
             if (response.ContentType.StartsWith("text/xml"))
             {
-                var result = Response.Deserialize(response.Content.Replace("\0", string.Empty));
-                var error = result.Item as Error;
-                if (error != null)
+                if (_serverType == SubsonicSettings.ServerType.Subsonic)
                 {
-                    MessageBox.Show($@"An error has occurred:
+                    var result = SubsonicAPI.Response.Deserialize(response.Content.Replace("\0", string.Empty));
+                    var error = result.Item as SubsonicAPI.Error;
+                    if (error != null)
+                    {
+                        MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return null;
+                        return null;
+                    }
                 }
+                else
+                {
+                    var result = LibreSonicAPI.Response.Deserialize(response.Content.Replace("\0", string.Empty));
+                    var error = result.Item as LibreSonicAPI.Error;
+                    if (error != null)
+                    {
+                        MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return null;
+                    }
+                }   
             }
             return response.RawBytes;
         }
@@ -1189,15 +1431,12 @@ namespace MusicBeePlugin
             return BitConverter.ToString(result).Replace("-", string.Empty).ToLower();
         }
 
-
         private sealed class FileSorter : Comparer<KeyValuePair<byte, string>[]>
         {
             public override int Compare(KeyValuePair<byte, string>[] x, KeyValuePair<byte, string>[] y)
             {
                 if (x != null && y != null)
-                {
                     return string.Compare(x[0].Value, y[0].Value, StringComparison.OrdinalIgnoreCase);
-                }
                 return 0;
             }
         }
