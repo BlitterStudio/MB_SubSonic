@@ -2,27 +2,27 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
 using System.Windows.Forms;
-using Subsonic.Domain;
-using Subsonic.Domain.API.API11;
-using static Subsonic.Domain.SubsonicSettings;
+using MusicBeePlugin.Domain;
+using RestSharp;
 
 namespace MusicBeePlugin
 {
     public static class Subsonic
     {
         private const int TagCount = 10;
+        private const string ApiVersion = "1.13.0";
         private const string Passphrase = "PeekAndPoke";
-        private static SubsonicService _service;
         public static string Host = "localhost";
         public static string Port = "80";
         public static string BasePath = "/";
         public static string Username = "admin";
         public static string Password = "";
-        public static ConnectionProtocol Protocol = ConnectionProtocol.Http;
-        public static AuthMethod AuthMethod = AuthMethod.Token;
-        private static ApiVersion _api = ApiVersion.V13;
+        public static SubsonicSettings.ConnectionProtocol Protocol = SubsonicSettings.ConnectionProtocol.Http;
+        public static SubsonicSettings.AuthMethod AuthMethod = SubsonicSettings.AuthMethod.Token;
         public static bool Transcode;
         public static bool IsInitialized;
         public static string SettingsUrl;
@@ -30,10 +30,13 @@ namespace MusicBeePlugin
         public static Plugin.MB_SendNotificationDelegate SendNotificationsHandler;
         private static string _serverName;
         private static Exception _lastEx;
+        private static readonly object CacheFileLock = new object();
+        private static readonly object CacheLock = new object();
         private static KeyValuePair<byte, string>[][] _cachedFiles;
-        //private static Thread _retrieveThread;
+        private static Thread _retrieveThread;
         private static string[] _collectionNames;
         private static readonly Dictionary<string, ulong> LastModified = new Dictionary<string, ulong>();
+        private static readonly object FolderLookupLock = new object();
         private static readonly Dictionary<string, string> FolderLookup = new Dictionary<string, string>();
 
         public static bool Initialize()
@@ -41,14 +44,14 @@ namespace MusicBeePlugin
             _lastEx = null;
             try
             {
-                // if there's a settings file found, load it
                 if (File.Exists(SettingsUrl))
+                {
                     using (var reader = new StreamReader(SettingsUrl))
                     {
                         var protocolText = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
                         Protocol = protocolText.Equals("HTTP")
-                            ? ConnectionProtocol.Http
-                            : ConnectionProtocol.Https;
+                            ? SubsonicSettings.ConnectionProtocol.Http
+                            : SubsonicSettings.ConnectionProtocol.Https;
                         Host = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
                         Port = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
                         BasePath = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
@@ -56,20 +59,10 @@ namespace MusicBeePlugin
                         Password = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
                         Transcode = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "Y";
                         AuthMethod = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "HexPass"
-                            ? AuthMethod.HexPass
-                            : AuthMethod.Token;
-                        // If HexPass is selected, we need to use an older API version. Otherwise we default to 1.13
-                        _api = AuthMethod == AuthMethod.HexPass
-                            ? ApiVersion.V11
-                            : ApiVersion.V13;
+                            ? SubsonicSettings.AuthMethod.HexPass
+                            : SubsonicSettings.AuthMethod.Token;
                     }
-
-                _serverName = $"{Protocol.ToFriendlyString()}://{Host}:{Port}{BasePath}";
-
-                _service = new SubsonicService(_serverName, Username, Password, AuthMethod, _api.ToFriendlyString(),
-                    Transcode ? "mp3" : "raw");
-
-                // test if the server responds to a Subsonic Ping request
+                }
                 IsInitialized = PingServer();
             }
             catch (Exception ex)
@@ -82,15 +75,16 @@ namespace MusicBeePlugin
 
         private static bool PingServer()
         {
+            _serverName = $"{Protocol.ToFriendlyString()}://{Host}:{Port}{BasePath}";
             try
             {
-                //var request = new RestRequest
-                //{
-                //    Resource = "ping.view"
-                //};
-                //var result = _client.Execute<Response>(request);
-                var result = Task.Run(() => _service.PingServer()).Result;
-                var isPingOk = result.Status == ResponseStatus.ok;
+                var request = new RestRequest
+                {
+                    Resource = "ping.view"
+                };
+                var response = SendRequest(request);
+                var result = Response.Deserialize(response);
+                bool isPingOk = result.status == ResponseStatus.ok;
                 return isPingOk;
             }
             catch (Exception ex)
@@ -102,9 +96,9 @@ namespace MusicBeePlugin
 
         public static void Close()
         {
-            //if ((_retrieveThread == null) || !_retrieveThread.IsAlive) return;
-            //_retrieveThread.Abort();
-            //_retrieveThread = null;
+            if (_retrieveThread == null || !_retrieveThread.IsAlive) return;
+            _retrieveThread.Abort();
+            _retrieveThread = null;
         }
 
         public static bool SetHost(SubsonicSettings settings)
@@ -113,20 +107,25 @@ namespace MusicBeePlugin
 
             settings.Host = settings.Host.Trim();
             if (settings.Host.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+            {
                 settings.Host = settings.Host.Substring(7);
+            }
             else if (settings.Host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
                 settings.Host = settings.Host.Substring(8);
+            }
             settings.Port = settings.Port.Trim();
             settings.BasePath = settings.BasePath.Trim();
             if (!settings.BasePath.EndsWith(@"/"))
+            {
                 settings.BasePath += @"/";
+            }
             var isChanged = !settings.Host.Equals(Host) ||
                             !settings.Port.Equals(Port) ||
                             !settings.BasePath.Equals(BasePath) ||
                             !settings.Username.Equals(Username) ||
                             !settings.Password.Equals(Password) ||
                             !settings.Protocol.Equals(Protocol) ||
-                            !settings.Transcode.Equals(Transcode) ||
                             !settings.Auth.Equals(AuthMethod);
             if (isChanged)
             {
@@ -137,7 +136,6 @@ namespace MusicBeePlugin
                 var previousBasePath = BasePath;
                 var previousUsername = Username;
                 var previousPassword = Password;
-                var previousTranscode = Transcode;
 
                 try
                 {
@@ -147,7 +145,6 @@ namespace MusicBeePlugin
                     BasePath = settings.BasePath;
                     Username = settings.Username;
                     Password = settings.Password;
-                    Transcode = settings.Transcode;
                     AuthMethod = settings.Auth;
 
                     isPingOk = PingServer();
@@ -166,7 +163,9 @@ namespace MusicBeePlugin
                         MessageBoxDefaultButton.Button2);
 
                     if (dialog == DialogResult.Yes)
+                    {
                         isPingOk = true;
+                    }
                 }
 
                 if (!isPingOk)
@@ -177,19 +176,19 @@ namespace MusicBeePlugin
                     BasePath = previousBasePath;
                     Username = previousUsername;
                     Password = previousPassword;
-                    Transcode = previousTranscode;
                     return false;
                 }
-
+                
                 IsInitialized = true;
             }
+            isChanged = isChanged || Transcode;
             if (!isChanged)
+            {
                 return true;
+            }
             using (var writer = new StreamWriter(SettingsUrl))
             {
-                writer.WriteLine(
-                    AesEncryption.Encrypt(
-                        settings.Protocol == ConnectionProtocol.Http ? "HTTP" : "HTTPS", Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.Protocol == SubsonicSettings.ConnectionProtocol.Http? "HTTP" : "HTTPS", Passphrase));
                 writer.WriteLine(AesEncryption.Encrypt(settings.Host, Passphrase));
                 writer.WriteLine(AesEncryption.Encrypt(settings.Port, Passphrase));
                 writer.WriteLine(AesEncryption.Encrypt(settings.BasePath, Passphrase));
@@ -198,9 +197,7 @@ namespace MusicBeePlugin
                 writer.WriteLine(settings.Transcode
                     ? AesEncryption.Encrypt("Y", Passphrase)
                     : AesEncryption.Encrypt("N", Passphrase));
-                writer.WriteLine(
-                    AesEncryption.Encrypt(settings.Auth == AuthMethod.HexPass ? "HexPass" : "Token",
-                        Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.Auth == SubsonicSettings.AuthMethod.HexPass ? "HexPass" : "Token", Passphrase));
             }
             Transcode = settings.Transcode;
             try
@@ -223,7 +220,7 @@ namespace MusicBeePlugin
         {
             var exists = string.IsNullOrEmpty(path) ||
                          path.Equals(@"\") ||
-                         (GetFolderId(path) != null);
+                         GetFolderId(path) != null;
             return exists;
         }
 
@@ -256,7 +253,9 @@ namespace MusicBeePlugin
             else
             {
                 if (!path.EndsWith(@"\"))
+                {
                     path += @"\";
+                }
                 var folderId = GetFolderId(path);
                 if (string.IsNullOrEmpty(folderId))
                 {
@@ -264,26 +263,34 @@ namespace MusicBeePlugin
                 }
                 else
                 {
-                    //var request = new RestRequest
-                    //{
-                    //    Resource = "getMusicDirectory.view"
-                    //};
-                    //request.AddParameter("id", folderId);
-
-                    //var result = _client.Execute<Directory>(request);
-                    var id = folderId;
-                    var result = Task.Run(() => _service.GetMusicDirectory(id)).Result;
+                    var request = new RestRequest
+                    {
+                        Resource = "getMusicDirectory.view",
+                    };
+                    request.AddParameter("id", folderId);
+                    var response = SendRequest(request);
+                    var result = Response.Deserialize(response);
+                    var error = result.Item as Error;
+                    if (error != null)
+                    {
+                        MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return null;
+                    }
+                    var content = result.Item as Directory;
 
                     var list = new List<string>();
-                    if (result?.Child != null)
-                        foreach (var dirChild in result.Child)
+                    if (content?.child != null)
+                    foreach (var dirChild in content.child)
+                    {
+                        folderId = dirChild.id;
+                        var folderName = path + dirChild.title;
+                        list.Add(folderName);
+                        if (!FolderLookup.ContainsKey(folderName))
                         {
-                            folderId = dirChild.Id;
-                            var folderName = path + dirChild.Title;
-                            list.Add(folderName);
-                            if (!FolderLookup.ContainsKey(folderName))
-                                FolderLookup.Add(folderName, folderId);
+                            FolderLookup.Add(folderName, folderId);
                         }
+                    }
                     folders = list.ToArray();
                 }
             }
@@ -292,7 +299,7 @@ namespace MusicBeePlugin
 
         public static KeyValuePair<byte, string>[][] GetFiles(string path)
         {
-            //var threadStarted = false;
+            var threadStarted = false;
             _lastEx = null;
             KeyValuePair<byte, string>[][] files;
             if (!IsInitialized)
@@ -303,26 +310,30 @@ namespace MusicBeePlugin
             {
                 var cacheLoaded = _cachedFiles != null;
                 if (!cacheLoaded && !File.Exists(CacheUrl))
+                {
                     files = null;
+                }
                 else
+                {
                     files = GetCachedFiles();
-                //var cacheUpdating = _retrieveThread != null;
-                //if (!cacheUpdating && (string.IsNullOrEmpty(path) || !cacheLoaded))
-                //{
-                //    threadStarted = true;
-                //    _retrieveThread = new Thread(ExecuteGetFolderFiles) {IsBackground = true};
-                //    _retrieveThread.Start();
-                //}
-
+                }
+                var cacheUpdating = _retrieveThread != null;
+                if (!cacheUpdating && (string.IsNullOrEmpty(path) || !cacheLoaded))
+                {
+                    threadStarted = true;
+                    _retrieveThread = new Thread(ExecuteGetFolderFiles) {IsBackground = true};
+                    _retrieveThread.Start();
+                }
                 if (!string.IsNullOrEmpty(path))
                 {
-                    //if (!cacheLoaded || cacheUpdating || (files == null))
-                    if (!cacheLoaded || (files == null))
+                    if (!cacheLoaded || cacheUpdating || files == null)
+                    {
                         return GetFolderFiles(path);
+                    }
                     files = GetPathFilteredFiles(files, path);
                 }
             }
-            //if (threadStarted) return files;
+            if (threadStarted) return files;
             try
             {
                 SendNotificationsHandler.Invoke(Plugin.CallbackType.FilesRetrievedNoChange);
@@ -338,12 +349,11 @@ namespace MusicBeePlugin
         {
             if (_cachedFiles != null) return _cachedFiles;
             KeyValuePair<byte, string>[][] files = null;
-            //lock (CacheFileLock)
-            //{
-            using (
-                var stream = new FileStream(CacheUrl, FileMode.Open, FileAccess.Read, FileShare.Read, 4096,
-                    FileOptions.SequentialScan))
+            lock (CacheFileLock)
             {
+                using (
+                    var stream = new FileStream(CacheUrl, FileMode.Open, FileAccess.Read, FileShare.Read, 4096,
+                        FileOptions.SequentialScan))
                 using (var reader = new BinaryReader(stream))
                 {
                     try
@@ -368,7 +378,9 @@ namespace MusicBeePlugin
                             {
                                 var collectionName = reader.ReadString();
                                 if (!LastModified.ContainsKey(collectionName))
+                                {
                                     LastModified.Add(collectionName, reader.ReadUInt64());
+                                }
                             }
                         }
                         reader.Close();
@@ -379,12 +391,13 @@ namespace MusicBeePlugin
                     }
                 }
             }
-            //}
-            //lock (CacheLock)
-            //{
-            if ((_cachedFiles == null) && (files != null))
-                _cachedFiles = files;
-            //}
+            lock (CacheLock)
+            {
+                if (_cachedFiles == null && files != null)
+                {
+                    _cachedFiles = files;
+                }
+            }
             return _cachedFiles;
         }
 
@@ -392,8 +405,10 @@ namespace MusicBeePlugin
             string path)
         {
             if (!path.EndsWith(@"\"))
+            {
                 path += @"\";
-            files = files.AsParallel().Where(t => t[0].Value.StartsWith(path)).ToArray();
+            }
+            files = files.Where(t => t[0].Value.StartsWith(path)).ToArray();
             Array.Sort(files, new FileSorter());
             return files;
         }
@@ -413,15 +428,19 @@ namespace MusicBeePlugin
                 else
                 {
                     foreach (var folder in folders)
+                    {
                         GetFolderFiles(folder.Value, folder.Key, list);
+                    }
                     files = list.ToArray();
-                    //lock (CacheLock)
-                    //{
-                    var oldCachedFiles = _cachedFiles;
-                    _cachedFiles = files;
-                    //}
-                    anyChanges = (oldCachedFiles == null) || (_cachedFiles.Length != oldCachedFiles.Length);
+                    KeyValuePair<byte, string>[][] oldCachedFiles;
+                    lock (CacheLock)
+                    {
+                        oldCachedFiles = _cachedFiles;
+                        _cachedFiles = files;
+                    }
+                    anyChanges = oldCachedFiles == null || _cachedFiles.Length != oldCachedFiles.Length;
                     if (!anyChanges)
+                    {
                         for (var index = 0; index < _cachedFiles.Length; index++)
                         {
                             var tags1 = _cachedFiles[index];
@@ -429,11 +448,12 @@ namespace MusicBeePlugin
                             for (var tagIndex = 0; tagIndex < TagCount; tagIndex++)
                             {
                                 if (string.Compare(tags1[tagIndex].Value, tags2[tagIndex].Value,
-                                        StringComparison.Ordinal) == 0) continue;
+                                    StringComparison.Ordinal) == 0) continue;
                                 anyChanges = true;
                                 break;
                             }
                         }
+                    }
                 }
                 if (!anyChanges)
                 {
@@ -458,23 +478,24 @@ namespace MusicBeePlugin
                     }
                     try
                     {
-                        //lock (CacheFileLock)
-                        //{
-                        using (
-                            var stream = new FileStream(CacheUrl, FileMode.Create, FileAccess.Write,
-                                FileShare.None))
+                        lock (CacheFileLock)
                         {
+                            using (
+                                var stream = new FileStream(CacheUrl, FileMode.Create, FileAccess.Write,
+                                    FileShare.None))
                             using (var writer = new BinaryWriter(stream))
                             {
                                 writer.Write(2); // version
                                 writer.Write(files.Length);
                                 foreach (var tags in files)
+                                {
                                     for (var tagIndex = 0; tagIndex <= TagCount; tagIndex++)
                                     {
                                         var tag = tags[tagIndex];
                                         writer.Write(tag.Key);
                                         writer.Write(tag.Value);
                                     }
+                                }
                                 writer.Write(LastModified.Count);
                                 foreach (var item in LastModified)
                                 {
@@ -484,7 +505,6 @@ namespace MusicBeePlugin
                                 writer.Close();
                             }
                         }
-                        //}
                     }
                     catch (Exception ex)
                     {
@@ -506,7 +526,7 @@ namespace MusicBeePlugin
             }
             finally
             {
-                //_retrieveThread = null;
+                _retrieveThread = null;
             }
         }
 
@@ -514,26 +534,33 @@ namespace MusicBeePlugin
             bool dirtyOnly)
         {
             var folders = new List<KeyValuePair<string, string>>();
-            //lock (FolderLookupLock)
-            //{
-            if (!refresh && !FolderLookup.Count.Equals(0)) return folders;
-            folders = new List<KeyValuePair<string, string>>();
-            var collection = new List<KeyValuePair<string, string>>();
+            lock (FolderLookupLock)
+            {
+                if (!refresh && !FolderLookup.Count.Equals(0)) return folders;
+                folders = new List<KeyValuePair<string, string>>();
+                var collection = new List<KeyValuePair<string, string>>();
 
-            //var request = new RestRequest
-            //{
-            //    Resource = "getMusicFolders.view"
-            //};
-
-            //var result = _client.Execute<MusicFolders>(request);
-            var result = Task.Run(() => _service.GetMusicFolders()).Result;
-
-            if (result?.MusicFolder != null)
-                foreach (var folder in result.MusicFolder)
+                var request = new RestRequest
                 {
-                    var folderId = folder.Id.ToString();
-                    var folderName = folder.Name;
-                    if ((folderName != null) && FolderLookup.ContainsKey(folderName))
+                    Resource = "getMusicFolders.view",
+                };
+                var response = SendRequest(request);
+                var result = Response.Deserialize(response);
+                var error = result.Item as Error;
+                if (error != null)
+                {
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return null;
+                }
+                var content = (MusicFolders)result.Item;
+
+                if (content.musicFolder != null)
+                foreach (var folder in content.musicFolder)
+                {
+                    var folderId = folder.id.ToString();
+                    var folderName = folder.name;
+                    if (folderName != null && FolderLookup.ContainsKey(folderName))
                     {
                         FolderLookup[folderName] = folderId;
                     }
@@ -544,18 +571,25 @@ namespace MusicBeePlugin
                     collection.Add(new KeyValuePair<string, string>(folderId, folderName));
                 }
 
-            _collectionNames = new string[collection.Count];
-            for (var index = 0; index < collection.Count; index++)
-                _collectionNames[index] = collection[index].Value + @"\";
-            var isDirty = false;
-            foreach (var collectionItem in collection)
-                folders.AddRange(GetRootFolders(collectionItem.Key, collectionItem.Value, true, refresh && dirtyOnly,
-                    ref isDirty));
-            if (collectionOnly)
-                return collection;
-            if (dirtyOnly && !isDirty)
-                return null;
-            //}
+                _collectionNames = new string[collection.Count];
+                for (var index = 0; index < collection.Count; index++)
+                {
+                    _collectionNames[index] = collection[index].Value + @"\";
+                }
+                var isDirty = false;
+                foreach (var collectionItem in collection)
+                {
+                    folders.AddRange(GetRootFolders(collectionItem.Key, collectionItem.Value, true, refresh && dirtyOnly, ref isDirty));
+                }
+                if (collectionOnly)
+                {
+                    return collection;
+                }
+                if (dirtyOnly && !isDirty)
+                {
+                    return null;
+                }
+            }
             return folders;
         }
 
@@ -565,45 +599,59 @@ namespace MusicBeePlugin
         {
             var folders = new List<KeyValuePair<string, string>>();
 
-            //var request = new RestRequest
-            //{
-            //    Resource = "getIndexes.view"
-            //};
-            //request.AddParameter("musicFolderId", collectionId);
-            //var result = _client.Execute<Indexes>(request);
-            var result = Task.Run(() => _service.GetIndexes(collectionId)).Result;
-
-            if (updateIsDirty && (result?.LastModified != null))
+            var request = new RestRequest
             {
-                var serverLastModified = (ulong) result.LastModified;
-                //lock (CacheFileLock)
-                //{
-                ulong clientLastModified;
-                if (!LastModified.TryGetValue(collectionName, out clientLastModified))
+                Resource = "getIndexes.view",
+            };
+            request.AddParameter("musicFolderId", collectionId);
+            var response = SendRequest(request);
+            var result = Response.Deserialize(response);
+            var error = result.Item as Error;
+            if (error != null)
+            {
+                MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
+            var content = result.Item as Indexes;
+
+            if (updateIsDirty && content?.lastModified != null)
+            {
+                var serverLastModified = (ulong)content.lastModified;
+                lock (CacheFileLock)
                 {
-                    isDirty = true;
-                    LastModified.Add(collectionName, serverLastModified);
-                }
-                else if (serverLastModified > clientLastModified)
-                {
-                    isDirty = true;
-                    LastModified[collectionName] = serverLastModified;
-                }
-                //}                
+                    ulong clientLastModified;
+                    if (!LastModified.TryGetValue(collectionName, out clientLastModified))
+                    {
+                        isDirty = true;
+                        LastModified.Add(collectionName, serverLastModified);
+                    }
+                    else if (serverLastModified > clientLastModified)
+                    {
+                        isDirty = true;
+                        LastModified[collectionName] = serverLastModified;
+                    }
+                }                
             }
 
-            if (result?.Index != null)
-                foreach (var indexChild in result.Index)
-                    foreach (var artistChild in indexChild.Artist)
+            if (content?.index != null)
+            foreach (var indexChild in content.index)
+            {
+                foreach (var artistChild in indexChild.artist)
+                {
+                    var folderId = artistChild.id;
+                    var folderName = $"{collectionName}\\{artistChild.name}";
+                    if (FolderLookup.ContainsKey(folderName))
                     {
-                        var folderId = artistChild.Id;
-                        var folderName = $"{collectionName}\\{artistChild.Name}";
-                        if (FolderLookup.ContainsKey(folderName))
-                            FolderLookup[folderName] = folderId;
-                        else
-                            FolderLookup.Add(folderName, folderId);
-                        folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
+                        FolderLookup[folderName] = folderId;
                     }
+                    else
+                    {
+                        FolderLookup.Add(folderName, folderId);
+                    }
+                    folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
+                }
+            }
 
             return folders;
         }
@@ -611,37 +659,52 @@ namespace MusicBeePlugin
         private static void GetFolderFiles(string baseFolderName, string folderId,
             ICollection<KeyValuePair<byte, string>[]> files)
         {
-            //var request = new RestRequest
-            //{
-            //    Resource = "getMusicDirectory.view"
-            //};
-            //request.AddParameter("id", folderId);
-            //var result = _client.Execute<Directory>(request);
-            //            var result = Response.Deserialize(response.Replace("\0", string.Empty));
-            var result = Task.Run(() => _service.GetMusicDirectory(folderId)).Result;
+            var request = new RestRequest
+            {
+                Resource = "getMusicDirectory.view",
+            };
+            request.AddParameter("id", folderId);
+            var response = SendRequest(request);
+            var result = Response.Deserialize(response.Replace("\0", string.Empty));
+            var error = result.Item as Error;
+            if (error != null)
+            {
+                MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            var content = result.Item as Directory;
 
-            if (result?.Child != null)
-                foreach (var childEntry in result.Child)
-                    if (childEntry.IsDir)
+            if (content?.child != null)
+            foreach (var childEntry in content.child)
+            {
+                if (childEntry.isDir)
+                {
+                    GetFolderFiles(baseFolderName, childEntry.id, files);
+                }
+                else
+                {
+                    var tags = GetTags(childEntry, baseFolderName);
+                    if (tags != null)
                     {
-                        GetFolderFiles(baseFolderName, childEntry.Id, files);
+                        files.Add(tags);
                     }
-                    else
-                    {
-                        var tags = GetTags(childEntry, baseFolderName);
-                        if (tags != null)
-                            files.Add(tags);
-                    }
+                }
+            }
         }
 
         private static KeyValuePair<byte, string>[][] GetFolderFiles(string path)
         {
             if (!path.EndsWith(@"\"))
+            {
                 path += @"\";
+            }
             var folderId = GetFolderId(path);
             var files = new List<KeyValuePair<byte, string>[]>();
             if (folderId == null)
+            {
                 return new KeyValuePair<byte, string>[][] {};
+            }
             GetFolderFiles(path.Substring(0, path.IndexOf(@"\", StringComparison.Ordinal)), folderId, files);
             return files.ToArray();
         }
@@ -650,15 +713,21 @@ namespace MusicBeePlugin
         {
             var charIndex = url.LastIndexOf(@"\", StringComparison.Ordinal);
             if (charIndex.Equals(-1))
+            {
                 throw new ArgumentException();
+            }
             if (FolderLookup.Count.Equals(0))
+            {
                 GetRootFolders(false, false, false);
+            }
             string folderId;
             if (FolderLookup.TryGetValue(url.Substring(0, charIndex), out folderId)) return folderId;
             var sectionStartIndex = url.IndexOf(@"\", StringComparison.Ordinal) + 1;
             charIndex = url.IndexOf(@"\", sectionStartIndex, StringComparison.Ordinal);
             if (charIndex.Equals(-1))
+            {
                 throw new ArgumentException();
+            }
             while (charIndex != -1)
             {
                 string subFolderId;
@@ -669,25 +738,33 @@ namespace MusicBeePlugin
                 else if (folderId != null)
                 {
                     var folderName = url.Substring(sectionStartIndex, charIndex - sectionStartIndex);
-                    //var request = new RestRequest
-                    //{
-                    //    Resource = "getMusicDirectory.view"
-                    //};
-                    //request.AddParameter("id", folderId);
-                    //var result = _client.Execute<Directory>(request);
-                    //                    var result = Response.Deserialize(response.Replace("\0", string.Empty));
-                    var id = folderId;
-                    var result = Task.Run(() => _service.GetMusicDirectory(id)).Result;
+                    var request = new RestRequest
+                    {
+                        Resource = "getMusicDirectory.view",
+                    };
+                    request.AddParameter("id", folderId);
+                    var response = SendRequest(request);
+                    var result = Response.Deserialize(response.Replace("\0", string.Empty));
+                    var error = result.Item as Error;
+                    if (error != null)
+                    {
+                        MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return null;
+                    }
+                    var content = result.Item as Directory;
 
-                    if (result?.Child != null)
-                        foreach (var childEntry in result.Child)
-                            if (childEntry.IsDir && (childEntry.Title == folderName))
-                            {
-                                folderId = childEntry.Id;
+                    if (content?.child != null)
+                    foreach (var childEntry in content.child)
+                    {
+                        if (childEntry.isDir && childEntry.title == folderName)
+                        {
+                            folderId = childEntry.id;
                                 if (!FolderLookup.ContainsKey(url.Substring(0, charIndex)))
                                     FolderLookup.Add(url.Substring(0, charIndex), folderId);
-                                break;
-                            }
+                            break;
+                        }
+                    }
                 }
                 sectionStartIndex = charIndex + 1;
                 charIndex = url.IndexOf(@"\", sectionStartIndex, StringComparison.Ordinal);
@@ -705,30 +782,45 @@ namespace MusicBeePlugin
             var folderId = GetFolderId(url);
             if (folderId == null) return null;
 
-            //var request = new RestRequest
-            //{
-            //    Resource = "getMusicDirectory.view"
-            //};
-            //request.AddParameter("id", folderId);
-            //var result = _client.Execute<Directory>(request);
-            //            var result = Response.Deserialize(response.Replace("\0", string.Empty));
-            var result = Task.Run(() => _service.GetMusicDirectory(folderId)).Result;
+            var request = new RestRequest
+            {
+                Resource = "getMusicDirectory.view",
+            };
+            request.AddParameter("id", folderId);
+            var response = SendRequest(request);
+            var result = Response.Deserialize(response.Replace("\0", String.Empty));
+            var error = result.Item as Error;
+            if (error != null)
+            {
+                MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
+            var content = result.Item as Directory;
 
             var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
 
-            if (result?.Child != null)
-                foreach (var childEntry in result.Child)
-                    if (childEntry.Path == filePath)
-                        return childEntry.Id;
+            if (content?.child != null)
+            foreach (var childEntry in content.child)
+            {
+                if (childEntry.path == filePath)
+                {
+                    return childEntry.id;
+                }
+            }
             return null;
         }
 
         private static string GetResolvedUrl(string url)
         {
             if (FolderLookup.Count.Equals(0))
+            {
                 GetRootFolders(false, false, false);
+            }
             if (_collectionNames.Length.Equals(1))
+            {
                 return _collectionNames[0] + url;
+            }
             var path = url.Substring(0, url.LastIndexOf(@"\", StringComparison.Ordinal));
             string lastMatch = null;
             var count = 0;
@@ -738,12 +830,16 @@ namespace MusicBeePlugin
                 lastMatch = item + url;
             }
             if (count.Equals(1))
+            {
                 return lastMatch;
+            }
             foreach (var item in _collectionNames.Where(item => GetFolderId(item + path) != null))
             {
                 lastMatch = item + url;
                 if (GetFileId(lastMatch) != null)
+                {
                     return lastMatch;
+                }
             }
             return url;
         }
@@ -753,20 +849,32 @@ namespace MusicBeePlugin
             var folderId = GetFolderId(url);
             if (folderId == null) return null;
 
-            //var request = new RestRequest
-            //{
-            //    Resource = "getMusicDirectory.view"
-            //};
-            //request.AddParameter("id", folderId);
-            //var result = _client.Execute<Directory>(request);
-            //            var result = Response.Deserialize(response.Replace("\0", string.Empty));
-            var result = Task.Run(() => _service.GetMusicDirectory(folderId)).Result;
+            var request = new RestRequest
+            {
+                Resource = "getMusicDirectory.view",
+            };
+            request.AddParameter("id", folderId);
+            var response = SendRequest(request);
+            var result = Response.Deserialize(response);
+            var error = result.Item as Error;
+            if (error != null)
+            {
+                MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
+            var content = result.Item as Directory;
 
             var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
-            if (result?.Child != null)
-                foreach (var childEntry in result.Child)
-                    if (childEntry.Path == filePath)
-                        return childEntry.CoverArt;
+            if (content?.child != null)
+            foreach (var childEntry in content.child)
+            {
+                if (childEntry.path == filePath)
+                {
+                    return childEntry.coverArt;
+                }
+            }
+
             return null;
         }
 
@@ -780,52 +888,70 @@ namespace MusicBeePlugin
             var folderId = GetFolderId(url);
             if (folderId == null) return null;
 
-            //var request = new RestRequest
-            //{
-            //    Resource = "getMusicDirectory.view"
-            //};
-            //request.AddParameter("id", folderId);
-            //var result = _client.Execute<Directory>(request);
-            //            var result = Response.Deserialize(response.Replace("\0", string.Empty));
-            var result = Task.Run(() => _service.GetMusicDirectory(folderId)).Result;
+            var request = new RestRequest
+            {
+                Resource = "getMusicDirectory.view",
+            };
+            request.AddParameter("id", folderId);
+            var response = SendRequest(request);
+            var result = Response.Deserialize(response.Replace("\0", String.Empty));
+            var error = result.Item as Error;
+            if (error != null)
+            {
+                MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
+            var content = result.Item as Directory;
 
             var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
 
-            if (result?.Child != null)
-                foreach (var childEntry in result.Child)
-                    if (childEntry.Path == filePath)
-                        return GetTags(childEntry, childEntry.Path);
+            if (content?.child != null)
+            foreach (var childEntry in content.child)
+            {
+                if (childEntry.path == filePath)
+                {
+                    return GetTags(childEntry, childEntry.path);
+                }
+            }
+
             return null;
         }
 
         private static KeyValuePair<byte, string>[] GetTags(Child child, string baseFolderName)
         {
-            if (child.IsVideo)
+            if (child.isVideo)
+            {
                 return null;
+            }
 
             var tags = new KeyValuePair<byte, string>[TagCount + 1];
             var path = string.Empty;
-            var attribute = child.Path;
+            var attribute = child.path;
             if (attribute != null)
+            {
                 path = attribute.Replace(@"/", @"\");
+            }
             path = baseFolderName == null ? GetResolvedUrl(path) : $"{baseFolderName}\\{path}";
             tags[0] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Url, path);
-            tags[1] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Artist, child.Artist);
-            tags[2] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.TrackTitle, child.Title);
-            tags[3] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Album, child.Album);
-            tags[4] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Year, child.Year.ToString());
-            tags[5] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.TrackNo, child.Track.ToString());
-            tags[6] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Genre, child.Genre);
-            tags[7] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Duration,
-                (child.Duration*1000).ToString());
-            tags[8] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Bitrate, child.BitRate.ToString());
-            tags[9] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Size, child.Size.ToString());
-            tags[10] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Artwork,
-                string.IsNullOrEmpty(child.CoverArt) ? "" : "Y");
+            tags[1] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Artist, child.artist);
+            tags[2] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.TrackTitle, child.title);
+            tags[3] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Album, child.album);
+            tags[4] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Year, child.year.ToString());
+            tags[5] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.TrackNo, child.track.ToString());
+            tags[6] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Genre, child.genre);
+            tags[7] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Duration, (child.duration * 1000).ToString());
+            tags[8] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Bitrate, child.bitRate.ToString());
+            tags[9] = new KeyValuePair<byte, string>((byte) Plugin.FilePropertyType.Size, child.size.ToString());
+            tags[10] = new KeyValuePair<byte, string>((byte) Plugin.MetaDataType.Artwork, string.IsNullOrEmpty(child.coverArt) ? "" : "Y");
 
             for (var tagIndex = 1; tagIndex < TagCount; tagIndex++)
+            {
                 if (tags[tagIndex].Value == null)
+                {
                     tags[tagIndex] = new KeyValuePair<byte, string>(tags[tagIndex].Key, "");
+                }
+            }
             return tags;
         }
 
@@ -837,7 +963,14 @@ namespace MusicBeePlugin
             {
                 var id = GetCoverArtId(url);
                 if (id != null)
-                    bytes = Task.Run(() => _service.GetCoverArt(id)).Result;
+                {
+                    var request = new RestRequest
+                    {
+                        Resource = "getCoverArt.view",
+                    };
+                    request.AddParameter("id", id);
+                    bytes = DownloadData(request);
+                }
             }
             catch (Exception ex)
             {
@@ -850,16 +983,27 @@ namespace MusicBeePlugin
         {
             _lastEx = null;
             var playlists = new List<KeyValuePair<string, string>>();
-            //var request = new RestRequest
-            //{
-            //    Resource = "getPlaylists.view",
-            //    //RootElement = "playlists"
-            //};
-            //var result = _client.Execute<Playlists>(request);
-            var result = Task.Run(() => _service.GetPlaylists()).Result;
-            if (result?.Playlist != null)
-                foreach (var playlistEntry in result.Playlist)
-                    playlists.Add(new KeyValuePair<string, string>(playlistEntry.Id, playlistEntry.Name));
+
+            var request = new RestRequest
+            {
+                Resource = "getPlaylists.view",
+            };
+            var response = SendRequest(request);
+            var result = Response.Deserialize(response);
+            var error = result.Item as Error;
+            if (error != null)
+            {
+                MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
+            var content = result.Item as Playlists;
+
+            if (content?.playlist != null)
+            foreach (var playlistEntry in content.playlist)
+            {
+                playlists.Add(new KeyValuePair<string, string>(playlistEntry.id, playlistEntry.name));
+            }
 
             return playlists.ToArray();
         }
@@ -867,23 +1011,32 @@ namespace MusicBeePlugin
         public static KeyValuePair<byte, string>[][] GetPlaylistFiles(string id)
         {
             _lastEx = null;
-            //var request = new RestRequest
-            //{
-            //    Resource = "getPlaylist.view"
-            //};
-            //request.AddParameter("id", id);
-            //var result = _client.Execute<PlaylistWithSongs>(request);
-            //            var result = Response.Deserialize(response.Replace("\0", string.Empty));
-            var result = Task.Run(() => _service.GetPlaylist(id)).Result;
+            var request = new RestRequest
+            {
+                Resource = "getPlaylist.view",
+            };
+            request.AddParameter("id", id);
+            var response = SendRequest(request);
+            var result = Response.Deserialize(response.Replace("\0", string.Empty));
+            var error = result.Item as Error;
+            if (error != null)
+            {
+                MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
+            var content = result.Item as PlaylistWithSongs;
 
             var files = new List<KeyValuePair<byte, string>[]>();
-            if (result?.Entry != null)
-                foreach (var playlistEntry in result.Entry)
+            if (content?.entry != null)
+            foreach (var playlistEntry in content.entry)
+            {
+                var tags = GetTags(playlistEntry, null);
+                if (tags != null)
                 {
-                    var tags = GetTags(playlistEntry, null);
-                    if (tags != null)
-                        files.Add(tags);
+                    files.Add(tags);
                 }
+            }
             return files.ToArray();
         }
 
@@ -892,9 +1045,42 @@ namespace MusicBeePlugin
             _lastEx = null;
             var id = GetFileId(url);
             if (id == null)
+            {
                 _lastEx = new FileNotFoundException();
+            }
             else
-                return Task.Run(() => _service.GetStream(id)).Result;
+            {
+                var salt = NewSalt();
+                var token = Md5(Password + salt);
+                var encoding = Transcode ? "mp3" : "raw";
+                string uriLine;
+                if (AuthMethod == SubsonicSettings.AuthMethod.HexPass)
+                {
+                    var ba = Encoding.Default.GetBytes(Password);
+                    var hexString = BitConverter.ToString(ba);
+                    hexString = hexString.Replace("-", "");
+                    var hexPass = $"enc:{hexString}";
+                    uriLine =
+                        $"{_serverName}rest/stream.view?u={Username}&p={hexPass}&v={ApiVersion}&c=MusicBee&id={id}&format={encoding}";
+                }
+                else
+                {
+                    uriLine =
+                        $"{_serverName}rest/stream.view?u={Username}&t={token}&s={salt}&v={ApiVersion}&c=MusicBee&id={id}&format={encoding}";
+                }
+                var uri = new Uri(uriLine);
+
+                var stream = new ConnectStream(uri);
+                if (stream.ContentType.StartsWith("text/xml"))
+                {
+                    using (stream)
+                        _lastEx = new InvalidDataException();
+                }
+                else
+                {
+                    return stream;
+                }
+            }
             return null;
         }
 
@@ -903,12 +1089,115 @@ namespace MusicBeePlugin
             return _lastEx;
         }
 
+        private static string SendRequest(RestRequest request)
+        {
+            var client = new RestClient { BaseUrl = new Uri(_serverName + "rest/") };
+            request.AddParameter("u", Username);
+            if (AuthMethod == SubsonicSettings.AuthMethod.HexPass)
+            {
+                var ba = Encoding.Default.GetBytes(Password);
+                var hexString = BitConverter.ToString(ba);
+                hexString = hexString.Replace("-", "");
+                var hexPass = $"enc:{hexString}";
+                request.AddParameter("p", hexPass);
+            }
+            else
+            {
+                var salt = NewSalt();
+                var token = Md5(Password + salt);
+                request.AddParameter("t", token);
+                request.AddParameter("s", salt);
+                
+            }
+            request.AddParameter("v", ApiVersion);
+            request.AddParameter("c", "MusicBee");
+
+            var response = client.Execute(request);
+
+            if (response.ErrorException != null)
+            {
+                const string message = "Error retrieving response from Subsonic server:";
+                MessageBox.Show($@"{message}
+
+{response.ErrorException}", @"Subsonic Plugin Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            return response.Content;
+        }
+
+        private static byte[] DownloadData(RestRequest request)
+        {
+            var client = new RestClient { BaseUrl = new Uri(_serverName + "rest/") };
+            request.AddParameter("u", Username);
+
+            if (AuthMethod == SubsonicSettings.AuthMethod.HexPass)
+            {
+                var ba = Encoding.Default.GetBytes(Password);
+                var hexString = BitConverter.ToString(ba);
+                hexString = hexString.Replace("-", "");
+                var hexPass = $"enc:{hexString}";
+                request.AddParameter("p", hexPass);
+            }
+            else
+            {
+                var salt = NewSalt();
+                var token = Md5(Password + salt);
+                request.AddParameter("t", token);
+                request.AddParameter("s", salt);
+
+            }
+            request.AddParameter("v", ApiVersion);
+            request.AddParameter("c", "MusicBee");
+            var response = client.Execute(request);
+
+            if (response.ContentType.StartsWith("text/xml"))
+            {
+                var result = Response.Deserialize(response.Content.Replace("\0", string.Empty));
+                var error = result.Item as Error;
+                if (error != null)
+                {
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return null;
+                }
+            }
+            return response.RawBytes;
+        }
+
+        private static string NewSalt()
+        {
+            // Define min and max salt sizes.
+            var minSaltSize = 6;
+            var maxSaltSize = 12;
+
+            // Generate a random number for the size of the salt.
+            var random = new Random();
+            var saltSize = random.Next(minSaltSize, maxSaltSize);
+            // Allocate a byte array, which will hold the salt.
+            var saltBytes = new byte[saltSize];
+            // Initialize a random number generator.
+            var rng = new RNGCryptoServiceProvider();
+            // Fill the salt with cryptographically strong byte values.
+            rng.GetNonZeroBytes(saltBytes);
+            return BitConverter.ToString(saltBytes).Replace("-", string.Empty).ToLower();
+        }
+
+        private static string Md5(string saltedPassword)
+        {
+            //Create a byte array from source data.
+            var tmpSource = Encoding.ASCII.GetBytes(saltedPassword);
+            var result = new MD5CryptoServiceProvider().ComputeHash(tmpSource);
+            return BitConverter.ToString(result).Replace("-", string.Empty).ToLower();
+        }
+
+
         private sealed class FileSorter : Comparer<KeyValuePair<byte, string>[]>
         {
             public override int Compare(KeyValuePair<byte, string>[] x, KeyValuePair<byte, string>[] y)
             {
-                if ((x != null) && (y != null))
+                if (x != null && y != null)
+                {
                     return string.Compare(x[0].Value, y[0].Value, StringComparison.OrdinalIgnoreCase);
+                }
                 return 0;
             }
         }

@@ -1,8 +1,6 @@
 # MB_SubSonic
 MusicBee SubSonic plugin
 
-This is the development branch, where things may be unstable, crash or just don't work.
-
 Description
 ===========
 With this plugin MusicBee acts as a Subsonic player.
