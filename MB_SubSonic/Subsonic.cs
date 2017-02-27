@@ -7,8 +7,6 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using MusicBeePlugin.Domain;
-using MusicBeePlugin.SubsonicAPI;
-using MusicBeePlugin.LibreSonicAPI;
 using RestSharp;
 
 namespace MusicBeePlugin
@@ -31,6 +29,8 @@ namespace MusicBeePlugin
         public static string SettingsUrl;
         public static string CacheUrl;
         public static Plugin.MB_SendNotificationDelegate SendNotificationsHandler;
+        public static Plugin.MB_SetBackgroundTaskMessageDelegate SetBackgroundTaskMessage;
+        public static Plugin.MB_RefreshPanelsDelegate RefreshPanels;
         private static string _serverName;
         private static Exception _lastEx;
         private static readonly object CacheFileLock = new object();
@@ -76,6 +76,7 @@ namespace MusicBeePlugin
 
         private static bool PingServer()
         {
+            SetBackgroundTaskMessage("Attempting to Ping the server...");
             _serverName = $"{Protocol.ToFriendlyString()}://{Host}:{Port}{BasePath}";
             try
             {
@@ -93,11 +94,13 @@ namespace MusicBeePlugin
 
                 if (_serverType == SubsonicSettings.ServerType.Subsonic)
                 {
+                    SetBackgroundTaskMessage("Detected a Subsonic server");
                     var result = SubsonicAPI.Response.Deserialize(response);
                     isPingOk = result.status == SubsonicAPI.ResponseStatus.ok;
                 }
                 else
                 {
+                    SetBackgroundTaskMessage("Detected a LibreSonic server");
                     var result = LibreSonicAPI.Response.Deserialize(response);
                     isPingOk = result.status == LibreSonicAPI.ResponseStatus.ok;
                 }
@@ -225,6 +228,7 @@ namespace MusicBeePlugin
 
         public static void Refresh()
         {
+            RefreshPanels();
         }
 
         public static bool FolderExists(string path)
@@ -237,6 +241,7 @@ namespace MusicBeePlugin
 
         public static string[] GetFolders(string path)
         {
+            SetBackgroundTaskMessage("Running GetFolders...");
             _lastEx = null;
             string[] folders;
             if (!IsInitialized)
@@ -283,8 +288,7 @@ namespace MusicBeePlugin
                     if (_serverType == SubsonicSettings.ServerType.Subsonic)
                     {
                         var result = SubsonicAPI.Response.Deserialize(response);
-                        var error = result.Item as SubsonicAPI.Error;
-                        if (error != null)
+                        if (result.Item is SubsonicAPI.Error error)
                         {
                             MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -292,20 +296,24 @@ namespace MusicBeePlugin
                         }
                         var content = result.Item as SubsonicAPI.Directory;
                         if (content?.child != null)
-                            foreach (var dirChild in content.child)
+                        {
+                            var total = content.child.Count;
+                            for (var index = 0; index < content.child.Count; index++)
                             {
+                                var dirChild = content.child[index];
+                                SetBackgroundTaskMessage($"Processing {index} of {total} Folders...");
                                 folderId = dirChild.id;
                                 var folderName = path + dirChild.title;
                                 list.Add(folderName);
                                 if (!FolderLookup.ContainsKey(folderName))
                                     FolderLookup.Add(folderName, folderId);
                             }
+                        }
                     }
                     else
                     {
                         var result = LibreSonicAPI.Response.Deserialize(response);
-                        var error = result.Item as LibreSonicAPI.Error;
-                        if (error != null)
+                        if (result.Item is LibreSonicAPI.Error error)
                         {
                             MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -313,24 +321,31 @@ namespace MusicBeePlugin
                         }
                         var content = result.Item as LibreSonicAPI.Directory;
                         if (content?.child != null)
-                            foreach (var dirChild in content.child)
+                        {
+                            var total = content.child.Count;
+                            for (var index = 0; index < content.child.Count; index++)
                             {
+                                var dirChild = content.child[index];
+                                SetBackgroundTaskMessage($"Processing {index} of {total} Folders...");
                                 folderId = dirChild.id;
                                 var folderName = path + dirChild.title;
                                 list.Add(folderName);
                                 if (!FolderLookup.ContainsKey(folderName))
                                     FolderLookup.Add(folderName, folderId);
                             }
+                        }
                     }
 
                     folders = list.ToArray();
                 }
             }
+            SetBackgroundTaskMessage("Done processing GetFolders");
             return folders;
         }
 
         public static KeyValuePair<byte, string>[][] GetFiles(string path)
         {
+            SetBackgroundTaskMessage("Running GetFiles...");
             var threadStarted = false;
             _lastEx = null;
             KeyValuePair<byte, string>[][] files;
@@ -368,11 +383,13 @@ namespace MusicBeePlugin
             {
                 _lastEx = ex;
             }
+            SetBackgroundTaskMessage("Done running GetFiles");
             return files;
         }
 
         private static KeyValuePair<byte, string>[][] GetCachedFiles()
         {
+            SetBackgroundTaskMessage("Running GetCachedFiles...");
             if (_cachedFiles != null) return _cachedFiles;
             KeyValuePair<byte, string>[][] files = null;
             lock (CacheFileLock)
@@ -420,6 +437,7 @@ namespace MusicBeePlugin
                 if (_cachedFiles == null && files != null)
                     _cachedFiles = files;
             }
+            SetBackgroundTaskMessage("Done running GetCachedFiles");
             return _cachedFiles;
         }
 
@@ -435,6 +453,7 @@ namespace MusicBeePlugin
 
         private static void ExecuteGetFolderFiles()
         {
+            SetBackgroundTaskMessage("Running GetFolderFiles...");
             try
             {
                 var files = new KeyValuePair<byte, string>[][] {};
@@ -542,11 +561,14 @@ namespace MusicBeePlugin
             {
                 _retrieveThread = null;
             }
+            SetBackgroundTaskMessage("Done running GetFolderFiles");
+            RefreshPanels();
         }
 
         private static List<KeyValuePair<string, string>> GetRootFolders(bool collectionOnly, bool refresh,
             bool dirtyOnly)
         {
+            SetBackgroundTaskMessage("Running GetMusicFolders");
             var folders = new List<KeyValuePair<string, string>>();
             lock (FolderLookupLock)
             {
@@ -562,8 +584,7 @@ namespace MusicBeePlugin
                 if (_serverType == SubsonicSettings.ServerType.Subsonic)
                 {
                     var result = SubsonicAPI.Response.Deserialize(response);
-                    var error = result.Item as SubsonicAPI.Error;
-                    if (error != null)
+                    if (result.Item is SubsonicAPI.Error error)
                     {
                         MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -572,8 +593,12 @@ namespace MusicBeePlugin
                     var content = (SubsonicAPI.MusicFolders) result.Item;
 
                     if (content.musicFolder != null)
-                        foreach (var folder in content.musicFolder)
+                    {
+                        var total = content.musicFolder.Count;
+                        for (var index = 0; index < content.musicFolder.Count; index++)
                         {
+                            SetBackgroundTaskMessage($"Processing {index} of {total} music folders");
+                            var folder = content.musicFolder[index];
                             var folderId = folder.id.ToString();
                             var folderName = folder.name;
                             if (folderName != null && FolderLookup.ContainsKey(folderName))
@@ -586,12 +611,12 @@ namespace MusicBeePlugin
                             }
                             collection.Add(new KeyValuePair<string, string>(folderId, folderName));
                         }
+                    }
                 }
                 else
                 {
                     var result = LibreSonicAPI.Response.Deserialize(response);
-                    var error = result.Item as LibreSonicAPI.Error;
-                    if (error != null)
+                    if (result.Item is LibreSonicAPI.Error error)
                     {
                         MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -600,8 +625,12 @@ namespace MusicBeePlugin
                     var content = (LibreSonicAPI.MusicFolders) result.Item;
 
                     if (content.musicFolder != null)
-                        foreach (var folder in content.musicFolder)
+                    {
+                        var total = content.musicFolder.Count;
+                        for (var index = 0; index < content.musicFolder.Count; index++)
                         {
+                            SetBackgroundTaskMessage($"Processing {index} of {total} music folders");
+                            var folder = content.musicFolder[index];
                             var folderId = folder.id.ToString();
                             var folderName = folder.name;
                             if (folderName != null && FolderLookup.ContainsKey(folderName))
@@ -614,6 +643,7 @@ namespace MusicBeePlugin
                             }
                             collection.Add(new KeyValuePair<string, string>(folderId, folderName));
                         }
+                    }
                 }
 
                 _collectionNames = new string[collection.Count];
@@ -628,6 +658,7 @@ namespace MusicBeePlugin
                 if (dirtyOnly && !isDirty)
                     return null;
             }
+            SetBackgroundTaskMessage("Done running GetMusicFolders");
             return folders;
         }
 
@@ -635,6 +666,7 @@ namespace MusicBeePlugin
             string collectionName,
             bool indices, bool updateIsDirty, ref bool isDirty)
         {
+            SetBackgroundTaskMessage("Running GetIndexes...");
             var folders = new List<KeyValuePair<string, string>>();
 
             var request = new RestRequest
@@ -647,8 +679,7 @@ namespace MusicBeePlugin
             if (_serverType == SubsonicSettings.ServerType.Subsonic)
             {
                 var result = SubsonicAPI.Response.Deserialize(response);
-                var error = result.Item as SubsonicAPI.Error;
-                if (error != null)
+                if (result.Item is SubsonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -660,8 +691,7 @@ namespace MusicBeePlugin
                     var serverLastModified = (ulong) content.lastModified;
                     lock (CacheFileLock)
                     {
-                        ulong clientLastModified;
-                        if (!LastModified.TryGetValue(collectionName, out clientLastModified))
+                        if (!LastModified.TryGetValue(collectionName, out ulong clientLastModified))
                         {
                             isDirty = true;
                             LastModified.Add(collectionName, serverLastModified);
@@ -690,8 +720,7 @@ namespace MusicBeePlugin
             else
             {
                 var result = LibreSonicAPI.Response.Deserialize(response);
-                var error = result.Item as LibreSonicAPI.Error;
-                if (error != null)
+                if (result.Item is LibreSonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -703,8 +732,7 @@ namespace MusicBeePlugin
                     var serverLastModified = (ulong) content.lastModified;
                     lock (CacheFileLock)
                     {
-                        ulong clientLastModified;
-                        if (!LastModified.TryGetValue(collectionName, out clientLastModified))
+                        if (!LastModified.TryGetValue(collectionName, out ulong clientLastModified))
                         {
                             isDirty = true;
                             LastModified.Add(collectionName, serverLastModified);
@@ -730,13 +758,14 @@ namespace MusicBeePlugin
                         folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
                     }
             }
-
+            SetBackgroundTaskMessage("Done Running GetIndexes");
             return folders;
         }
 
         private static void GetFolderFiles(string baseFolderName, string folderId,
             ICollection<KeyValuePair<byte, string>[]> files)
         {
+            //SetBackgroundTaskMessage("Running GetMusicDirectory...");
             var request = new RestRequest
             {
                 Resource = "getMusicDirectory.view"
@@ -747,8 +776,7 @@ namespace MusicBeePlugin
             if (_serverType == SubsonicSettings.ServerType.Subsonic)
             {
                 var result = SubsonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
-                var error = result.Item as SubsonicAPI.Error;
-                if (error != null)
+                if (result.Item is SubsonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -757,7 +785,12 @@ namespace MusicBeePlugin
                 var content = result.Item as SubsonicAPI.Directory;
 
                 if (content?.child != null)
-                    foreach (var childEntry in content.child)
+                {
+                    var total = content.child.Count;
+                    for (var index = 0; index < total; index++)
+                    {
+                        SetBackgroundTaskMessage($"Processing MusicDirectory {index} of {total}...");
+                        var childEntry = content.child[index];
                         if (childEntry.isDir)
                         {
                             GetFolderFiles(baseFolderName, childEntry.id, files);
@@ -768,12 +801,13 @@ namespace MusicBeePlugin
                             if (tags != null)
                                 files.Add(tags);
                         }
+                    }
+                }
             }
             else
             {
                 var result = LibreSonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
-                var error = result.Item as LibreSonicAPI.Error;
-                if (error != null)
+                if (result.Item is LibreSonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -782,7 +816,12 @@ namespace MusicBeePlugin
                 var content = result.Item as LibreSonicAPI.Directory;
 
                 if (content?.child != null)
-                    foreach (var childEntry in content.child)
+                {
+                    var total = content.child.Count;
+                    for (var index = 0; index < total; index++)
+                    {
+                        SetBackgroundTaskMessage($"Processing MusicDirectory {index} of {total}...");
+                        var childEntry = content.child[index];
                         if (childEntry.isDir)
                         {
                             GetFolderFiles(baseFolderName, childEntry.id, files);
@@ -793,8 +832,10 @@ namespace MusicBeePlugin
                             if (tags != null)
                                 files.Add(tags);
                         }
+                    }
+                }
             }
-            
+            SetBackgroundTaskMessage("Done Running GetMusicDirectory");
         }
 
         private static KeyValuePair<byte, string>[][] GetFolderFiles(string path)
@@ -816,16 +857,14 @@ namespace MusicBeePlugin
                 throw new ArgumentException();
             if (FolderLookup.Count.Equals(0))
                 GetRootFolders(false, false, false);
-            string folderId;
-            if (FolderLookup.TryGetValue(url.Substring(0, charIndex), out folderId)) return folderId;
+            if (FolderLookup.TryGetValue(url.Substring(0, charIndex), out string folderId)) return folderId;
             var sectionStartIndex = url.IndexOf(@"\", StringComparison.Ordinal) + 1;
             charIndex = url.IndexOf(@"\", sectionStartIndex, StringComparison.Ordinal);
             if (charIndex.Equals(-1))
                 throw new ArgumentException();
             while (charIndex != -1)
             {
-                string subFolderId;
-                if (FolderLookup.TryGetValue(url.Substring(0, charIndex), out subFolderId))
+                if (FolderLookup.TryGetValue(url.Substring(0, charIndex), out string subFolderId))
                 {
                     folderId = subFolderId;
                 }
@@ -842,8 +881,7 @@ namespace MusicBeePlugin
                     if (_serverType == SubsonicSettings.ServerType.Subsonic)
                     {
                         var result = SubsonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
-                        var error = result.Item as SubsonicAPI.Error;
-                        if (error != null)
+                        if (result.Item is SubsonicAPI.Error error)
                         {
                             MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -859,14 +897,13 @@ namespace MusicBeePlugin
                                     if (!FolderLookup.ContainsKey(url.Substring(0, charIndex)))
                                         FolderLookup.Add(url.Substring(0, charIndex), folderId);
                                     break;
-                        }
-                    
+                                }
+
                     }
                     else
                     {
                         var result = LibreSonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
-                        var error = result.Item as LibreSonicAPI.Error;
-                        if (error != null)
+                        if (result.Item is LibreSonicAPI.Error error)
                         {
                             MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -911,8 +948,7 @@ namespace MusicBeePlugin
             if (_serverType == SubsonicSettings.ServerType.Subsonic)
             {
                 var result = SubsonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
-                var error = result.Item as SubsonicAPI.Error;
-                if (error != null)
+                if (result.Item is SubsonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -930,8 +966,7 @@ namespace MusicBeePlugin
             else
             {
                 var result = LibreSonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
-                var error = result.Item as LibreSonicAPI.Error;
-                if (error != null)
+                if (result.Item is LibreSonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -989,8 +1024,7 @@ namespace MusicBeePlugin
             if (_serverType == SubsonicSettings.ServerType.Subsonic)
             {
                 var result = SubsonicAPI.Response.Deserialize(response);
-                var error = result.Item as SubsonicAPI.Error;
-                if (error != null)
+                if (result.Item is SubsonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -1007,8 +1041,7 @@ namespace MusicBeePlugin
             else
             {
                 var result = LibreSonicAPI.Response.Deserialize(response);
-                var error = result.Item as LibreSonicAPI.Error;
-                if (error != null)
+                if (result.Item is LibreSonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -1046,8 +1079,7 @@ namespace MusicBeePlugin
             if (_serverType == SubsonicSettings.ServerType.Subsonic)
             {
                 var result = SubsonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
-                var error = result.Item as SubsonicAPI.Error;
-                if (error != null)
+                if (result.Item is SubsonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -1065,8 +1097,7 @@ namespace MusicBeePlugin
             else
             {
                 var result = LibreSonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
-                var error = result.Item as LibreSonicAPI.Error;
-                if (error != null)
+                if (result.Item is LibreSonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -1185,8 +1216,7 @@ namespace MusicBeePlugin
             if (_serverType == SubsonicSettings.ServerType.Subsonic)
             {
                 var result = SubsonicAPI.Response.Deserialize(response);
-                var error = result.Item as SubsonicAPI.Error;
-                if (error != null)
+                if (result.Item is SubsonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -1201,8 +1231,7 @@ namespace MusicBeePlugin
             else
             {
                 var result = LibreSonicAPI.Response.Deserialize(response);
-                var error = result.Item as LibreSonicAPI.Error;
-                if (error != null)
+                if (result.Item is LibreSonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -1232,8 +1261,7 @@ namespace MusicBeePlugin
             if (_serverType == SubsonicSettings.ServerType.Subsonic)
             {
                 var result = SubsonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
-                var error = result.Item as SubsonicAPI.Error;
-                if (error != null)
+                if (result.Item is SubsonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -1252,8 +1280,7 @@ namespace MusicBeePlugin
             else
             {
                 var result = LibreSonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
-                var error = result.Item as LibreSonicAPI.Error;
-                if (error != null)
+                if (result.Item is LibreSonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -1382,8 +1409,7 @@ namespace MusicBeePlugin
                 if (_serverType == SubsonicSettings.ServerType.Subsonic)
                 {
                     var result = SubsonicAPI.Response.Deserialize(response.Content.Replace("\0", string.Empty));
-                    var error = result.Item as SubsonicAPI.Error;
-                    if (error != null)
+                    if (result.Item is SubsonicAPI.Error error)
                     {
                         MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -1393,8 +1419,7 @@ namespace MusicBeePlugin
                 else
                 {
                     var result = LibreSonicAPI.Response.Deserialize(response.Content.Replace("\0", string.Empty));
-                    var error = result.Item as LibreSonicAPI.Error;
-                    if (error != null)
+                    if (result.Item is LibreSonicAPI.Error error)
                     {
                         MessageBox.Show($@"An error has occurred:
 {error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
