@@ -1068,6 +1068,7 @@ namespace MusicBeePlugin
         {
             var folderId = GetFolderId(url);
             if (folderId == null) return null;
+            var baseFolderName = url.Substring(0, url.IndexOf(@"\", StringComparison.Ordinal));
 
             var request = new RestRequest
             {
@@ -1092,7 +1093,7 @@ namespace MusicBeePlugin
                 if (content?.child != null)
                     foreach (var childEntry in content.child)
                         if (childEntry.path == filePath)
-                            return GetTags(childEntry, childEntry.path);
+                            return GetTags(childEntry, baseFolderName);
             }
             else
             {
@@ -1110,7 +1111,7 @@ namespace MusicBeePlugin
                 if (content?.child != null)
                     foreach (var childEntry in content.child)
                         if (childEntry.path == filePath)
-                            return GetTags(childEntry, childEntry.path);
+                            return GetTags(childEntry, baseFolderName);
             }
 
             return null;
