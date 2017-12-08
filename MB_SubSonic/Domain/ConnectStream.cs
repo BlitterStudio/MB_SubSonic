@@ -50,6 +50,7 @@ namespace MusicBeePlugin.Domain
             }
         }
 
+        /// <inheritdoc />
         /// <summary>When overridden in a derived class, clears all buffers for this stream and causes any buffered data to be written to the underlying device.</summary>
         /// <exception cref="T:System.IO.IOException">An I/O error occurs. </exception>
         /// <filterpriority>2</filterpriority>
@@ -58,6 +59,7 @@ namespace MusicBeePlugin.Domain
             _responseStream.Flush();
         }
 
+        /// <inheritdoc />
         /// <summary>When overridden in a derived class, sets the position within the current stream.</summary>
         /// <returns>The new position within the current stream.</returns>
         /// <param name="offset">A byte offset relative to the <paramref name="origin" /> parameter. </param>
@@ -71,6 +73,7 @@ namespace MusicBeePlugin.Domain
             return _responseStream.Seek(offset, origin);
         }
 
+        /// <inheritdoc />
         /// <summary>When overridden in a derived class, sets the length of the current stream.</summary>
         /// <param name="value">The desired length of the current stream in bytes. </param>
         /// <exception cref="T:System.IO.IOException">An I/O error occurs. </exception>
@@ -82,6 +85,7 @@ namespace MusicBeePlugin.Domain
             _responseStream.SetLength(value);
         }
 
+        /// <inheritdoc />
         /// <summary>When overridden in a derived class, reads a sequence of bytes from the current stream and advances the position within the stream by the number of bytes read.</summary>
         /// <returns>The total number of bytes read into the buffer. This can be less than the number of bytes requested if that many bytes are not currently available, or zero (0) if the end of the stream has been reached.</returns>
         /// <param name="buffer">An array of bytes. When this method returns, the buffer contains the specified byte array with the values between <paramref name="offset" /> and (<paramref name="offset" /> + <paramref name="count" /> - 1) replaced by the bytes read from the current source. </param>

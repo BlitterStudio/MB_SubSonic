@@ -86,7 +86,7 @@ namespace MusicBeePlugin
                 };
                 var response = SendRequest(request);
 
-                // Default is Subonic, but check if we're connected to a LibreSonic server
+                // Default server type is Subsonic, but check if we're connected to a LibreSonic server
                 if (response.Contains("libresonic"))
                     _serverType = SubsonicSettings.ServerType.LibreSonic;
 
@@ -1434,8 +1434,8 @@ namespace MusicBeePlugin
         private static string NewSalt()
         {
             // Define min and max salt sizes.
-            var minSaltSize = 6;
-            var maxSaltSize = 12;
+            const int minSaltSize = 6;
+            const int maxSaltSize = 12;
 
             // Generate a random number for the size of the salt.
             var random = new Random();
