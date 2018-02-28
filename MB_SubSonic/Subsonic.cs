@@ -302,11 +302,14 @@ namespace MusicBeePlugin
                             {
                                 var dirChild = content.child[index];
                                 SetBackgroundTaskMessage($"Processing {index} of {total} Folders...");
-                                folderId = dirChild.id;
-                                var folderName = path + dirChild.title;
-                                list.Add(folderName);
-                                if (!FolderLookup.ContainsKey(folderName))
-                                    FolderLookup.Add(folderName, folderId);
+                                if (dirChild.isDir)
+                                {
+                                    folderId = dirChild.id;
+                                    var folderName = path + dirChild.title;
+                                    list.Add(folderName);
+                                    if (!FolderLookup.ContainsKey(folderName))
+                                        FolderLookup.Add(folderName, folderId);
+                                }
                             }
                         }
                     }
@@ -327,11 +330,14 @@ namespace MusicBeePlugin
                             {
                                 var dirChild = content.child[index];
                                 SetBackgroundTaskMessage($"Processing {index} of {total} Folders...");
-                                folderId = dirChild.id;
-                                var folderName = path + dirChild.title;
-                                list.Add(folderName);
-                                if (!FolderLookup.ContainsKey(folderName))
-                                    FolderLookup.Add(folderName, folderId);
+                                if (dirChild.isDir)
+                                {
+                                    folderId = dirChild.id;
+                                    var folderName = path + dirChild.title;
+                                    list.Add(folderName);
+                                    if (!FolderLookup.ContainsKey(folderName))
+                                        FolderLookup.Add(folderName, folderId);
+                                }
                             }
                         }
                     }
