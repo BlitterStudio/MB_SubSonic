@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using MusicBeePlugin.Domain;
 using MusicBeePlugin.Properties;
-using Subsonic.Domain;
-
-// ReSharper disable UnusedMember.Global
 
 namespace MusicBeePlugin
 {
@@ -24,20 +22,24 @@ namespace MusicBeePlugin
         private ComboBox _protocol;
         private ComboBox _authMethodBox;
 
+        // ReSharper disable once UnusedMember.Global
         public PluginInfo Initialise(IntPtr apiInterfacePtr)
         {
             _mbApiInterface = new MusicBeeApiInterface();
             _mbApiInterface.Initialise(apiInterfacePtr);
             Subsonic.SendNotificationsHandler = _mbApiInterface.MB_SendNotification;
+            Subsonic.CreateBackgroundTask = _mbApiInterface.MB_CreateBackgroundTask;
+            Subsonic.SetBackgroundTaskMessage = _mbApiInterface.MB_SetBackgroundTaskMessage;
+            Subsonic.RefreshPanels = _mbApiInterface.MB_RefreshPanels;
             _about.PluginInfoVersion = PluginInfoVersion;
-            _about.Name = "Subsonic v2";
+            _about.Name = "Subsonic v2.13";
             _about.Description = "Access files and playlists on a SubSonic Server";
             _about.Author = "Dimitris Panokostas";
             _about.TargetApplication = "Subsonic";
             // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
             _about.Type = PluginType.Storage;
             _about.VersionMajor = 2; // your plugin version
-            _about.VersionMinor = 9;
+            _about.VersionMinor = 13;
             _about.Revision = 0;
             _about.MinInterfaceVersion = MinInterfaceVersion;
             _about.MinApiRevision = MinApiRevision;
@@ -47,6 +49,7 @@ namespace MusicBeePlugin
             return _about;
         }
 
+        // ReSharper disable once UnusedMember.Global
         public bool Configure(IntPtr panelHandle)
         {
             // panelHandle will only be set if you set about.ConfigurationPanelHeight to a non-zero value
@@ -152,7 +155,7 @@ namespace MusicBeePlugin
             _authMethodBox.Bounds = new Rectangle(authMethodLabel.Left + TextRenderer.MeasureText(authMethodLabel.Text, configPanel.Font).Width, fifthRowPosY, authMethodWidth, _authMethodBox.Height);
             _authMethodBox.Items.Add("Token based");
             _authMethodBox.Items.Add("Hex enc. password");
-            _authMethodBox.SelectedItem = Subsonic.AuthMethod.ToFriendlyString();
+            _authMethodBox.SelectedIndex = (int)Subsonic.AuthMethod;
             _authMethodBox.DropDownStyle = ComboBoxStyle.DropDownList;
 
             configPanel.Controls.AddRange(new Control[]
