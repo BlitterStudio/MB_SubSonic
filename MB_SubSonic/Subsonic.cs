@@ -132,69 +132,71 @@ namespace MusicBeePlugin
             settings.BasePath = settings.BasePath.Trim();
             if (!settings.BasePath.EndsWith(@"/"))
                 settings.BasePath += @"/";
+
             var isChanged = !settings.Host.Equals(Host) ||
                             !settings.Port.Equals(Port) ||
                             !settings.BasePath.Equals(BasePath) ||
                             !settings.Username.Equals(Username) ||
                             !settings.Password.Equals(Password) ||
                             !settings.Protocol.Equals(Protocol) ||
-                            !settings.Auth.Equals(AuthMethod);
-            if (isChanged)
-            {
-                bool isPingOk;
-                var previousProtocol = Protocol;
-                var previousHost = Host;
-                var previousPort = Port;
-                var previousBasePath = BasePath;
-                var previousUsername = Username;
-                var previousPassword = Password;
+                            !settings.Auth.Equals(AuthMethod) ||
+                            !settings.Transcode.Equals(Transcode);
 
-                try
-                {
-                    Protocol = settings.Protocol;
-                    Host = settings.Host;
-                    Port = settings.Port;
-                    BasePath = settings.BasePath;
-                    Username = settings.Username;
-                    Password = settings.Password;
-                    AuthMethod = settings.Auth;
-
-                    isPingOk = PingServer();
-                }
-                catch (Exception)
-                {
-                    isPingOk = false;
-                }
-                if (!isPingOk)
-                {
-                    var dialog = MessageBox.Show(
-                        @"The Subsonic server did not respond as expected, do you want to save these settings anyway?",
-                        @"Could not get OK from server",
-                        MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Question,
-                        MessageBoxDefaultButton.Button2);
-
-                    if (dialog == DialogResult.Yes)
-                        isPingOk = true;
-                }
-
-                if (!isPingOk)
-                {
-                    Protocol = previousProtocol;
-                    Host = previousHost;
-                    Port = previousPort;
-                    BasePath = previousBasePath;
-                    Username = previousUsername;
-                    Password = previousPassword;
-                    return false;
-                }
-
-                IsInitialized = true;
-            }
-
-            isChanged = isChanged || Transcode;
             if (!isChanged)
                 return true;
+
+            bool isPingOk;
+            var previousProtocol = Protocol;
+            var previousHost = Host;
+            var previousPort = Port;
+            var previousBasePath = BasePath;
+            var previousUsername = Username;
+            var previousPassword = Password;
+            var previousTranscode = Transcode;
+
+            try
+            {
+                Protocol = settings.Protocol;
+                Host = settings.Host;
+                Port = settings.Port;
+                BasePath = settings.BasePath;
+                Username = settings.Username;
+                Password = settings.Password;
+                AuthMethod = settings.Auth;
+                Transcode = settings.Transcode;
+
+                isPingOk = PingServer();
+            }
+            catch (Exception)
+            {
+                isPingOk = false;
+            }
+            if (!isPingOk)
+            {
+                var dialog = MessageBox.Show(
+                    @"The Subsonic server did not respond as expected, do you want to save these settings anyway?",
+                    @"Could not get OK from server",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button2);
+
+                if (dialog == DialogResult.Yes)
+                    isPingOk = true;
+            }
+
+            if (!isPingOk)
+            {
+                Protocol = previousProtocol;
+                Host = previousHost;
+                Port = previousPort;
+                BasePath = previousBasePath;
+                Username = previousUsername;
+                Password = previousPassword;
+                Transcode = previousTranscode;
+                return false;
+            }
+
+            IsInitialized = true;
 
             using (var writer = new StreamWriter(SettingsUrl))
             {
@@ -213,7 +215,7 @@ namespace MusicBeePlugin
                     AesEncryption.Encrypt(settings.Auth == SubsonicSettings.AuthMethod.HexPass ? "HexPass" : "Token",
                         Passphrase));
             }
-            Transcode = settings.Transcode;
+
             try
             {
                 SendNotificationsHandler.Invoke(Plugin.CallbackType.SettingsUpdated);
@@ -250,7 +252,13 @@ namespace MusicBeePlugin
             }
             else if (string.IsNullOrEmpty(path))
             {
-                folders = GetRootFolders(true, true, false).Select(folder => folder.Value).ToArray();
+                var rootFolders = GetRootFolders(true, true, false);
+                if (rootFolders != null)
+                    folders = rootFolders.Select(folder => folder.Value).ToArray();
+                else
+                {
+                    return new string[] { };
+                }
             }
             else if (path.IndexOf(@"\", StringComparison.Ordinal)
                 .Equals(path.LastIndexOf(@"\", StringComparison.Ordinal)))
