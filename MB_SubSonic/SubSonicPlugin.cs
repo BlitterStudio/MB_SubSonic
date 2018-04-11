@@ -22,7 +22,7 @@ namespace MusicBeePlugin
         private TextBox _username;
         private ComboBox _protocol;
         private ComboBox _authMethodBox;
-        private Label bitRateLabel;
+        private Label _bitRateLabel;
 
         // ReSharper disable once UnusedMember.Global
         public PluginInfo Initialise(IntPtr apiInterfacePtr)
@@ -34,14 +34,14 @@ namespace MusicBeePlugin
             Subsonic.SetBackgroundTaskMessage = _mbApiInterface.MB_SetBackgroundTaskMessage;
             Subsonic.RefreshPanels = _mbApiInterface.MB_RefreshPanels;
             _about.PluginInfoVersion = PluginInfoVersion;
-            _about.Name = "Subsonic v2.13";
+            _about.Name = "Subsonic v2.14";
             _about.Description = "Access files and playlists on a SubSonic Server";
             _about.Author = "Dimitris Panokostas";
             _about.TargetApplication = "Subsonic";
             // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
             _about.Type = PluginType.Storage;
             _about.VersionMajor = 2; // your plugin version
-            _about.VersionMinor = 13;
+            _about.VersionMinor = 14;
             _about.Revision = 0;
             _about.MinInterfaceVersion = MinInterfaceVersion;
             _about.MinApiRevision = MinApiRevision;
@@ -131,7 +131,7 @@ namespace MusicBeePlugin
             //Register a checked change event and move the assignments down
             _transcode.CheckedChanged += _transcode_CheckedChanged;
 
-            bitRateLabel = new Label
+            _bitRateLabel = new Label
             {
                 AutoSize = true,
                 Text = @"Max. Bitrate: ",
@@ -191,19 +191,19 @@ namespace MusicBeePlugin
             configPanel.Controls.AddRange(new Control[]
             {
                 protocolLabel, _protocol, _host, hostPrompt, portPrompt, _port, _basePath, basePathPrompt, _username, usernamePrompt, _password,
-                passwordPrompt, _transcode, bitRateLabel, _bitRate, _authMethodBox, authMethodLabel
+                passwordPrompt, _transcode, _bitRateLabel, _bitRate, _authMethodBox, authMethodLabel
             });
             _transcode.Location = new Point(_port.Left, basePathPrompt.Top - 2);
-            bitRateLabel.Location = new Point(_port.Left - 3, fourthRowPosY + 2);
-            _bitRate.Bounds = new Rectangle(bitRateLabel.Left +
-                TextRenderer.MeasureText(bitRateLabel.Text, configPanel.Font).Width, fourthRowPosY, bitRateWidth + spacer, _bitRate.Height);
+            _bitRateLabel.Location = new Point(_port.Left - 3, fourthRowPosY + 2);
+            _bitRate.Bounds = new Rectangle(_bitRateLabel.Left +
+                TextRenderer.MeasureText(_bitRateLabel.Text, configPanel.Font).Width, fourthRowPosY, bitRateWidth + spacer, _bitRate.Height);
             configPanel.Width = _bitRate.Right + spacer;
             return true;
         }
 
         private void _transcode_CheckedChanged(object sender, EventArgs e)
         {
-            bitRateLabel.Visible = _bitRate.Visible = _transcode.Checked;
+            _bitRateLabel.Visible = _bitRate.Visible = _transcode.Checked;
         }
 
         // called by MusicBee when the user clicks Apply or Save in the MusicBee Preferences screen.
