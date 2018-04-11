@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 
 namespace MusicBeePlugin.Domain
 {
@@ -30,6 +31,7 @@ namespace MusicBeePlugin.Domain
         public bool Transcode { get; set; }
         public ConnectionProtocol Protocol { get; set; }
         public AuthMethod Auth { get; set; }
+        public string BitRate { get; set; }
     }
 
     public static class SubsonicSettingsExtensions

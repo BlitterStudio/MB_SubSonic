@@ -22,6 +22,7 @@ namespace MusicBeePlugin
         public static string Password = "";
         public static SubsonicSettings.ConnectionProtocol Protocol = SubsonicSettings.ConnectionProtocol.Http;
         public static SubsonicSettings.AuthMethod AuthMethod = SubsonicSettings.AuthMethod.Token;
+        public static string BitRate = String.Empty;
         private static SubsonicSettings.ServerType _serverType = SubsonicSettings.ServerType.Subsonic;
         public static bool Transcode;
         public static bool IsInitialized;
@@ -63,6 +64,11 @@ namespace MusicBeePlugin
                         AuthMethod = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "HexPass"
                             ? SubsonicSettings.AuthMethod.HexPass
                             : SubsonicSettings.AuthMethod.Token;
+                        BitRate = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                        if(String.IsNullOrEmpty(BitRate))
+                        {
+                            BitRate = "Unlimited";
+                        }
                     }
                 IsInitialized = PingServer();
             }
@@ -140,7 +146,8 @@ namespace MusicBeePlugin
                             !settings.Password.Equals(Password) ||
                             !settings.Protocol.Equals(Protocol) ||
                             !settings.Auth.Equals(AuthMethod) ||
-                            !settings.Transcode.Equals(Transcode);
+                            !settings.Transcode.Equals(Transcode)||
+                            !settings.BitRate.Equals(BitRate);
 
             if (!isChanged)
                 return true;
@@ -153,6 +160,7 @@ namespace MusicBeePlugin
             var previousUsername = Username;
             var previousPassword = Password;
             var previousTranscode = Transcode;
+            var previousBitRate = BitRate;
 
             try
             {
@@ -164,7 +172,7 @@ namespace MusicBeePlugin
                 Password = settings.Password;
                 AuthMethod = settings.Auth;
                 Transcode = settings.Transcode;
-
+                BitRate = settings.BitRate;
                 isPingOk = PingServer();
             }
             catch (Exception)
@@ -193,6 +201,7 @@ namespace MusicBeePlugin
                 Username = previousUsername;
                 Password = previousPassword;
                 Transcode = previousTranscode;
+                BitRate = previousBitRate;
                 return false;
             }
 
@@ -214,6 +223,7 @@ namespace MusicBeePlugin
                 writer.WriteLine(
                     AesEncryption.Encrypt(settings.Auth == SubsonicSettings.AuthMethod.HexPass ? "HexPass" : "Token",
                         Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.BitRate, Passphrase));
             }
 
             try
@@ -1327,7 +1337,7 @@ namespace MusicBeePlugin
             {
                 var salt = NewSalt();
                 var token = Md5(Password + salt);
-                var encoding = Transcode ? "mp3" : "raw";
+                var transcodeAndbitRate = GetTranscodeAndBitRate(Transcode, BitRate);
                 string uriLine;
                 if (AuthMethod == SubsonicSettings.AuthMethod.HexPass)
                 {
@@ -1336,12 +1346,12 @@ namespace MusicBeePlugin
                     hexString = hexString.Replace("-", "");
                     var hexPass = $"enc:{hexString}";
                     uriLine =
-                        $"{_serverName}rest/stream.view?u={Username}&p={hexPass}&v={ApiVersion}&c=MusicBee&id={id}&format={encoding}";
+                        $"{_serverName}rest/stream.view?u={Username}&p={hexPass}&v={ApiVersion}&c=MusicBee&id={id}&{transcodeAndbitRate}";
                 }
                 else
                 {
                     uriLine =
-                        $"{_serverName}rest/stream.view?u={Username}&t={token}&s={salt}&v={ApiVersion}&c=MusicBee&id={id}&format={encoding}";
+                        $"{_serverName}rest/stream.view?u={Username}&t={token}&s={salt}&v={ApiVersion}&c=MusicBee&id={id}&{transcodeAndbitRate}";
                 }
                 var uri = new Uri(uriLine);
 
@@ -1355,6 +1365,25 @@ namespace MusicBeePlugin
                     return stream;
             }
             return null;
+        }
+
+        private static object GetTranscodeAndBitRate(bool transcode, string bitRate)
+        {
+            /* If the Transcode is set, then there must be a bitrate that you would want to set.
+             * ... and if the maxbitrate is already set at the server side, this would not 
+             * cause any harm.
+             */
+            if (Transcode)
+            {
+                return "maxBitRate=" + GetBitRate(BitRate);
+            }
+            else
+                return "format=raw";
+        }
+
+        private static string GetBitRate(string bitRate)
+        {
+            return bitRate.Equals("Unlimited") ? "0" : bitRate.TrimEnd(new char[] { 'K' });
         }
 
         public static Exception GetError()

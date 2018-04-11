@@ -18,9 +18,11 @@ namespace MusicBeePlugin
         private TextBox _password;
         private TextBox _port;
         private CheckBox _transcode;
+        private ComboBox _bitRate;
         private TextBox _username;
         private ComboBox _protocol;
         private ComboBox _authMethodBox;
+        private Label bitRateLabel;
 
         // ReSharper disable once UnusedMember.Global
         public PluginInfo Initialise(IntPtr apiInterfacePtr)
@@ -62,6 +64,7 @@ namespace MusicBeePlugin
             var hostTextBoxWidth = TextRenderer.MeasureText(@"my-server-name.subsonic.org", configPanel.Font).Width;
             var portTextBoxWidth = TextRenderer.MeasureText(@"844345", configPanel.Font).Width;
             var authMethodWidth = TextRenderer.MeasureText(@"Hex enc. password", configPanel.Font).Width;
+            var bitRateWidth = TextRenderer.MeasureText(@"Unlimited", configPanel.Font).Width;
             var spacer = TextRenderer.MeasureText("X", configPanel.Font).Width;
             const int firstRowPosY = 0;
             var secondRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height*2;
@@ -124,12 +127,39 @@ namespace MusicBeePlugin
             _password.Text = Subsonic.Password;
             _password.PasswordChar = '*';
 
-            _transcode = new CheckBox
+            _transcode = new CheckBox();
+            //Register a checked change event and move the assignments down
+            _transcode.CheckedChanged += _transcode_CheckedChanged;
+
+            bitRateLabel = new Label
             {
                 AutoSize = true,
-                Checked = Subsonic.Transcode,
-                Text = @"Transcode as mp3"
+                Text = @"Max. Bitrate: ",
+                Visible = false
             };
+
+            _bitRate = new ComboBox();
+            _bitRate.Items.Add("Unlimited");
+            _bitRate.Items.Add("64K");
+            _bitRate.Items.Add("80K");
+            _bitRate.Items.Add("96K");
+            _bitRate.Items.Add("112K");
+            _bitRate.Items.Add("128K");
+            _bitRate.Items.Add("160K");
+            _bitRate.Items.Add("192K");
+            _bitRate.Items.Add("256K");
+            _bitRate.Items.Add("320K");
+            _bitRate.SelectedItem = Subsonic.BitRate;
+            _bitRate.DropDownStyle = ComboBoxStyle.DropDownList;
+            _bitRate.Visible = false;
+
+            /* Moving the assignments after the creation of the abive BitRate fields.
+             * We would need the checked event to fire and set the visibility of the added
+             * controls for BitRates.
+             */
+            _transcode.AutoSize = true;
+            _transcode.Checked = Subsonic.Transcode;
+            _transcode.Text = @"Transcode as mp3";
 
             var protocolLabel = new Label
             {
@@ -161,11 +191,19 @@ namespace MusicBeePlugin
             configPanel.Controls.AddRange(new Control[]
             {
                 protocolLabel, _protocol, _host, hostPrompt, portPrompt, _port, _basePath, basePathPrompt, _username, usernamePrompt, _password,
-                passwordPrompt, _transcode, _authMethodBox, authMethodLabel
+                passwordPrompt, _transcode, bitRateLabel, _bitRate, _authMethodBox, authMethodLabel
             });
             _transcode.Location = new Point(_port.Left, basePathPrompt.Top - 2);
-            configPanel.Width = _transcode.Right + spacer;
+            bitRateLabel.Location = new Point(_port.Left - 3, fourthRowPosY + 2);
+            _bitRate.Bounds = new Rectangle(bitRateLabel.Left +
+                TextRenderer.MeasureText(bitRateLabel.Text, configPanel.Font).Width, fourthRowPosY, bitRateWidth + spacer, _bitRate.Height);
+            configPanel.Width = _bitRate.Right + spacer;
             return true;
+        }
+
+        private void _transcode_CheckedChanged(object sender, EventArgs e)
+        {
+            bitRateLabel.Visible = _bitRate.Visible = _transcode.Checked;
         }
 
         // called by MusicBee when the user clicks Apply or Save in the MusicBee Preferences screen.
@@ -187,7 +225,8 @@ namespace MusicBeePlugin
                 Auth =
                     _authMethodBox.SelectedIndex.Equals(0)
                         ? SubsonicSettings.AuthMethod.Token
-                        : SubsonicSettings.AuthMethod.HexPass
+                        : SubsonicSettings.AuthMethod.HexPass,
+                BitRate = _bitRate.SelectedItem.ToString()
             };
 
             var setHostSuccess = Subsonic.SetHost(settings);
