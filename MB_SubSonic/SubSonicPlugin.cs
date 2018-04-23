@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Windows.Forms;
 using MusicBeePlugin.Domain;
 using MusicBeePlugin.Properties;
@@ -149,7 +151,8 @@ namespace MusicBeePlugin
             _bitRate.Items.Add("192K");
             _bitRate.Items.Add("256K");
             _bitRate.Items.Add("320K");
-            _bitRate.SelectedItem = Subsonic.BitRate;
+            //Null reference. Issue #36 - https://github.com/midwan/MB_SubSonic/issues/36. Set a bitrate by default.
+            _bitRate.SelectedItem = String.IsNullOrEmpty(Subsonic.BitRate) ? "128K" : Subsonic.BitRate;
             _bitRate.DropDownStyle = ComboBoxStyle.DropDownList;
             _bitRate.Visible = false;
 
@@ -226,7 +229,8 @@ namespace MusicBeePlugin
                     _authMethodBox.SelectedIndex.Equals(0)
                         ? SubsonicSettings.AuthMethod.Token
                         : SubsonicSettings.AuthMethod.HexPass,
-                BitRate = _bitRate.SelectedItem.ToString()
+                //Null reference. Issue #36 - https://github.com/midwan/MB_SubSonic/issues/36. If there is no bitrate, set it to a default.
+                BitRate = String.IsNullOrEmpty((String)_bitRate.SelectedItem) ? "128K" : _bitRate.SelectedItem.ToString()
             };
 
             var setHostSuccess = Subsonic.SetHost(settings);
@@ -293,6 +297,7 @@ namespace MusicBeePlugin
         {
             // perform some action depending on the notification type
             //switch (type)
+
             if (type != NotificationType.PluginStartup) return;
 
             var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
@@ -367,11 +372,49 @@ namespace MusicBeePlugin
 
         public string[] GetFolders(string path)
         {
-            return Subsonic.GetFolders(path);
+            List<string> folders = new List<string>();
+            ///* For Issue #27 - https://github.com/midwan/MB_SubSonic/issues/27
+            // * Creating a workaround to retrieve Playlists as folders until MusicBee's owner Steven
+            // * fixes a bug to relay calls for Playlists. */
+            
+            ////Query to see if this is a call to Playlists. 
+            ////There is a chance that someone might have created a folder called with the exact same name,
+            ////but odds are they wouldn't have named it this way!
+            //if (path.Equals("Imported Playlists\\"))
+            //{
+            //    var playlists = this.GetPlaylists().ToList();
+            //    //Show all the playlists as folders for now.
+            //    foreach (var item in playlists)
+            //    {
+            //        folders.Add("Imported Playlists\\" + item.Key + "_" + item.Value);
+            //    }
+            //}
+            //else
+            //{
+                folders = Subsonic.GetFolders(path).ToList();
+            //}
+
+            ////If this is root folder call, create a Playlists folder to 
+            ////hold all the playlists and add it to the end.
+            //if (String.IsNullOrEmpty(path))
+            //{
+            //    folders.Add("Imported Playlists");
+            //}
+
+            return folders.ToArray();
         }
 
         public KeyValuePair<byte, string>[][] GetFiles(string path)
         {
+            //When a user invokes the virtual playlists folder, 
+            //then pull all the playlists and show under this folder.
+            //Though an ugly naming convention, we would need the ID 
+            //to retrieve the playlists contents. Is this important to solve now? Maybe not. :-)
+            //if(path.StartsWith("Imported Playlists\\"))
+            //{
+            //    string playlistName = path.Split(new char[] { '\\' })[1];
+            //    return GetPlaylistFiles(playlistName.Split(new char[] { '_' })[0]);
+            //}
             return Subsonic.GetFiles(path);
         }
 
