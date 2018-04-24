@@ -36,14 +36,14 @@ namespace MusicBeePlugin
             Subsonic.SetBackgroundTaskMessage = _mbApiInterface.MB_SetBackgroundTaskMessage;
             Subsonic.RefreshPanels = _mbApiInterface.MB_RefreshPanels;
             _about.PluginInfoVersion = PluginInfoVersion;
-            _about.Name = "Subsonic v2.14";
+            _about.Name = "Subsonic v2.15";
             _about.Description = "Access files and playlists on a SubSonic Server";
             _about.Author = "Dimitris Panokostas";
             _about.TargetApplication = "Subsonic";
             // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
             _about.Type = PluginType.Storage;
             _about.VersionMajor = 2; // your plugin version
-            _about.VersionMinor = 14;
+            _about.VersionMinor = 15;
             _about.Revision = 0;
             _about.MinInterfaceVersion = MinInterfaceVersion;
             _about.MinApiRevision = MinApiRevision;
