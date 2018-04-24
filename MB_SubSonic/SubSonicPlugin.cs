@@ -61,18 +61,18 @@ namespace MusicBeePlugin
             // if about.ConfigurationPanelHeight is set to 0, you can display your own popup window
             if (panelHandle == IntPtr.Zero) return false;
 
-            var configPanel = (Panel) Control.FromHandle(panelHandle);
-            var protocolWidth = TextRenderer.MeasureText(@"HTTPS", configPanel.Font).Width*2;
+            var configPanel = (Panel)Control.FromHandle(panelHandle);
+            var protocolWidth = TextRenderer.MeasureText(@"HTTPS", configPanel.Font).Width * 2;
             var hostTextBoxWidth = TextRenderer.MeasureText(@"my-server-name.subsonic.org", configPanel.Font).Width;
             var portTextBoxWidth = TextRenderer.MeasureText(@"844345", configPanel.Font).Width;
             var authMethodWidth = TextRenderer.MeasureText(@"Hex enc. password", configPanel.Font).Width;
             var bitRateWidth = TextRenderer.MeasureText(@"Unlimited", configPanel.Font).Width;
             var spacer = TextRenderer.MeasureText("X", configPanel.Font).Width;
             const int firstRowPosY = 0;
-            var secondRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height*2;
-            var thirdRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height*4;
-            var fourthRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height*6;
-            var fifthRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height*8;
+            var secondRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height * 2;
+            var thirdRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height * 4;
+            var fourthRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height * 6;
+            var fifthRowPosY = TextRenderer.MeasureText("FirstRowText", configPanel.Font).Height * 8;
 
             var hostPrompt = new Label
             {
@@ -372,49 +372,11 @@ namespace MusicBeePlugin
 
         public string[] GetFolders(string path)
         {
-            List<string> folders = new List<string>();
-            ///* For Issue #27 - https://github.com/midwan/MB_SubSonic/issues/27
-            // * Creating a workaround to retrieve Playlists as folders until MusicBee's owner Steven
-            // * fixes a bug to relay calls for Playlists. */
-
-            ////Query to see if this is a call to Playlists. 
-            ////There is a chance that someone might have created a folder called with the exact same name,
-            ////but odds are they wouldn't have named it this way!
-            if (path.Equals("Imported Playlists\\"))
-            {
-                var playlists = this.GetPlaylists().ToList();
-                //Show all the playlists as folders for now.
-                foreach (var item in playlists)
-                {
-                    folders.Add("Imported Playlists\\" + item.Key + "_" + item.Value);
-                }
-            }
-            else
-            {
-                folders = Subsonic.GetFolders(path).ToList();
-            }
-
-            //If this is root folder call, create a Playlists folder to 
-            //hold all the playlists and add it to the end.
-            if (String.IsNullOrEmpty(path))
-            {
-                folders.Add("Imported Playlists");
-            }
-
-            return folders.ToArray();
+            return Subsonic.GetFolders(path);
         }
 
         public KeyValuePair<byte, string>[][] GetFiles(string path)
         {
-            //When a user invokes the virtual playlists folder, 
-            //then pull all the playlists and show under this folder.
-            //Though an ugly naming convention, we would need the ID 
-            //to retrieve the playlists contents. Is this important to solve now? Maybe not. :-)
-            if (path.StartsWith("Imported Playlists\\"))
-            {
-                string playlistName = path.Split(new char[] { '\\' })[1];
-                return GetPlaylistFiles(playlistName.Split(new char[] { '_' })[0]);
-            }
             return Subsonic.GetFiles(path);
         }
 
