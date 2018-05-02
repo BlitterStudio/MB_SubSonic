@@ -34,3 +34,8 @@ The necessary information you need to provide is "Hostname", "Port", "Username" 
 You can optionally specify a "Path" as well, if your Subsonic server needs one. Otherwise the default "/" will be used.
 
 Please note that the first time it connects, it will scan through your collection and create a local cache. This operation might take a while (depending on the size of your collection and the network speed) during which you won't be able to see anything in the Subsonic node. Please be patient. :)
+
+Usage
+=============
+In the tree menu on the left side there will appear a new subsonic menu item.
+Simply click on it to access all the files.
