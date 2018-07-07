@@ -36,6 +36,8 @@ namespace MusicBeePlugin.Helpers
                         if (string.IsNullOrEmpty(settings.BitRate))
                             settings.BitRate = "Unlimited";
 
+                        settings.UseIndexCache = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "Y";
+
                         return settings;
                     }
 
@@ -74,6 +76,9 @@ Exception: {ex}",
                             settings.Auth == SubsonicSettings.AuthMethod.HexPass ? "HexPass" : "Token",
                             Passphrase));
                     writer.WriteLine(AesEncryption.Encrypt(settings.BitRate, Passphrase));
+                    writer.WriteLine(settings.UseIndexCache
+                        ? AesEncryption.Encrypt("Y", Passphrase)
+                        : AesEncryption.Encrypt("N", Passphrase));
                     return true;
                 }
             }
