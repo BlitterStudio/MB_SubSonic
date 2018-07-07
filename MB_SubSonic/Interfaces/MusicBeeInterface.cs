@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using System.Collections.Generic;
 
-namespace MusicBeePlugin
+namespace MusicBeePlugin.Interfaces
 {
     public partial class Plugin
     {

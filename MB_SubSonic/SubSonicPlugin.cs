@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 using MusicBeePlugin.Domain;
+using MusicBeePlugin.Interfaces;
 using MusicBeePlugin.Properties;
 
 namespace MusicBeePlugin
@@ -13,10 +14,10 @@ namespace MusicBeePlugin
     // ReSharper disable once ClassNeverInstantiated.Global
     public partial class Plugin
     {
-        private readonly PluginInfo _about = new PluginInfo();
+        private readonly Interfaces.Plugin.PluginInfo _about = new Interfaces.Plugin.PluginInfo();
         private TextBox _basePath;
         private TextBox _host;
-        private MusicBeeApiInterface _mbApiInterface;
+        private Interfaces.Plugin.MusicBeeApiInterface _mbApiInterface;
         private TextBox _password;
         private TextBox _port;
         private CheckBox _transcode;
@@ -27,27 +28,27 @@ namespace MusicBeePlugin
         private Label _bitRateLabel;
 
         // ReSharper disable once UnusedMember.Global
-        public PluginInfo Initialise(IntPtr apiInterfacePtr)
+        public Interfaces.Plugin.PluginInfo Initialise(IntPtr apiInterfacePtr)
         {
-            _mbApiInterface = new MusicBeeApiInterface();
+            _mbApiInterface = new Interfaces.Plugin.MusicBeeApiInterface();
             _mbApiInterface.Initialise(apiInterfacePtr);
             Subsonic.SendNotificationsHandler = _mbApiInterface.MB_SendNotification;
             Subsonic.CreateBackgroundTask = _mbApiInterface.MB_CreateBackgroundTask;
             Subsonic.SetBackgroundTaskMessage = _mbApiInterface.MB_SetBackgroundTaskMessage;
             Subsonic.RefreshPanels = _mbApiInterface.MB_RefreshPanels;
-            _about.PluginInfoVersion = PluginInfoVersion;
-            _about.Name = "Subsonic v2.15";
-            _about.Description = "Access files and playlists on a SubSonic Server";
+            _about.PluginInfoVersion = Interfaces.Plugin.PluginInfoVersion;
+            _about.Name = "Subsonic v2.16";
+            _about.Description = "Access files and playlists on a SubSonic (or compatible) Server";
             _about.Author = "Dimitris Panokostas";
             _about.TargetApplication = "Subsonic";
             // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
-            _about.Type = PluginType.Storage;
+            _about.Type = Interfaces.Plugin.PluginType.Storage;
             _about.VersionMajor = 2; // your plugin version
-            _about.VersionMinor = 15;
+            _about.VersionMinor = 16;
             _about.Revision = 0;
-            _about.MinInterfaceVersion = MinInterfaceVersion;
-            _about.MinApiRevision = MinApiRevision;
-            _about.ReceiveNotifications = ReceiveNotificationFlags.StartupOnly;
+            _about.MinInterfaceVersion = Interfaces.Plugin.MinInterfaceVersion;
+            _about.MinApiRevision = Interfaces.Plugin.MinApiRevision;
+            _about.ReceiveNotifications = Interfaces.Plugin.ReceiveNotificationFlags.StartupOnly;
             _about.ConfigurationPanelHeight = TextRenderer.MeasureText("FirstRowText", SystemFonts.DefaultFont).Height * 12;
             // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
             return _about;
@@ -56,6 +57,8 @@ namespace MusicBeePlugin
         // ReSharper disable once UnusedMember.Global
         public bool Configure(IntPtr panelHandle)
         {
+            var currentSettings = Subsonic.GetCurrentSettings();
+
             // panelHandle will only be set if you set about.ConfigurationPanelHeight to a non-zero value
             // keep in mind the panel width is scaled according to the font the user has selected
             // if about.ConfigurationPanelHeight is set to 0, you can display your own popup window
@@ -84,7 +87,7 @@ namespace MusicBeePlugin
             _host.Bounds =
                 new Rectangle(hostPrompt.Left + TextRenderer.MeasureText(hostPrompt.Text, configPanel.Font).Width,
                     secondRowPosY, hostTextBoxWidth, _host.Height);
-            _host.Text = Subsonic.Host;
+            _host.Text = currentSettings.Host;
 
             var portPrompt = new Label
             {
@@ -96,7 +99,7 @@ namespace MusicBeePlugin
             _port.Bounds =
                 new Rectangle(portPrompt.Left + TextRenderer.MeasureText(portPrompt.Text, configPanel.Font).Width,
                     secondRowPosY, portTextBoxWidth, _port.Height);
-            _port.Text = Subsonic.Port;
+            _port.Text = currentSettings.Port;
 
             var basePathPrompt = new Label
             {
@@ -106,7 +109,7 @@ namespace MusicBeePlugin
             };
             _basePath = new TextBox();
             _basePath.Bounds = new Rectangle(_host.Left, thirdRowPosY, hostTextBoxWidth, _basePath.Height);
-            _basePath.Text = Subsonic.BasePath;
+            _basePath.Text = currentSettings.BasePath;
 
             var usernamePrompt = new Label
             {
@@ -116,7 +119,7 @@ namespace MusicBeePlugin
             };
             _username = new TextBox();
             _username.Bounds = new Rectangle(_host.Left, fourthRowPosY, hostTextBoxWidth, _username.Height);
-            _username.Text = Subsonic.Username;
+            _username.Text = currentSettings.Username;
 
             var passwordPrompt = new Label
             {
@@ -126,7 +129,7 @@ namespace MusicBeePlugin
             };
             _password = new TextBox();
             _password.Bounds = new Rectangle(_host.Left, fifthRowPosY, hostTextBoxWidth, _password.Height);
-            _password.Text = Subsonic.Password;
+            _password.Text = currentSettings.Password;
             _password.PasswordChar = '*';
 
             _transcode = new CheckBox();
@@ -152,7 +155,7 @@ namespace MusicBeePlugin
             _bitRate.Items.Add("256K");
             _bitRate.Items.Add("320K");
             //Null reference. Issue #36 - https://github.com/midwan/MB_SubSonic/issues/36. Set a bitrate by default.
-            _bitRate.SelectedItem = String.IsNullOrEmpty(Subsonic.BitRate) ? "128K" : Subsonic.BitRate;
+            _bitRate.SelectedItem = string.IsNullOrEmpty(currentSettings.BitRate) ? "128K" : currentSettings.BitRate;
             _bitRate.DropDownStyle = ComboBoxStyle.DropDownList;
             _bitRate.Visible = false;
 
@@ -161,7 +164,7 @@ namespace MusicBeePlugin
              * controls for BitRates.
              */
             _transcode.AutoSize = true;
-            _transcode.Checked = Subsonic.Transcode;
+            _transcode.Checked = currentSettings.Transcode;
             _transcode.Text = @"Transcode as mp3";
 
             var protocolLabel = new Label
@@ -174,7 +177,7 @@ namespace MusicBeePlugin
             _protocol.Bounds = new Rectangle(_host.Left, firstRowPosY, protocolWidth, _protocol.Height);
             _protocol.Items.Add("HTTP");
             _protocol.Items.Add("HTTPS");
-            _protocol.SelectedItem = Subsonic.Protocol.ToFriendlyString();
+            _protocol.SelectedItem = currentSettings.Protocol.ToFriendlyString();
             _protocol.DropDownStyle = ComboBoxStyle.DropDownList;
 
             var authMethodLabel = new Label
@@ -188,7 +191,7 @@ namespace MusicBeePlugin
             _authMethodBox.Bounds = new Rectangle(authMethodLabel.Left + TextRenderer.MeasureText(authMethodLabel.Text, configPanel.Font).Width, fifthRowPosY, authMethodWidth, _authMethodBox.Height);
             _authMethodBox.Items.Add("Token based");
             _authMethodBox.Items.Add("Hex enc. password");
-            _authMethodBox.SelectedIndex = (int)Subsonic.AuthMethod;
+            _authMethodBox.SelectedIndex = (int)currentSettings.Auth;
             _authMethodBox.DropDownStyle = ComboBoxStyle.DropDownList;
 
             configPanel.Controls.AddRange(new Control[]
@@ -230,7 +233,7 @@ namespace MusicBeePlugin
                         ? SubsonicSettings.AuthMethod.Token
                         : SubsonicSettings.AuthMethod.HexPass,
                 //Null reference. Issue #36 - https://github.com/midwan/MB_SubSonic/issues/36. If there is no bitrate, set it to a default.
-                BitRate = String.IsNullOrEmpty((String)_bitRate.SelectedItem) ? "128K" : _bitRate.SelectedItem.ToString()
+                BitRate = string.IsNullOrEmpty((string)_bitRate.SelectedItem) ? "128K" : _bitRate.SelectedItem.ToString()
             };
 
             var setHostSuccess = Subsonic.SetHost(settings);
@@ -267,7 +270,7 @@ namespace MusicBeePlugin
         }
 
         // MusicBee is closing the plugin (plugin is being disabled by user or MusicBee is shutting down)
-        public void Close(PluginCloseReason reason)
+        public void Close(Interfaces.Plugin.PluginCloseReason reason)
         {
             Subsonic.Close();
         }
@@ -293,20 +296,20 @@ namespace MusicBeePlugin
 
         // receive event notifications from MusicBee
         // you need to set about.ReceiveNotificationFlags = PlayerEvents to receive all notifications, and not just the startup event
-        public void ReceiveNotification(string sourceFileUrl, NotificationType type)
+        public void ReceiveNotification(string sourceFileUrl, Interfaces.Plugin.NotificationType type)
         {
             // perform some action depending on the notification type
             //switch (type)
 
-            if (type != NotificationType.PluginStartup) return;
+            if (type != Interfaces.Plugin.NotificationType.PluginStartup) return;
 
             var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
             Subsonic.CacheUrl = Path.Combine(dataPath, "subsonicCache.dat");
             Subsonic.SettingsUrl = Path.Combine(dataPath, "subsonicSettings.dat");
 
             Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
-                ? CallbackType.StorageReady
-                : CallbackType.StorageFailed);
+                ? Interfaces.Plugin.CallbackType.StorageReady
+                : Interfaces.Plugin.CallbackType.StorageFailed);
 
             //case NotificationType.TrackChanged:
             //    string artist = mbApiInterface.NowPlaying_GetFileTag(MetaDataType.Artist);
@@ -349,8 +352,8 @@ namespace MusicBeePlugin
             else
             {
                 Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
-                    ? CallbackType.StorageReady
-                    : CallbackType.StorageFailed);
+                    ? Interfaces.Plugin.CallbackType.StorageReady
+                    : Interfaces.Plugin.CallbackType.StorageFailed);
             }
         }
 

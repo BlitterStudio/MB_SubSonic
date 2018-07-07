@@ -3,7 +3,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace MusicBeePlugin
+namespace MusicBeePlugin.Domain
 {
     /// <summary>
     ///     Utility class that handles encryption
