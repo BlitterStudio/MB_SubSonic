@@ -127,6 +127,7 @@ namespace MusicBeePlugin
             if (!savedResult)
                 return false;
 
+            _currentSettings = settings;
             IsInitialized = true;
             try
             {

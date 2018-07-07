@@ -86,5 +86,23 @@ Exception: {ex}",
                 return false;
             }
         }
+
+        public static void DeleteFile(string path, string filename)
+        {
+            if (File.Exists(Path.Combine(path, filename)))
+                try
+                {
+                    File.Delete(Path.Combine(path, filename));
+                }
+                catch (Exception)
+                {
+                    MessageBox.Show(
+                        @"An error has occurred while trying to delete the Subsonic cache file.\nPlease try deleting the file manually.",
+                        @"An error has occurred", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            else
+                MessageBox.Show(@"The filename was not found in the path!", @"File not found", MessageBoxButtons.OK,
+                    MessageBoxIcon.Exclamation);
+        }
     }
 }
