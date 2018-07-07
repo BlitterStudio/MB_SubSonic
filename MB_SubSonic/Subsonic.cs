@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Forms;
 using MusicBeePlugin.Domain;
+using MusicBeePlugin.Helpers;
 using RestSharp;
 
 namespace MusicBeePlugin
@@ -14,12 +15,11 @@ namespace MusicBeePlugin
     {
         private const int TagCount = 10;
         private const string ApiVersion = "1.13.0";
-        private const string Passphrase = "PeekAndPoke";
         private static SubsonicSettings _currentSettings;
         private static SubsonicSettings.ServerType _serverType = SubsonicSettings.ServerType.Subsonic;
         public static bool IsInitialized;
-        public static string SettingsUrl;
-        public static string CacheUrl;
+        public static string SettingsFilename;
+        public static string CacheFilename;
         public static Interfaces.Plugin.MB_SendNotificationDelegate SendNotificationsHandler;
         public static Interfaces.Plugin.MB_CreateBackgroundTaskDelegate CreateBackgroundTask;
         public static Interfaces.Plugin.MB_SetBackgroundTaskMessageDelegate SetBackgroundTaskMessage;
@@ -39,8 +39,8 @@ namespace MusicBeePlugin
         {
             _lastEx = null;
 
-            _currentSettings = ReadSettingsFromFile(SettingsUrl);
-            IsInitialized = PingServer();
+            _currentSettings = FileHelper.ReadSettingsFromFile(SettingsFilename);
+            IsInitialized = PingServer(_currentSettings);
 
             if (_lastEx != null)
                 IsInitialized = false;
@@ -48,70 +48,20 @@ namespace MusicBeePlugin
             return IsInitialized;
         }
 
-        private static SubsonicSettings ReadSettingsFromFile(string settingsFilename)
-        {
-            var settings = new SubsonicSettings();
-            try
-            {
-                if (File.Exists(settingsFilename))
-                {
-                    using (var reader = new StreamReader(SettingsUrl))
-                    {
-                        var protocolText = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                        settings.Protocol = protocolText.Equals("HTTP")
-                            ? SubsonicSettings.ConnectionProtocol.Http
-                            : SubsonicSettings.ConnectionProtocol.Https;
-                        settings.Host = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                        settings.Port = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                        settings.BasePath = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                        settings.Username = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                        settings.Password = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                        settings.Transcode = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "Y";
-                        settings.Auth = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "HexPass"
-                            ? SubsonicSettings.AuthMethod.HexPass
-                            : SubsonicSettings.AuthMethod.Token;
-                        settings.BitRate = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                        if (string.IsNullOrEmpty(settings.BitRate)) settings.BitRate = "Unlimited";
-                    }
-                }
-                else
-                    settings = SetDefaultSettings();
-
-                return settings;
-            }
-            catch (Exception ex)
-            {
-                _lastEx = ex;
-                return SetDefaultSettings();
-            }
-        }
-
-        private static SubsonicSettings SetDefaultSettings()
-        {
-            return new SubsonicSettings
-            {
-                Host = "localhost",
-                Port = "80",
-                BasePath = "/",
-                Username = "admin",
-                Password = "",
-                Protocol = SubsonicSettings.ConnectionProtocol.Http,
-                Auth = SubsonicSettings.AuthMethod.Token,
-                BitRate = string.Empty,
-                Transcode = false
-            };
-        }
-
         public static SubsonicSettings GetCurrentSettings()
         {
             if (_currentSettings != null)
                 return _currentSettings;
-            return SetDefaultSettings();
+            return SettingsHelper.SetDefaultSettings();
         }
-        private static bool PingServer()
+
+        public static bool PingServer(SubsonicSettings settings)
         {
+            settings = SettingsHelper.SanitizeSettings(settings);
+
             SetBackgroundTaskMessage("Attempting to Ping the server...");
-            _serverName = $"{_currentSettings.Protocol.ToFriendlyString()}://{_currentSettings.Host}:{_currentSettings.Port}{_currentSettings.BasePath}";
+            _serverName = BuildServerUri(settings);
+
             try
             {
                 var request = new RestRequest
@@ -120,25 +70,9 @@ namespace MusicBeePlugin
                 };
                 var response = SendRequest(request);
 
-                // Default server type is Subsonic, but check if we're connected to a LibreSonic server
-                if (response.Contains("libresonic"))
-                    _serverType = SubsonicSettings.ServerType.LibreSonic;
+                _serverType = GetServerTypeFromResponse(response);
 
-                bool isPingOk;
-
-                if (_serverType == SubsonicSettings.ServerType.Subsonic)
-                {
-                    SetBackgroundTaskMessage("Detected a Subsonic server");
-                    var result = SubsonicAPI.Response.Deserialize(response);
-                    isPingOk = result.status == SubsonicAPI.ResponseStatus.ok;
-                }
-                else
-                {
-                    SetBackgroundTaskMessage("Detected a LibreSonic server");
-                    var result = LibreSonicAPI.Response.Deserialize(response);
-                    isPingOk = result.status == LibreSonicAPI.ResponseStatus.ok;
-                }
-
+                var isPingOk = IsPingOk(response);
                 return isPingOk;
             }
             catch (Exception ex)
@@ -148,86 +82,57 @@ namespace MusicBeePlugin
             }
         }
 
+        private static SubsonicSettings.ServerType GetServerTypeFromResponse(string response)
+        {
+            // Default server type is Subsonic, but check if we're connected to a LibreSonic server
+            if (response.Contains("libresonic"))
+                return SubsonicSettings.ServerType.LibreSonic;
+            return SubsonicSettings.ServerType.Subsonic;
+        }
+
+        private static bool IsPingOk(string response)
+        {
+            switch (_serverType)
+            {
+                case SubsonicSettings.ServerType.Subsonic:
+                {
+                    SetBackgroundTaskMessage("Detected a Subsonic server");
+                    var result = SubsonicAPI.Response.Deserialize(response);
+                    return result.status == SubsonicAPI.ResponseStatus.ok;
+                }
+                case SubsonicSettings.ServerType.LibreSonic:
+                {
+                    SetBackgroundTaskMessage("Detected a LibreSonic server");
+                    var result = LibreSonicAPI.Response.Deserialize(response);
+                    return result.status == LibreSonicAPI.ResponseStatus.ok;
+                }
+                default:
+                    return false;
+            }
+        }
+
+        private static string BuildServerUri(SubsonicSettings settings)
+        {
+            return $"{settings.Protocol.ToFriendlyString()}://{settings.Host}:{settings.Port}{settings.BasePath}";
+        }
+
         public static void Close()
         {
         }
 
-        public static bool SetHost(SubsonicSettings settings)
+        public static bool SaveSettings(SubsonicSettings settings)
         {
-            _lastEx = null;
-
-            settings.Host = settings.Host.Trim();
-            if (settings.Host.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
-                settings.Host = settings.Host.Substring(7);
-            else if (settings.Host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                settings.Host = settings.Host.Substring(8);
-            settings.Port = settings.Port.Trim();
-            settings.BasePath = settings.BasePath.Trim();
-            if (!settings.BasePath.EndsWith(@"/"))
-                settings.BasePath += @"/";
-
-            var isChanged = IsSettingChanged(settings);
-
-            if (!isChanged)
-                return true;
-
-            bool isPingOk;
-            var previousSettings = CopySettings(_currentSettings);
-            _currentSettings = CopySettings(settings);
-
-            try
-            {
-                isPingOk = PingServer();
-            }
-            catch (Exception)
-            {
-                isPingOk = false;
-            }
-
-            if (!isPingOk)
-            {
-                var dialog = MessageBox.Show(
-                    @"The Subsonic server did not respond as expected, do you want to save these settings anyway?",
-                    @"Could not get OK from server",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question,
-                    MessageBoxDefaultButton.Button2);
-
-                if (dialog == DialogResult.Yes)
-                    isPingOk = true;
-            }
-
-            if (!isPingOk)
-            {
-                _currentSettings = CopySettings(previousSettings);
+            settings = SettingsHelper.SanitizeSettings(settings);
+            var savedResult = FileHelper.SaveSettingsToFile(settings, SettingsFilename);
+            if (!savedResult)
                 return false;
-            }
 
             IsInitialized = true;
-
-            using (var writer = new StreamWriter(SettingsUrl))
-            {
-                writer.WriteLine(
-                    AesEncryption.Encrypt(
-                        settings.Protocol == SubsonicSettings.ConnectionProtocol.Http ? "HTTP" : "HTTPS", Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(settings.Host, Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(settings.Port, Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(settings.BasePath, Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(settings.Username, Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(settings.Password, Passphrase));
-                writer.WriteLine(settings.Transcode
-                    ? AesEncryption.Encrypt("Y", Passphrase)
-                    : AesEncryption.Encrypt("N", Passphrase));
-                writer.WriteLine(
-                    AesEncryption.Encrypt(settings.Auth == SubsonicSettings.AuthMethod.HexPass ? "HexPass" : "Token",
-                        Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(settings.BitRate, Passphrase));
-            }
-
             try
             {
                 SendNotificationsHandler.Invoke(Interfaces.Plugin.CallbackType.SettingsUpdated);
             }
+
             catch (Exception ex)
             {
                 _lastEx = ex;
@@ -235,34 +140,6 @@ namespace MusicBeePlugin
             }
 
             return true;
-        }
-
-        private static SubsonicSettings CopySettings(SubsonicSettings settings)
-        {
-            return new SubsonicSettings
-            {
-                Protocol = settings.Protocol,
-                Host = settings.Host,
-                Port = settings.Port,
-                BasePath = settings.BasePath,
-                Username = settings.Username,
-                Password = settings.Password,
-                Transcode = settings.Transcode,
-                BitRate = settings.BitRate
-            };
-        }
-
-        private static bool IsSettingChanged(SubsonicSettings settings)
-        {
-            return !settings.Host.Equals(_currentSettings.Host) ||
-                   !settings.Port.Equals(_currentSettings.Port) ||
-                   !settings.BasePath.Equals(_currentSettings.BasePath) ||
-                   !settings.Username.Equals(_currentSettings.Username) ||
-                   !settings.Password.Equals(_currentSettings.Password) ||
-                   !settings.Protocol.Equals(_currentSettings.Protocol) ||
-                   !settings.Auth.Equals(_currentSettings.Auth) ||
-                   !settings.Transcode.Equals(_currentSettings.Transcode) ||
-                   !settings.BitRate.Equals(_currentSettings.BitRate);
         }
 
         public static void Refresh()
@@ -408,7 +285,7 @@ namespace MusicBeePlugin
             else
             {
                 var cacheLoaded = _cachedFiles != null;
-                if (!cacheLoaded && !File.Exists(CacheUrl))
+                if (!cacheLoaded && !File.Exists(CacheFilename))
                     files = null;
                 else
                     files = GetCachedFiles();
@@ -449,7 +326,7 @@ namespace MusicBeePlugin
             lock (CacheFileLock)
             {
                 using (
-                    var stream = new FileStream(CacheUrl, FileMode.Open, FileAccess.Read, FileShare.Read, 4096,
+                    var stream = new FileStream(CacheFilename, FileMode.Open, FileAccess.Read, FileShare.Read, 4096,
                         FileOptions.SequentialScan))
                 using (var reader = new BinaryReader(stream))
                 {
@@ -579,7 +456,7 @@ namespace MusicBeePlugin
                         lock (CacheFileLock)
                         {
                             using (
-                                var stream = new FileStream(CacheUrl, FileMode.Create, FileAccess.Write,
+                                var stream = new FileStream(CacheFilename, FileMode.Create, FileAccess.Write,
                                     FileShare.None))
                             using (var writer = new BinaryWriter(stream))
                             {

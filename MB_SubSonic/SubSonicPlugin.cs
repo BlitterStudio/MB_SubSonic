@@ -236,10 +236,35 @@ namespace MusicBeePlugin
                 BitRate = string.IsNullOrEmpty((string)_bitRate.SelectedItem) ? "128K" : _bitRate.SelectedItem.ToString()
             };
 
-            var setHostSuccess = Subsonic.SetHost(settings);
-            if (setHostSuccess)
+            var pingResult = Subsonic.PingServer(settings);
+            if (!pingResult)
             {
-                DeleteCacheFile();
+                var dialog = MessageBox.Show(
+                    @"The Subsonic server did not respond to Ping as expected, do you want to save these settings anyway?",
+                    @"Could not get OK from server",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button2);
+
+                if (dialog == DialogResult.Yes)
+                    pingResult = true;
+            }
+
+            if (pingResult)
+            {
+                var saved = Subsonic.SaveSettings(settings);
+                if (saved)
+                {
+                    var dialog = MessageBox.Show(
+                        @"Settings saved successfully. Do you want to regenerate the local cache file?",
+                        @"Regenerate local cache?",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question,
+                        MessageBoxDefaultButton.Button2);
+                    if (dialog == DialogResult.Yes)
+                        DeleteCacheFile();
+                }
+                
                 Refresh();
                 return;
             }
@@ -304,8 +329,8 @@ namespace MusicBeePlugin
             if (type != Interfaces.Plugin.NotificationType.PluginStartup) return;
 
             var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
-            Subsonic.CacheUrl = Path.Combine(dataPath, "subsonicCache.dat");
-            Subsonic.SettingsUrl = Path.Combine(dataPath, "subsonicSettings.dat");
+            Subsonic.CacheFilename = Path.Combine(dataPath, "subsonicCache.dat");
+            Subsonic.SettingsFilename = Path.Combine(dataPath, "subsonicSettings.dat");
 
             Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
                 ? Interfaces.Plugin.CallbackType.StorageReady

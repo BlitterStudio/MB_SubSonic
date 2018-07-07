@@ -52,6 +52,8 @@
     <Compile Include="Domain\libresonic-rest-api.Designer.cs" />
     <Compile Include="Domain\subsonic-rest-api-1.14.0.Designer.cs" />
     <Compile Include="Domain\SubsonicSettings.cs" />
+    <Compile Include="Helpers\FileHelper.cs" />
+    <Compile Include="Helpers\SettingsHelper.cs" />
     <Compile Include="Interfaces\MusicBeeInterface.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
