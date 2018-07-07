@@ -250,7 +250,9 @@ namespace MusicBeePlugin
                     pingResult = true;
             }
 
-            if (pingResult)
+            var isChanged = Subsonic.IsSettingChanged(settings);
+
+            if (pingResult && isChanged)
             {
                 var saved = Subsonic.SaveSettings(settings);
                 if (saved)

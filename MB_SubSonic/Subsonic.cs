@@ -1451,5 +1451,11 @@ namespace MusicBeePlugin
                 return 0;
             }
         }
+
+        public static bool IsSettingChanged(SubsonicSettings settings)
+        {
+            var result = SettingsHelper.IsSettingChanged(settings, _currentSettings);
+            return result;
+        }
     }
 }
