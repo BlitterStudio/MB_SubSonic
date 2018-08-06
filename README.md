@@ -10,7 +10,7 @@ Subsonic (www.subsonic.org) is a free streaming media server that you can instal
 
 Since version 2.9 the plugin also supports LibreSonic servers officially.
 
-Based on the original work by Steven Mayall. The code was converted from VB.NET to C# with the aim to to futher develop, the plugin, since Steven did not wish to continue working on it.
+Based on the original work by Steven Mayall. The code was converted from VB.NET to C# with the aim to to futher develop the plugin, since Steven did not wish to continue working on it.
 
 Any bugs or improvement suggestions can be reported in the Issues section.
 
