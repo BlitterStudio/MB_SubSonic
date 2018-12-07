@@ -87,32 +87,31 @@ namespace MusicBeePlugin.Windows
             e.Cancel = true;
         }
 
-        public void PersistValues()
+        private void PersistValues()
         {
             var settings = GetFormSettings();
             var isChanged = Subsonic.IsSettingChanged(settings);
-            if (isChanged)
+            if (!isChanged) return;
+            
+            var saved = Subsonic.SaveSettings(settings);
+            if (saved && settings.UseIndexCache)
             {
-                var saved = Subsonic.SaveSettings(settings);
-                if (saved && settings.UseIndexCache)
-                {
-                    var dialog = MessageBox.Show(
-                        @"Settings saved successfully. Do you want to regenerate the local cache file?",
-                        @"Regenerate local cache?",
-                        MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Question,
-                        MessageBoxDefaultButton.Button2);
-                    if (dialog == DialogResult.Yes)
-                        DeleteCacheFile();
-                }
-
-                if (Subsonic.IsInitialized)
-                    Subsonic.Refresh();
-                else
-                    Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
-                        ? Interfaces.Plugin.CallbackType.StorageReady
-                        : Interfaces.Plugin.CallbackType.StorageFailed);
+                var dialog = MessageBox.Show(
+                    @"Settings saved successfully. Do you want to regenerate the local cache file?",
+                    @"Regenerate local cache?",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button2);
+                if (dialog == DialogResult.Yes)
+                    DeleteCacheFile();
             }
+
+            if (Subsonic.IsInitialized)
+                Subsonic.Refresh();
+            else
+                Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
+                    ? Interfaces.Plugin.CallbackType.StorageReady
+                    : Interfaces.Plugin.CallbackType.StorageFailed);
         }
 
         private void ButtonAbout_Click(object sender, EventArgs e)
@@ -182,7 +181,7 @@ https://github.com/midwan/MB_SubSonic", @"About Subsonic Client", MessageBoxButt
         private void DeleteCacheFile()
         {
             var path = _mbApiInterface.Setting_GetPersistentStoragePath();
-            var filename = "subsonicCache.dat";
+            const string filename = "subsonicCache.dat";
             FileHelper.DeleteFile(path, filename);
         }
 

@@ -14,32 +14,33 @@ namespace MusicBeePlugin.Helpers
             var settings = new SubsonicSettings();
             try
             {
-                if (File.Exists(settingsFilename))
-                    using (var reader = new StreamReader(settingsFilename))
-                    {
-                        var protocolText = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                if (!File.Exists(settingsFilename)) return Subsonic.GetCurrentSettings();
+                
+                using (var reader = new StreamReader(settingsFilename))
+                {
+                    var protocolText = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
 
-                        settings.Protocol = protocolText.Equals("HTTP")
-                            ? SubsonicSettings.ConnectionProtocol.Http
-                            : SubsonicSettings.ConnectionProtocol.Https;
-                        settings.Host = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                        settings.Port = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                        settings.BasePath = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                        settings.Username = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                        settings.Password = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                        settings.Transcode = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "Y";
-                        settings.Auth = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "HexPass"
-                            ? SubsonicSettings.AuthMethod.HexPass
-                            : SubsonicSettings.AuthMethod.Token;
-                        settings.BitRate = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                    settings.Protocol = protocolText.Equals("HTTP")
+                        ? SubsonicSettings.ConnectionProtocol.Http
+                        : SubsonicSettings.ConnectionProtocol.Https;
+                    settings.Host = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                    settings.Port = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                    settings.BasePath = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                    settings.Username = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                    settings.Password = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                    settings.Transcode = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "Y";
+                    settings.Auth = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "HexPass"
+                        ? SubsonicSettings.AuthMethod.HexPass
+                        : SubsonicSettings.AuthMethod.Token;
+                    settings.BitRate = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
 
-                        if (string.IsNullOrEmpty(settings.BitRate))
-                            settings.BitRate = "Unlimited";
+                    if (string.IsNullOrEmpty(settings.BitRate))
+                        settings.BitRate = "Unlimited";
 
-                        settings.UseIndexCache = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "Y";
+                    settings.UseIndexCache = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "Y";
 
-                        return settings;
-                    }
+                    return settings;
+                }
 
                 return Subsonic.GetCurrentSettings();
             }
