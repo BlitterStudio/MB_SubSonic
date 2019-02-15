@@ -2,23 +2,18 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Windows.Forms;
-using MusicBeePlugin.Domain;
 using MusicBeePlugin.Helpers;
-using MusicBeePlugin.Interfaces;
 using MusicBeePlugin.Properties;
 using MusicBeePlugin.Windows;
 
 namespace MusicBeePlugin
 {
     // ReSharper disable once ClassNeverInstantiated.Global
-    public partial class Plugin
+    public class Plugin
     {
         private readonly Interfaces.Plugin.PluginInfo _about = new Interfaces.Plugin.PluginInfo();
-        private SettingsWindow _settingsWindow;
         private Interfaces.Plugin.MusicBeeApiInterface _mbApiInterface;
+        private SettingsWindow _settingsWindow;
 
         // ReSharper disable once UnusedMember.Global
         public Interfaces.Plugin.PluginInfo Initialise(IntPtr apiInterfacePtr)
@@ -42,7 +37,8 @@ namespace MusicBeePlugin
             _about.MinInterfaceVersion = Interfaces.Plugin.MinInterfaceVersion;
             _about.MinApiRevision = Interfaces.Plugin.MinApiRevision;
             _about.ReceiveNotifications = Interfaces.Plugin.ReceiveNotificationFlags.StartupOnly;
-            _about.ConfigurationPanelHeight = 0; // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
+            _about.ConfigurationPanelHeight =
+                0; // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
 
             _settingsWindow = new SettingsWindow(_mbApiInterface, _about);
             return _about;
@@ -135,15 +131,11 @@ namespace MusicBeePlugin
         public void Refresh()
         {
             if (Subsonic.IsInitialized)
-            {
                 Subsonic.Refresh();
-            }
             else
-            {
                 Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
                     ? Interfaces.Plugin.CallbackType.StorageReady
                     : Interfaces.Plugin.CallbackType.StorageFailed);
-            }
         }
 
         public bool IsReady()

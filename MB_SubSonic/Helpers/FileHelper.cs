@@ -15,7 +15,7 @@ namespace MusicBeePlugin.Helpers
             try
             {
                 if (!File.Exists(settingsFilename)) return Subsonic.GetCurrentSettings();
-                
+
                 using (var reader = new StreamReader(settingsFilename))
                 {
                     var protocolText = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
@@ -41,15 +41,13 @@ namespace MusicBeePlugin.Helpers
 
                     return settings;
                 }
-
-                return Subsonic.GetCurrentSettings();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($@"An error occurred while trying to load the settings file! Reverting to defaults...
 
 Exception: {ex}",
-                    $@"Error while trying to load settings", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    @"Error while trying to load settings", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return Subsonic.GetCurrentSettings();
             }
         }
@@ -88,7 +86,7 @@ Exception: {ex}",
                 MessageBox.Show($@"An error occurred while trying to save the settings file!
 
 Exception: {ex}",
-                    $@"Error while trying to save settings", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    @"Error while trying to save settings", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
         }
