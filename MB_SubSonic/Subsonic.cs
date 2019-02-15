@@ -13,7 +13,7 @@ namespace MusicBeePlugin
 {
     public static class Subsonic
     {
-        private const int TagCount = 11;
+        private const int TagCount = 12;
         private const string ApiVersion = "1.13.0";
         private static SubsonicSettings _currentSettings;
         private static SubsonicSettings.ServerType _serverType = SubsonicSettings.ServerType.Subsonic;
@@ -1102,6 +1102,7 @@ namespace MusicBeePlugin
             tags[10] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artwork,
                 string.IsNullOrEmpty(child.coverArt) ? "" : "Y");
             tags[11] = new KeyValuePair<byte, string>((byte)Interfaces.Plugin.MetaDataType.DiscNo, child.discNumber.ToString());
+            tags[12] = new KeyValuePair<byte, string>((byte)Interfaces.Plugin.MetaDataType.RatingLove, child.starred != default(DateTime) ? "L" : "");
 
             for (var tagIndex = 1; tagIndex < TagCount; tagIndex++)
                 if (tags[tagIndex].Value == null)
@@ -1134,6 +1135,7 @@ namespace MusicBeePlugin
             tags[10] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artwork,
                 string.IsNullOrEmpty(child.coverArt) ? "" : "Y");
             tags[11] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.DiscNo, child.discNumber.ToString());
+            tags[12] = new KeyValuePair<byte, string>((byte)Interfaces.Plugin.MetaDataType.RatingLove, child.starred != default(DateTime) ? "L" : "");
 
             for (var tagIndex = 1; tagIndex < TagCount; tagIndex++)
                 if (tags[tagIndex].Value == null)
