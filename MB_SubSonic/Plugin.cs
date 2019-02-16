@@ -24,6 +24,8 @@ namespace MusicBeePlugin
             Subsonic.CreateBackgroundTask = _mbApiInterface.MB_CreateBackgroundTask;
             Subsonic.SetBackgroundTaskMessage = _mbApiInterface.MB_SetBackgroundTaskMessage;
             Subsonic.RefreshPanels = _mbApiInterface.MB_RefreshPanels;
+            Subsonic.GetFileTag = _mbApiInterface.Library_GetFileTag;
+            //Subsonic.GetFileTags = _mbApiInterface.Library_GetFileTags;
             _about.PluginInfoVersion = Interfaces.Plugin.PluginInfoVersion;
             _about.Name = "Subsonic Client";
             _about.Description = "Access files and playlists on a SubSonic (or compatible) Server";
@@ -36,7 +38,8 @@ namespace MusicBeePlugin
             _about.Revision = 0;
             _about.MinInterfaceVersion = Interfaces.Plugin.MinInterfaceVersion;
             _about.MinApiRevision = Interfaces.Plugin.MinApiRevision;
-            _about.ReceiveNotifications = Interfaces.Plugin.ReceiveNotificationFlags.StartupOnly;
+            _about.ReceiveNotifications = Interfaces.Plugin.ReceiveNotificationFlags.PlayerEvents |
+                                          Interfaces.Plugin.ReceiveNotificationFlags.TagEvents;
             _about.ConfigurationPanelHeight =
                 0; // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
 
@@ -84,22 +87,47 @@ namespace MusicBeePlugin
         public void ReceiveNotification(string sourceFileUrl, Interfaces.Plugin.NotificationType type)
         {
             // perform some action depending on the notification type
-            //switch (type)
+            switch (type)
+            {
+                case Interfaces.Plugin.NotificationType.PluginStartup:
+                    var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
+                    Subsonic.CacheFilename = Path.Combine(dataPath, "subsonicCache.dat");
+                    Subsonic.SettingsFilename = Path.Combine(dataPath, "subsonicSettings.dat");
 
-            if (type != Interfaces.Plugin.NotificationType.PluginStartup) return;
+                    Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
+                        ? Interfaces.Plugin.CallbackType.StorageReady
+                        : Interfaces.Plugin.CallbackType.StorageFailed);
+                    break;
 
-            var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
-            Subsonic.CacheFilename = Path.Combine(dataPath, "subsonicCache.dat");
-            Subsonic.SettingsFilename = Path.Combine(dataPath, "subsonicSettings.dat");
+                case Interfaces.Plugin.NotificationType.TagsChanged:
+                    //var tags = new List<Interfaces.Plugin.MetaDataType>
+                    //{
+                    //    Interfaces.Plugin.MetaDataType.Artist,
+                    //    Interfaces.Plugin.MetaDataType.TrackTitle,
+                    //    Interfaces.Plugin.MetaDataType.Album,
+                    //    Interfaces.Plugin.MetaDataType.Year,
+                    //    Interfaces.Plugin.MetaDataType.TrackNo,
+                    //    Interfaces.Plugin.MetaDataType.Genre,
+                    //    Interfaces.Plugin.MetaDataType.Artwork,
+                    //    Interfaces.Plugin.MetaDataType.DiscNo,
+                    //    Interfaces.Plugin.MetaDataType.RatingLove,
+                    //    Interfaces.Plugin.MetaDataType.Rating
+                    //};
 
-            Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
-                ? Interfaces.Plugin.CallbackType.StorageReady
-                : Interfaces.Plugin.CallbackType.StorageFailed);
+                    //Subsonic.GetFileTags(sourceFileUrl, tags.ToArray(), out var results);
+                    //Subsonic.UpdateTags(results);
 
-            //case NotificationType.TrackChanged:
-            //    string artist = mbApiInterface.NowPlaying_GetFileTag(MetaDataType.Artist);
-            //    // ...
-            //    break;
+                    var rating = Subsonic.GetFileTag(sourceFileUrl, Interfaces.Plugin.MetaDataType.Rating);
+                    var starred = Subsonic.GetFileTag(sourceFileUrl, Interfaces.Plugin.MetaDataType.RatingLove);
+                    Subsonic.UpdateRating(sourceFileUrl, rating);
+                    Subsonic.UpdateRatingLove(sourceFileUrl, starred);
+                    break;
+
+                //case NotificationType.TrackChanged:
+                //    string artist = mbApiInterface.NowPlaying_GetFileTag(MetaDataType.Artist);
+                //    // ...
+                //    break;
+            }
         }
 
 
