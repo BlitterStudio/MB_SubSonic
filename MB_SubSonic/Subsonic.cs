@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -13,7 +14,7 @@ namespace MusicBeePlugin
 {
     public static class Subsonic
     {
-        private const int TagCount = 12;
+        private const int TagCount = 13;
         private const string ApiVersion = "1.13.0";
         private static SubsonicSettings _currentSettings;
         private static SubsonicSettings.ServerType _serverType = SubsonicSettings.ServerType.Subsonic;
@@ -1094,6 +1095,7 @@ namespace MusicBeePlugin
             tags[10] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artwork, string.IsNullOrEmpty(child.coverArt) ? "" : "Y");
             tags[11] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.DiscNo, child.discNumber.ToString());
             tags[12] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.RatingLove, child.starred != default(DateTime) ? "L" : "");
+            tags[13] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Custom16, child.id ?? "");
 
             return tags;
         }
@@ -1122,6 +1124,7 @@ namespace MusicBeePlugin
             tags[10] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artwork, string.IsNullOrEmpty(child.coverArt) ? "" : "Y");
             tags[11] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.DiscNo, child.discNumber.ToString());
             tags[12] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.RatingLove, child.starred != default(DateTime) ? "L" : "");
+            tags[13] = new KeyValuePair<byte, string>((byte)Interfaces.Plugin.MetaDataType.Custom16, child.id ?? "");
 
             return tags;
         }
@@ -1251,14 +1254,29 @@ namespace MusicBeePlugin
             return files.ToArray();
         }
 
-        public static void UpdateRating(string sourceFileUrl, string rating)
+        public static void UpdateRating(string id, string rating)
         {
-            //TODO
+            if (string.IsNullOrEmpty(rating)) return;
+            int.TryParse(rating, out var result);
+
+            var request = new RestRequest
+            {
+                Resource = "setRating"
+            };
+            request.AddParameter("id", id);
+            request.AddParameter("rating", result);
+            SendRequest(request);
         }
 
-        public static void UpdateRatingLove(string sourceFileUrl, string starred)
+        public static void UpdateRatingLove(string id, string starred)
         {
-            //TODO
+            var request = new RestRequest
+            {
+                Resource = starred.Equals("L") ? "star" : "unstar"
+            };
+
+            request.AddParameter("id", id);
+            SendRequest(request);
         }
 
         public static Stream GetStream(string url)

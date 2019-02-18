@@ -119,8 +119,10 @@ namespace MusicBeePlugin
 
                     var rating = Subsonic.GetFileTag(sourceFileUrl, Interfaces.Plugin.MetaDataType.Rating);
                     var starred = Subsonic.GetFileTag(sourceFileUrl, Interfaces.Plugin.MetaDataType.RatingLove);
-                    Subsonic.UpdateRating(sourceFileUrl, rating);
-                    Subsonic.UpdateRatingLove(sourceFileUrl, starred);
+                    var id = Subsonic.GetFileTag(sourceFileUrl, Interfaces.Plugin.MetaDataType.Custom16);
+
+                    Subsonic.UpdateRating(id, rating);
+                    Subsonic.UpdateRatingLove(id, starred);
                     break;
 
                 //case NotificationType.TrackChanged:
