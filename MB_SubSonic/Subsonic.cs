@@ -1082,24 +1082,19 @@ namespace MusicBeePlugin
                 path = attribute.Replace(@"/", @"\");
             path = baseFolderName == null ? GetResolvedUrl(path) : $"{baseFolderName}\\{path}";
             tags[0] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Url, path);
-            tags[1] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artist, child.artist);
-            tags[2] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.TrackTitle, child.title);
-            tags[3] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Album, child.album);
+            tags[1] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artist, child.artist ?? "");
+            tags[2] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.TrackTitle, child.title ?? "");
+            tags[3] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Album, child.album ?? "");
             tags[4] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Year, child.year.ToString());
             tags[5] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.TrackNo, child.track.ToString());
-            tags[6] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Genre, child.genre);
-            tags[7] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Duration,
-                (child.duration * 1000).ToString());
+            tags[6] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Genre, child.genre ?? "");
+            tags[7] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Duration, (child.duration * 1000).ToString());
             tags[8] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Bitrate, child.bitRate.ToString());
             tags[9] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Size, child.size.ToString());
-            tags[10] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artwork,
-                string.IsNullOrEmpty(child.coverArt) ? "" : "Y");
-            tags[11] = new KeyValuePair<byte, string>((byte)Interfaces.Plugin.MetaDataType.DiscNo, child.discNumber.ToString());
-            tags[12] = new KeyValuePair<byte, string>((byte)Interfaces.Plugin.MetaDataType.RatingLove, child.starred != default(DateTime) ? "L" : "");
+            tags[10] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artwork, string.IsNullOrEmpty(child.coverArt) ? "" : "Y");
+            tags[11] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.DiscNo, child.discNumber.ToString());
+            tags[12] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.RatingLove, child.starred != default(DateTime) ? "L" : "");
 
-            for (var tagIndex = 1; tagIndex < TagCount; tagIndex++)
-                if (tags[tagIndex].Value == null)
-                    tags[tagIndex] = new KeyValuePair<byte, string>(tags[tagIndex].Key, "");
             return tags;
         }
 
@@ -1115,24 +1110,19 @@ namespace MusicBeePlugin
                 path = attribute.Replace(@"/", @"\");
             path = baseFolderName == null ? GetResolvedUrl(path) : $"{baseFolderName}\\{path}";
             tags[0] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Url, path);
-            tags[1] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artist, child.artist);
-            tags[2] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.TrackTitle, child.title);
-            tags[3] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Album, child.album);
+            tags[1] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artist, child.artist ?? "");
+            tags[2] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.TrackTitle, child.title ?? "");
+            tags[3] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Album, child.album ?? "");
             tags[4] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Year, child.year.ToString());
             tags[5] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.TrackNo, child.track.ToString());
-            tags[6] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Genre, child.genre);
-            tags[7] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Duration,
-                (child.duration * 1000).ToString());
+            tags[6] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Genre, child.genre ?? "");
+            tags[7] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Duration, (child.duration * 1000).ToString());
             tags[8] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Bitrate, child.bitRate.ToString());
             tags[9] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Size, child.size.ToString());
-            tags[10] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artwork,
-                string.IsNullOrEmpty(child.coverArt) ? "" : "Y");
+            tags[10] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artwork, string.IsNullOrEmpty(child.coverArt) ? "" : "Y");
             tags[11] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.DiscNo, child.discNumber.ToString());
-            tags[12] = new KeyValuePair<byte, string>((byte)Interfaces.Plugin.MetaDataType.RatingLove, child.starred != default(DateTime) ? "L" : "");
+            tags[12] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.RatingLove, child.starred != default(DateTime) ? "L" : "");
 
-            for (var tagIndex = 1; tagIndex < TagCount; tagIndex++)
-                if (tags[tagIndex].Value == null)
-                    tags[tagIndex] = new KeyValuePair<byte, string>(tags[tagIndex].Key, "");
             return tags;
         }
 
