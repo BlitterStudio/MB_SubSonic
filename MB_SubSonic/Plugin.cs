@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using MusicBeePlugin.Helpers;
 using MusicBeePlugin.Properties;
 using MusicBeePlugin.Windows;
@@ -26,6 +27,7 @@ namespace MusicBeePlugin
             Subsonic.RefreshPanels = _mbApiInterface.MB_RefreshPanels;
             Subsonic.GetFileTag = _mbApiInterface.Library_GetFileTag;
             //Subsonic.GetFileTags = _mbApiInterface.Library_GetFileTags;
+            Subsonic.QueryPlaylistFilesEx = _mbApiInterface.Playlist_QueryFilesEx;
             _about.PluginInfoVersion = Interfaces.Plugin.PluginInfoVersion;
             _about.Name = "Subsonic Client";
             _about.Description = "Access files and playlists on a SubSonic (or compatible) Server";
@@ -34,7 +36,7 @@ namespace MusicBeePlugin
             // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
             _about.Type = Interfaces.Plugin.PluginType.Storage;
             _about.VersionMajor = 2; // your plugin version
-            _about.VersionMinor = 25;
+            _about.VersionMinor = 26;
             _about.Revision = 0;
             _about.MinInterfaceVersion = Interfaces.Plugin.MinInterfaceVersion;
             _about.MinApiRevision = Interfaces.Plugin.MinApiRevision;
@@ -125,6 +127,46 @@ namespace MusicBeePlugin
                     Subsonic.UpdateRatingLove(id, starred);
                     break;
 
+                //case Interfaces.Plugin.NotificationType.PlaylistCreated:
+                //    // TODO send new playlist to Subsonic Server
+                //    string[] filenames;
+                //    Subsonic.QueryPlaylistFilesEx(sourceFileUrl, out filenames);
+
+                //    break;
+
+                //case Interfaces.Plugin.NotificationType.PlaylistUpdated:
+                //    //TODO check what happens here
+                //    string[] filenames1;
+                //    Subsonic.QueryPlaylistFilesEx(sourceFileUrl, out filenames1);
+
+                //    break;
+
+                case Interfaces.Plugin.NotificationType.PlaylistDeleted:
+                    //TODO Delete playlist
+                    var serverPlaylists = Subsonic.GetPlaylists();
+                    var playlistToDelete = serverPlaylists.Where(p => p.Value.Equals(GetPlaylistName(sourceFileUrl)));
+                    foreach (var item in playlistToDelete)
+                    {
+                        Subsonic.DeletePlaylist(int.Parse(item.Key));
+                    }
+                    break;
+
+                case Interfaces.Plugin.NotificationType.PlaylistMoved:
+                    string[] filenames;
+                    Subsonic.QueryPlaylistFilesEx(sourceFileUrl, out filenames);
+
+                    // Get Song IDs to add to playlist
+                    var songIds = new List<int>();
+                    foreach (var filename in filenames)
+                    {
+                        id = Subsonic.GetFileTag(filename, Interfaces.Plugin.MetaDataType.Custom16);
+                        if (int.TryParse(id, out var songId))
+                            songIds.Add(songId);
+                    }
+
+                    Subsonic.CreatePlaylist(GetPlaylistName(sourceFileUrl), songIds);
+                    break;
+
                 //case NotificationType.TrackChanged:
                 //    string artist = mbApiInterface.NowPlaying_GetFileTag(MetaDataType.Artist);
                 //    // ...
@@ -132,6 +174,14 @@ namespace MusicBeePlugin
             }
         }
 
+        private string GetPlaylistName(string playlistUrl)
+        {
+            // Get Playlist Name
+            const string trimEndChars = ".mbp";
+            const string trimStartChars = "\\";
+            var playlistName = playlistUrl.TrimEnd(trimEndChars.ToCharArray()).Substring(playlistUrl.LastIndexOf('\\'));
+            return playlistName.TrimStart(trimStartChars.ToCharArray());
+        }
 
         // return an array of lyric or artwork provider names this plugin supports
         // the providers will be iterated through one by one and passed to the RetrieveLyrics/ RetrieveArtwork function in order set by the user in the MusicBee Tags(2) preferences screen until a match is found

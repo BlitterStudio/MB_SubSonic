@@ -351,7 +351,11 @@ namespace MusicBeePlugin.Interfaces
             DownloadCompleted = 33,
             MusicBeeStarted = 34,
             PlayingTracksChanged = 35,
-            PlayingTracksQueueChanged = 36
+            PlayingTracksQueueChanged = 36,
+            PlaylistCreated = 37,
+            PlaylistUpdated = 38,
+            PlaylistDeleted = 39,
+            PlaylistMoved = 40
         }
 
         public enum PluginCloseReason

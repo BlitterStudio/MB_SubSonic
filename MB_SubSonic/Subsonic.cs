@@ -27,6 +27,7 @@ namespace MusicBeePlugin
         public static Interfaces.Plugin.MB_RefreshPanelsDelegate RefreshPanels;
         public static Interfaces.Plugin.Library_GetFileTagDelegate GetFileTag;
         //public static Interfaces.Plugin.Library_GetFileTagsDelegate GetFileTags;
+        public static Interfaces.Plugin.Playlist_QueryFilesExDelegate QueryPlaylistFilesEx;
         private static string _serverName;
         private static Exception _lastEx;
         private static readonly object CacheFileLock = new object();
@@ -1276,6 +1277,38 @@ namespace MusicBeePlugin
             };
 
             request.AddParameter("id", id);
+            SendRequest(request);
+        }
+
+        public static void CreatePlaylist(string name, List<int> songIds)
+        {
+            //TODO
+            var request = new RestRequest
+            {
+                Resource = "createPlaylist"
+            };
+            request.AddParameter("name", name);
+            foreach (var songId in songIds)
+            {
+                request.AddParameter("songId", songId);
+            }
+
+            SendRequest(request);
+        }
+
+        public static void UpdatePlaylist(int playlistId, string name, List<int> songIdsToAdd, List<int> songIdsToRemove)
+        {
+            //TODO
+        }
+
+        public static void DeletePlaylist(int playlistId)
+        {
+            //TODO
+            var request = new RestRequest
+            {
+                Resource = "deletePlaylist"
+            };
+            request.AddParameter("id", playlistId);
             SendRequest(request);
         }
 
