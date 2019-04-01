@@ -174,7 +174,8 @@ https://github.com/midwan/MB_SubSonic", @"About Subsonic Client", MessageBoxButt
                 BitRate = string.IsNullOrEmpty(ComboBoxBitrate.SelectedItem.ToString())
                     ? "128K"
                     : ComboBoxBitrate.SelectedItem.ToString(),
-                UseIndexCache = CheckBoxCache.Checked
+                UseIndexCache = CheckBoxCache.Checked,
+                PreCacheAll = CheckBoxPreCache.Checked
             };
         }
 

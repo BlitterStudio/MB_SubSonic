@@ -34,7 +34,8 @@ namespace MusicBeePlugin.Helpers
                          !newSettings.Auth.Equals(oldSettings.Auth) ||
                          !newSettings.Transcode.Equals(oldSettings.Transcode) ||
                          !newSettings.BitRate.Equals(oldSettings.BitRate) ||
-                         !newSettings.UseIndexCache.Equals(oldSettings.UseIndexCache);
+                         !newSettings.UseIndexCache.Equals(oldSettings.UseIndexCache) ||
+                         !newSettings.PreCacheAll.Equals(oldSettings.PreCacheAll);
             return result;
         }
 

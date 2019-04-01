@@ -53,6 +53,7 @@
             this.GroupBoxServer = new System.Windows.Forms.GroupBox();
             this.CheckBoxCache = new System.Windows.Forms.CheckBox();
             this.ButtonDeleteCache = new System.Windows.Forms.Button();
+            this.CheckBoxPreCache = new System.Windows.Forms.CheckBox();
             this.GroupBoxTranscoding.SuspendLayout();
             this.GroupBoxServer.SuspendLayout();
             this.SuspendLayout();
@@ -306,11 +307,22 @@
             this.ButtonDeleteCache.UseVisualStyleBackColor = true;
             this.ButtonDeleteCache.Click += new System.EventHandler(this.ButtonDeleteCache_Click);
             // 
+            // CheckBoxPreCache
+            // 
+            this.CheckBoxPreCache.AutoSize = true;
+            this.CheckBoxPreCache.Location = new System.Drawing.Point(172, 254);
+            this.CheckBoxPreCache.Name = "CheckBoxPreCache";
+            this.CheckBoxPreCache.Size = new System.Drawing.Size(142, 17);
+            this.CheckBoxPreCache.TabIndex = 26;
+            this.CheckBoxPreCache.Text = "Pre-Cache all recursively";
+            this.CheckBoxPreCache.UseVisualStyleBackColor = true;
+            // 
             // SettingsWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(598, 319);
+            this.Controls.Add(this.CheckBoxPreCache);
             this.Controls.Add(this.ButtonDeleteCache);
             this.Controls.Add(this.CheckBoxCache);
             this.Controls.Add(this.GroupBoxServer);
@@ -358,5 +370,6 @@
         private System.Windows.Forms.GroupBox GroupBoxServer;
         private System.Windows.Forms.CheckBox CheckBoxCache;
         private System.Windows.Forms.Button ButtonDeleteCache;
+        private System.Windows.Forms.CheckBox CheckBoxPreCache;
     }
 }

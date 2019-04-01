@@ -137,7 +137,6 @@ namespace MusicBeePlugin
             {
                 SendNotificationsHandler.Invoke(Interfaces.Plugin.CallbackType.SettingsUpdated);
             }
-
             catch (Exception ex)
             {
                 _lastEx = ex;
@@ -746,7 +745,7 @@ namespace MusicBeePlugin
                     {
                         SetBackgroundTaskMessage($"Processing MusicDirectory {index} of {total}...");
                         var childEntry = content.child[index];
-                        if (childEntry.isDir)
+                        if (childEntry.isDir && _currentSettings.PreCacheAll)
                         {
                             GetFolderFiles(baseFolderName, childEntry.id, files);
                         }
@@ -778,7 +777,7 @@ namespace MusicBeePlugin
                     {
                         SetBackgroundTaskMessage($"Processing MusicDirectory {index} of {total}...");
                         var childEntry = content.child[index];
-                        if (childEntry.isDir)
+                        if (childEntry.isDir && _currentSettings.PreCacheAll)
                         {
                             GetFolderFiles(baseFolderName, childEntry.id, files);
                         }
