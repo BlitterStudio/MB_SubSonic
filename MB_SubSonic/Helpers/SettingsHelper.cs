@@ -18,7 +18,8 @@ namespace MusicBeePlugin.Helpers
                 Auth = SubsonicSettings.AuthMethod.Token,
                 BitRate = string.Empty,
                 Transcode = false,
-                UseIndexCache = true
+                UseIndexCache = true,
+                PreCacheAll = false
             };
         }
 
