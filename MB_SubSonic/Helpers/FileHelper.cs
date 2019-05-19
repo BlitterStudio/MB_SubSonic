@@ -44,10 +44,11 @@ namespace MusicBeePlugin.Helpers
             }
             catch (Exception ex)
             {
+                const string caption = "Error while trying to load settings";
                 MessageBox.Show($@"An error occurred while trying to load the settings file! Reverting to defaults...
 
 Exception: {ex}",
-                    @"Error while trying to load settings", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return Subsonic.GetCurrentSettings();
             }
         }
@@ -83,10 +84,11 @@ Exception: {ex}",
             }
             catch (Exception ex)
             {
+                const string caption = "Error while trying to save settings";
                 MessageBox.Show($@"An error occurred while trying to save the settings file!
 
 Exception: {ex}",
-                    @"Error while trying to save settings", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
         }
@@ -94,19 +96,26 @@ Exception: {ex}",
         public static void DeleteFile(string path, string filename)
         {
             if (File.Exists(Path.Combine(path, filename)))
+            {
                 try
                 {
                     File.Delete(Path.Combine(path, filename));
                 }
                 catch (Exception)
                 {
+                    const string caption = "An error has occurred";
                     MessageBox.Show(
                         @"An error has occurred while trying to delete the Subsonic cache file.\nPlease try deleting the file manually.",
-                        @"An error has occurred", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
+            }
             else
-                MessageBox.Show(@"The filename was not found in the path!", @"File not found", MessageBoxButtons.OK,
-                    MessageBoxIcon.Exclamation);
+            {
+                const string caption = "File not found";
+                const string text = "The filename was not found in the path!";
+                MessageBox.Show(text, caption, MessageBoxButtons.OK,
+MessageBoxIcon.Exclamation);
+            }
         }
     }
 }

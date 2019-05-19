@@ -18,6 +18,7 @@ namespace MusicBeePlugin
     {
         private const int TagCount = 13;
         private const string ApiVersion = "1.13.0";
+        private const string CaptionServerError = "Error reported from Server";
         private static SubsonicSettings _currentSettings;
         private static SubsonicSettings.ServerType _serverType = SubsonicSettings.ServerType.Subsonic;
         public static bool IsInitialized;
@@ -153,10 +154,9 @@ namespace MusicBeePlugin
 
         public static bool FolderExists(string path)
         {
-            var exists = string.IsNullOrEmpty(path) ||
-                         path.Equals(@"\") ||
-                         GetFolderId(path) != null;
-            return exists;
+            return string.IsNullOrEmpty(path)
+                         || path.Equals(@"\")
+                         || GetFolderId(path) != null;
         }
 
         public static string[] GetFolders(string path)
@@ -216,7 +216,7 @@ namespace MusicBeePlugin
                         if (result.Item is Error error)
                         {
                             MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                             return null;
                         }
 
@@ -245,7 +245,7 @@ namespace MusicBeePlugin
                         if (result.Item is LibreSonicAPI.Error error)
                         {
                             MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                             return null;
                         }
 
@@ -367,7 +367,8 @@ namespace MusicBeePlugin
                     }
                     catch (EndOfStreamException)
                     {
-                        MessageBox.Show(@"The Cache file seems to be empty!");
+                        const string text = "The Cache file seems to be empty!";
+                        MessageBox.Show(text);
                     }
                 }
             }
@@ -420,18 +421,24 @@ namespace MusicBeePlugin
 
                     anyChanges = oldCachedFiles == null || _cachedFiles.Length != oldCachedFiles.Length;
                     if (!anyChanges)
+                    {
                         for (var index = 0; index < _cachedFiles.Length; index++)
                         {
                             var tags1 = _cachedFiles[index];
                             var tags2 = oldCachedFiles[index];
                             for (var tagIndex = 0; tagIndex < TagCount; tagIndex++)
                             {
-                                if (string.Compare(tags1[tagIndex].Value, tags2[tagIndex].Value,
-                                        StringComparison.Ordinal) == 0) continue;
+                                if (string.Equals(tags1[tagIndex].Value, tags2[tagIndex].Value,
+                                        StringComparison.Ordinal))
+                                {
+                                    continue;
+                                }
+
                                 anyChanges = true;
                                 break;
                             }
                         }
+                    }
                 }
 
                 if (!anyChanges)
@@ -468,12 +475,14 @@ namespace MusicBeePlugin
                                 writer.Write(2); // version
                                 writer.Write(files.Length);
                                 foreach (var tags in files)
+                                {
                                     for (var tagIndex = 0; tagIndex <= TagCount; tagIndex++)
                                     {
                                         var tag = tags[tagIndex];
                                         writer.Write(tag.Key);
                                         writer.Write(tag.Value);
                                     }
+                                }
 
                                 writer.Write(LastModified.Count);
                                 foreach (var item in LastModified)
@@ -535,7 +544,7 @@ namespace MusicBeePlugin
                     if (result.Item is Error error)
                     {
                         MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return null;
                     }
 
@@ -565,7 +574,7 @@ namespace MusicBeePlugin
                     if (result.Item is LibreSonicAPI.Error error)
                     {
                         MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return null;
                     }
 
@@ -597,9 +606,11 @@ namespace MusicBeePlugin
                 var isDirty = false;
 
                 foreach (var collectionItem in collection)
+                {
                     folders.AddRange(GetRootFolders(collectionItem.Key, collectionItem.Value, true,
                         refresh && dirtyOnly,
                         ref isDirty));
+                }
 
                 if (collectionOnly)
                     return collection;
@@ -632,7 +643,7 @@ namespace MusicBeePlugin
                 if (result.Item is Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return null;
                 }
 
@@ -656,17 +667,18 @@ namespace MusicBeePlugin
                 }
 
                 if (content?.index != null)
+                {
                     foreach (var indexChild in content.index)
-                    foreach (var artistChild in indexChild.artist)
                     {
-                        var folderId = artistChild.id;
-                        var folderName = $"{collectionName}\\{artistChild.name}";
-                        if (FolderLookup.ContainsKey(folderName))
+                        foreach (var artistChild in indexChild.artist)
+                        {
+                            var folderId = artistChild.id;
+                            var folderName = $"{collectionName}\\{artistChild.name}";
                             FolderLookup[folderName] = folderId;
-                        else
-                            FolderLookup.Add(folderName, folderId);
-                        folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
+                            folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
+                        }
                     }
+                }
             }
             else
             {
@@ -674,7 +686,7 @@ namespace MusicBeePlugin
                 if (result.Item is LibreSonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return null;
                 }
 
@@ -698,17 +710,18 @@ namespace MusicBeePlugin
                 }
 
                 if (content?.index != null)
+                {
                     foreach (var indexChild in content.index)
-                    foreach (var artistChild in indexChild.artist)
                     {
-                        var folderId = artistChild.id;
-                        var folderName = $"{collectionName}\\{artistChild.name}";
-                        if (FolderLookup.ContainsKey(folderName))
+                        foreach (var artistChild in indexChild.artist)
+                        {
+                            var folderId = artistChild.id;
+                            var folderName = $"{collectionName}\\{artistChild.name}";
                             FolderLookup[folderName] = folderId;
-                        else
-                            FolderLookup.Add(folderName, folderId);
-                        folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
+                            folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
+                        }
                     }
+                }
             }
 
             SetBackgroundTaskMessage("Done Running GetIndexes");
@@ -732,7 +745,7 @@ namespace MusicBeePlugin
                 if (result.Item is Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
 
@@ -764,7 +777,7 @@ namespace MusicBeePlugin
                 if (result.Item is LibreSonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
 
@@ -847,14 +860,16 @@ namespace MusicBeePlugin
                         if (result.Item is Error error)
                         {
                             MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                             return null;
                         }
 
                         var content = result.Item as Directory;
 
                         if (content?.child != null)
+                        {
                             foreach (var childEntry in content.child)
+                            {
                                 if (childEntry.isDir && childEntry.title == folderName)
                                 {
                                     folderId = childEntry.id;
@@ -862,6 +877,8 @@ namespace MusicBeePlugin
                                         FolderLookup.Add(url.Substring(0, charIndex), folderId);
                                     break;
                                 }
+                            }
+                        }
                     }
                     else
                     {
@@ -869,14 +886,16 @@ namespace MusicBeePlugin
                         if (result.Item is LibreSonicAPI.Error error)
                         {
                             MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                             return null;
                         }
 
                         var content = result.Item as LibreSonicAPI.Directory;
 
                         if (content?.child != null)
+                        {
                             foreach (var childEntry in content.child)
+                            {
                                 if (childEntry.isDir && childEntry.title == folderName)
                                 {
                                     folderId = childEntry.id;
@@ -884,6 +903,8 @@ namespace MusicBeePlugin
                                         FolderLookup.Add(url.Substring(0, charIndex), folderId);
                                     break;
                                 }
+                            }
+                        }
                     }
                 }
 
@@ -896,7 +917,7 @@ namespace MusicBeePlugin
 
         private static string GetTranslatedUrl(string url)
         {
-            return url.Replace(@"\", @"/");
+            return url.Replace(@"\", "/");
         }
 
         private static string GetFileId(string url)
@@ -917,7 +938,7 @@ namespace MusicBeePlugin
                 if (result.Item is Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return null;
                 }
 
@@ -927,8 +948,10 @@ namespace MusicBeePlugin
                 if (content?.child == null) return null;
 
                 foreach (var childEntry in content.child)
+                {
                     if (childEntry.path == filePath)
                         return childEntry.id;
+                }
             }
             else
             {
@@ -936,7 +959,7 @@ namespace MusicBeePlugin
                 if (result.Item is LibreSonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return null;
                 }
 
@@ -946,8 +969,10 @@ namespace MusicBeePlugin
                 if (content?.child == null) return null;
 
                 foreach (var childEntry in content.child)
+                {
                     if (childEntry.path == filePath)
                         return childEntry.id;
+                }
             }
 
             return null;
@@ -964,7 +989,7 @@ namespace MusicBeePlugin
             var count = 0;
             foreach (var item in _collectionNames.Where(item => GetFolderId(item + path) != null))
             {
-                count += 1;
+                count++;
                 lastMatch = item + url;
             }
 
@@ -998,7 +1023,7 @@ namespace MusicBeePlugin
                 if (result.Item is Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return null;
                 }
 
@@ -1008,8 +1033,10 @@ namespace MusicBeePlugin
                 if (content?.child == null) return null;
 
                 foreach (var childEntry in content.child)
+                {
                     if (childEntry.path == filePath)
                         return childEntry.coverArt;
+                }
             }
             else
             {
@@ -1017,7 +1044,7 @@ namespace MusicBeePlugin
                 if (result.Item is LibreSonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return null;
                 }
 
@@ -1027,8 +1054,10 @@ namespace MusicBeePlugin
                 if (content?.child == null) return null;
 
                 foreach (var childEntry in content.child)
+                {
                     if (childEntry.path == filePath)
                         return childEntry.coverArt;
+                }
             }
 
             return null;
@@ -1058,7 +1087,7 @@ namespace MusicBeePlugin
                 if (result.Item is Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return null;
                 }
 
@@ -1068,8 +1097,10 @@ namespace MusicBeePlugin
                 if (content?.child == null) return null;
 
                 foreach (var childEntry in content.child)
+                {
                     if (childEntry.path == filePath)
                         return GetTags(childEntry, baseFolderName);
+                }
             }
             else
             {
@@ -1077,7 +1108,7 @@ namespace MusicBeePlugin
                 if (result.Item is LibreSonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return null;
                 }
 
@@ -1087,8 +1118,10 @@ namespace MusicBeePlugin
                 if (content?.child == null) return null;
 
                 foreach (var childEntry in content.child)
+                {
                     if (childEntry.path == filePath)
                         return GetTags(childEntry, baseFolderName);
+                }
             }
 
             return null;
@@ -1103,7 +1136,7 @@ namespace MusicBeePlugin
             var path = string.Empty;
             var attribute = child.path;
             if (attribute != null)
-                path = attribute.Replace(@"/", @"\");
+                path = attribute.Replace("/", @"\");
             path = baseFolderName == null ? GetResolvedUrl(path) : $"{baseFolderName}\\{path}";
             tags[0] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Url, path);
             tags[1] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artist, child.artist ?? "");
@@ -1140,7 +1173,7 @@ namespace MusicBeePlugin
             var path = string.Empty;
             var attribute = child.path;
             if (attribute != null)
-                path = attribute.Replace(@"/", @"\");
+                path = attribute.Replace("/", @"\");
             path = baseFolderName == null ? GetResolvedUrl(path) : $"{baseFolderName}\\{path}";
             tags[0] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Url, path);
             tags[1] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artist, child.artist ?? "");
@@ -1210,7 +1243,7 @@ namespace MusicBeePlugin
                 if (result.Item is Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return null;
                 }
 
@@ -1226,7 +1259,7 @@ namespace MusicBeePlugin
                 if (result.Item is LibreSonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return null;
                 }
 
@@ -1257,7 +1290,7 @@ namespace MusicBeePlugin
                 if (result.Item is Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return null;
                 }
 
@@ -1277,7 +1310,7 @@ namespace MusicBeePlugin
                 if (result.Item is LibreSonicAPI.Error error)
                 {
                     MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return null;
                 }
 
@@ -1382,12 +1415,16 @@ namespace MusicBeePlugin
                 var uri = new Uri(uriLine);
                 var stream = new ConnectStream(uri);
                 if (stream.ContentType.StartsWith("text/xml"))
+                {
                     using (stream)
                     {
                         _lastEx = new InvalidDataException();
                     }
+                }
                 else
+                {
                     return stream;
+                }
             }
 
             return null;
@@ -1481,7 +1518,7 @@ namespace MusicBeePlugin
                 if (!(result.Item is Error error)) return response.RawBytes;
 
                 MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from Subsonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return null;
             }
             else
@@ -1490,7 +1527,7 @@ namespace MusicBeePlugin
                 if (!(result.Item is LibreSonicAPI.Error error)) return response.RawBytes;
 
                 MessageBox.Show($@"An error has occurred:
-{error.message}", @"Error reported from LibreSonic Server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return null;
             }
         }

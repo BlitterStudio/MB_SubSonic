@@ -30,7 +30,7 @@ namespace MusicBeePlugin
             Subsonic.QueryPlaylistFilesEx = _mbApiInterface.Playlist_QueryFilesEx;
             _about.PluginInfoVersion = Interfaces.Plugin.PluginInfoVersion;
             _about.Name = "Subsonic Client";
-            _about.Description = "Access files and playlists on a SubSonic (or compatible) Server";
+            _about.Description = "Access files and playlists on a SubSonic or compatible Server";
             _about.Author = "Dimitris Panokostas";
             _about.TargetApplication = "Subsonic";
             // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
@@ -40,8 +40,8 @@ namespace MusicBeePlugin
             _about.Revision = 0;
             _about.MinInterfaceVersion = Interfaces.Plugin.MinInterfaceVersion;
             _about.MinApiRevision = Interfaces.Plugin.MinApiRevision;
-            _about.ReceiveNotifications = Interfaces.Plugin.ReceiveNotificationFlags.PlayerEvents |
-                                          Interfaces.Plugin.ReceiveNotificationFlags.TagEvents;
+            _about.ReceiveNotifications = Interfaces.Plugin.ReceiveNotificationFlags.PlayerEvents
+                                          | Interfaces.Plugin.ReceiveNotificationFlags.TagEvents;
             _about.ConfigurationPanelHeight =
                 0; // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
 

@@ -96,9 +96,11 @@ namespace MusicBeePlugin.Windows
             var saved = Subsonic.SaveSettings(settings);
             if (saved && settings.UseIndexCache)
             {
+                const string caption = "Regenerate local cache?";
+                const string text = "Settings saved successfully. Do you want to regenerate the local cache file?";
                 var dialog = MessageBox.Show(
-                    @"Settings saved successfully. Do you want to regenerate the local cache file?",
-                    @"Regenerate local cache?",
+                    text,
+                    caption,
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question,
                     MessageBoxDefaultButton.Button2);
@@ -107,22 +109,27 @@ namespace MusicBeePlugin.Windows
             }
 
             if (Subsonic.IsInitialized)
+            {
                 Subsonic.Refresh();
+            }
             else
+            {
                 Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
-                    ? Interfaces.Plugin.CallbackType.StorageReady
-                    : Interfaces.Plugin.CallbackType.StorageFailed);
+                   ? Interfaces.Plugin.CallbackType.StorageReady
+                   : Interfaces.Plugin.CallbackType.StorageFailed);
+            }
         }
 
         private void ButtonAbout_Click(object sender, EventArgs e)
         {
             Debug.Assert(_about != null, "_about != null");
+            const string caption = "About Subsonic Client";
             MessageBox.Show(this,
                 $@"{_about.Name} v{_about.VersionMajor}.{_about.VersionMinor}.{_about.Revision}
 {_about.Description}
 
 Author: {_about.Author}
-https://github.com/midwan/MB_SubSonic", @"About Subsonic Client", MessageBoxButtons.OK, MessageBoxIcon.Information);
+https://github.com/midwan/MB_SubSonic", caption, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void ButtonCancel_Click(object sender, EventArgs e)
@@ -142,17 +149,17 @@ https://github.com/midwan/MB_SubSonic", @"About Subsonic Client", MessageBoxButt
 
             var pingResult = Subsonic.PingServer(settings);
             if (pingResult)
-                MessageBox.Show(
-                    @"The server responded normally",
-                    @"Ping response OK",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+            {
+                const string text = "The server responded normally";
+                const string caption = "Ping response OK";
+                MessageBox.Show(text, caption, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
             else
-                MessageBox.Show(
-                    @"The server did not respond to Ping as expected!",
-                    @"Ping response not OK",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+            {
+                const string text = "The server did not respond to Ping as expected!";
+                const string caption = "Ping response not OK";
+                MessageBox.Show(text, caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private SubsonicSettings GetFormSettings()
@@ -188,9 +195,11 @@ https://github.com/midwan/MB_SubSonic", @"About Subsonic Client", MessageBoxButt
 
         private void ButtonDeleteCache_Click(object sender, EventArgs e)
         {
+            const string text = "Are you sure you want to delete the Cache file?";
+            const string caption = "Are you sure?";
             var dialog = MessageBox.Show(
-                @"Are you sure you want to delete the Cache file?",
-                @"Are you sure?",
+                text,
+                caption,
                 MessageBoxButtons.OKCancel,
                 MessageBoxIcon.Warning,
                 MessageBoxDefaultButton.Button2);
