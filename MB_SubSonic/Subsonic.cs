@@ -16,11 +16,11 @@ namespace MusicBeePlugin
 {
     public static class Subsonic
     {
-        private const int TagCount = 13;
+        private const int TagCount = 14;
         private const string ApiVersion = "1.13.0";
         private const string CaptionServerError = "Error reported from Server";
         private static SubsonicSettings _currentSettings;
-        private static SubsonicSettings.ServerType _serverType = SubsonicSettings.ServerType.Subsonic;
+        private static SubsonicSettings.ServerType _serverType;
         public static bool IsInitialized;
         public static string SettingsFilename;
         public static string CacheFilename;
@@ -77,8 +77,7 @@ namespace MusicBeePlugin
                 };
                 var response = SendRequest(request);
                 _serverType = GetServerTypeFromResponse(response);
-                var isPingOk = IsPingOk(response);
-                return isPingOk;
+                return IsPingOk(response);
             }
             catch (Exception ex)
             {
@@ -1160,6 +1159,7 @@ namespace MusicBeePlugin
             tags[12] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.RatingLove,
                 child.starred != default ? "L" : "");
             tags[13] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Custom16, child.id ?? "");
+            tags[14] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Rating, child.userRating.ToString());
 
             return tags;
         }
@@ -1197,6 +1197,7 @@ namespace MusicBeePlugin
             tags[12] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.RatingLove,
                 child.starred != default ? "L" : "");
             tags[13] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Custom16, child.id ?? "");
+            tags[14] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Rating, child.userRating.ToString());
 
             return tags;
         }
