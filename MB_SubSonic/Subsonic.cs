@@ -302,9 +302,7 @@ namespace MusicBeePlugin
 
                 if (!string.IsNullOrEmpty(path))
                 {
-                    if (!cacheLoaded || _cacheUpdating || files == null)
-                        return GetFolderFiles(path);
-                    files = GetPathFilteredFiles(files, path);
+                    return GetFolderFiles(path);
                 }
             }
 

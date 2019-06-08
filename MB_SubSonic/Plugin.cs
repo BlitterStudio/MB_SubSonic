@@ -36,7 +36,7 @@ namespace MusicBeePlugin
             // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
             _about.Type = Interfaces.Plugin.PluginType.Storage;
             _about.VersionMajor = 2; // your plugin version
-            _about.VersionMinor = 27;
+            _about.VersionMinor = 28;
             _about.Revision = 0;
             _about.MinInterfaceVersion = Interfaces.Plugin.MinInterfaceVersion;
             _about.MinApiRevision = Interfaces.Plugin.MinApiRevision;
@@ -152,8 +152,7 @@ namespace MusicBeePlugin
                     break;
 
                 case Interfaces.Plugin.NotificationType.PlaylistMoved:
-                    string[] filenames;
-                    Subsonic.QueryPlaylistFilesEx(sourceFileUrl, out filenames);
+                    Subsonic.QueryPlaylistFilesEx(sourceFileUrl, out var filenames);
 
                     // Get Song IDs to add to playlist
                     var songIds = new List<int>();
@@ -211,11 +210,15 @@ namespace MusicBeePlugin
         public void Refresh()
         {
             if (Subsonic.IsInitialized)
+            {
                 Subsonic.Refresh();
+            }
             else
+            {
                 Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
-                    ? Interfaces.Plugin.CallbackType.StorageReady
-                    : Interfaces.Plugin.CallbackType.StorageFailed);
+                   ? Interfaces.Plugin.CallbackType.StorageReady
+                   : Interfaces.Plugin.CallbackType.StorageFailed);
+            }
         }
 
         public bool IsReady()
