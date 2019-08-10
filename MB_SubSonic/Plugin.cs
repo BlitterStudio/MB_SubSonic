@@ -88,6 +88,7 @@ namespace MusicBeePlugin
         // you need to set about.ReceiveNotificationFlags = PlayerEvents to receive all notifications, and not just the startup event
         public void ReceiveNotification(string sourceFileUrl, Interfaces.Plugin.NotificationType type)
         {
+            string id;
             // perform some action depending on the notification type
             switch (type)
             {
@@ -118,13 +119,17 @@ namespace MusicBeePlugin
 
                     //Subsonic.GetFileTags(sourceFileUrl, tags.ToArray(), out var results);
                     //Subsonic.UpdateTags(results);
-
-                    var rating = Subsonic.GetFileTag(sourceFileUrl, Interfaces.Plugin.MetaDataType.Rating);
+    
                     var starred = Subsonic.GetFileTag(sourceFileUrl, Interfaces.Plugin.MetaDataType.RatingLove);
-                    var id = Subsonic.GetFileTag(sourceFileUrl, Interfaces.Plugin.MetaDataType.Custom16);
-
-                    Subsonic.UpdateRating(id, rating);
+                    id = Subsonic.GetFileTag(sourceFileUrl, Interfaces.Plugin.MetaDataType.Custom16);
                     Subsonic.UpdateRatingLove(id, starred);
+                    break;
+
+                case Interfaces.Plugin.NotificationType.RatingChanging:
+                case Interfaces.Plugin.NotificationType.RatingChanged:
+                    var rating = Subsonic.GetFileTag(sourceFileUrl, Interfaces.Plugin.MetaDataType.Rating);
+                    id = Subsonic.GetFileTag(sourceFileUrl, Interfaces.Plugin.MetaDataType.Custom16);
+                    Subsonic.UpdateRating(id, rating);
                     break;
 
                 //case Interfaces.Plugin.NotificationType.PlaylistCreated:
