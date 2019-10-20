@@ -111,8 +111,8 @@ Exception: {ex}",
             }
             else
             {
-                const string caption = "File not found";
-                const string text = "The filename was not found in the path!";
+                const string caption = "Could not delete file: File not found";
+                var text = $"The file {filename} was not found in {path}!";
                 MessageBox.Show(text, caption, MessageBoxButtons.OK,
 MessageBoxIcon.Exclamation);
             }
