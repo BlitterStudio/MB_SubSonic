@@ -6,8 +6,8 @@ namespace MusicBeePlugin.Interfaces
     public partial class Plugin
     {
         public const short PluginInfoVersion = 1;
-        public const short MinInterfaceVersion = 39;
-        public const short MinApiRevision = 51;
+        public const short MinInterfaceVersion = 41;
+        public const short MinApiRevision = 53;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct MusicBeeApiInterface
@@ -253,6 +253,11 @@ namespace MusicBeePlugin.Interfaces
             public Podcasts_GetSubscriptionArtworkDelegate Podcasts_GetSubscriptionArtwork;
             public Podcasts_GetSubscriptionEpisodesDelegate Podcasts_GetSubscriptionEpisodes;
             public Podcasts_GetSubscriptionEpisodeDelegate Podcasts_GetSubscriptionEpisode;
+            // api version 52
+            public NowPlaying_GetSoundGraphExDelegate NowPlaying_GetSoundGraphEx;
+            // api version 53
+            public Sync_FileStartDelegate Sync_FileDeleteStart;
+            public Sync_FileEndDelegate Sync_FileDeleteEnd;
         }
 
         public enum MusicBeeVersion
@@ -550,7 +555,10 @@ namespace MusicBeePlugin.Interfaces
             GooglePlay = 1,
             AppleDevice = 2,
             GooglePlay2 = 3,
-            AppleDevice2 = 4
+            AppleDevice2 = 4,
+            WebDrivePluginOneDrive = 5,
+            WebDrivePluginGoogleDrive = 6,
+            WebDrivePluginDropBox = 7
         }
 
         public enum DataType
@@ -608,6 +616,11 @@ namespace MusicBeePlugin.Interfaces
         public enum ComparisonType
         {
             Is = 0,
+            IsNot = 1,
+            Contains = 4,
+            DoesNotContain = 5,
+            StartsWith = 6,
+            EndsWith = 7,
             IsSimilar = 20
         }
 
@@ -864,6 +877,7 @@ namespace MusicBeePlugin.Interfaces
         public delegate bool NowPlaying_IsSoundtrackDelegate();
         public delegate int NowPlaying_GetSpectrumDataDelegate(float[] fftData);
         public delegate bool NowPlaying_GetSoundGraphDelegate(float[] graphData);
+        public delegate bool NowPlaying_GetSoundGraphExDelegate(float[] graphData, float[] peakData);
         public delegate int NowPlayingList_GetCurrentIndexDelegate();
         public delegate int NowPlayingList_GetNextIndexDelegate(int offset);
         public delegate bool NowPlayingList_IsAnyPriorTracksDelegate();
