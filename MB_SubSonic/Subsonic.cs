@@ -71,10 +71,7 @@ namespace MusicBeePlugin
 
             try
             {
-                var request = new RestRequest
-                {
-                    Resource = "ping.view"
-                };
+                var request = new RestRequest("ping");
                 var response = SendRequest(request);
                 _serverType = GetServerTypeFromResponse(response);
                 return IsPingOk(response);
@@ -154,8 +151,8 @@ namespace MusicBeePlugin
         public static bool FolderExists(string path)
         {
             return string.IsNullOrEmpty(path)
-                         || path.Equals(@"\")
-                         || GetFolderId(path) != null;
+                   || path.Equals(@"\")
+                   || GetFolderId(path) != null;
         }
 
         public static string[] GetFolders(string path)
@@ -300,10 +297,7 @@ namespace MusicBeePlugin
                     CreateBackgroundTask(ExecuteGetFolderFiles, Form.ActiveForm);
                 }
 
-                if (!string.IsNullOrEmpty(path))
-                {
-                    return GetFolderFiles(path);
-                }
+                if (!string.IsNullOrEmpty(path)) return GetFolderFiles(path);
             }
 
             if (threadStarted) return files;
@@ -418,7 +412,6 @@ namespace MusicBeePlugin
 
                     anyChanges = oldCachedFiles == null || _cachedFiles.Length != oldCachedFiles.Length;
                     if (!anyChanges)
-                    {
                         for (var index = 0; index < _cachedFiles.Length; index++)
                         {
                             var tags1 = _cachedFiles[index];
@@ -426,16 +419,13 @@ namespace MusicBeePlugin
                             for (var tagIndex = 0; tagIndex < TagCount; tagIndex++)
                             {
                                 if (string.Equals(tags1[tagIndex].Value, tags2[tagIndex].Value,
-                                        StringComparison.Ordinal))
-                                {
+                                    StringComparison.Ordinal))
                                     continue;
-                                }
 
                                 anyChanges = true;
                                 break;
                             }
                         }
-                    }
                 }
 
                 if (!anyChanges)
@@ -472,14 +462,12 @@ namespace MusicBeePlugin
                                 writer.Write(2); // version
                                 writer.Write(files.Length);
                                 foreach (var tags in files)
-                                {
                                     for (var tagIndex = 0; tagIndex <= TagCount; tagIndex++)
                                     {
                                         var tag = tags[tagIndex];
                                         writer.Write(tag.Key);
                                         writer.Write(tag.Value);
                                     }
-                                }
 
                                 writer.Write(LastModified.Count);
                                 foreach (var item in LastModified)
@@ -530,10 +518,7 @@ namespace MusicBeePlugin
                 folders = new List<KeyValuePair<string, string>>();
                 var collection = new List<KeyValuePair<string, string>>();
 
-                var request = new RestRequest
-                {
-                    Resource = "getMusicFolders.view"
-                };
+                var request = new RestRequest("getMusicFolders");
                 var response = SendRequest(request);
                 if (_serverType == SubsonicSettings.ServerType.Subsonic)
                 {
@@ -603,11 +588,9 @@ namespace MusicBeePlugin
                 var isDirty = false;
 
                 foreach (var collectionItem in collection)
-                {
                     folders.AddRange(GetRootFolders(collectionItem.Key, collectionItem.Value, true,
                         refresh && dirtyOnly,
                         ref isDirty));
-                }
 
                 if (collectionOnly)
                     return collection;
@@ -627,10 +610,7 @@ namespace MusicBeePlugin
             SetBackgroundTaskMessage("Running GetIndexes...");
             var folders = new List<KeyValuePair<string, string>>();
 
-            var request = new RestRequest
-            {
-                Resource = "getIndexes.view"
-            };
+            var request = new RestRequest("getIndexes");
             request.AddParameter("musicFolderId", collectionId);
             var response = SendRequest(request);
 
@@ -664,18 +644,14 @@ namespace MusicBeePlugin
                 }
 
                 if (content?.index != null)
-                {
                     foreach (var indexChild in content.index)
+                    foreach (var artistChild in indexChild.artist)
                     {
-                        foreach (var artistChild in indexChild.artist)
-                        {
-                            var folderId = artistChild.id;
-                            var folderName = $"{collectionName}\\{artistChild.name}";
-                            FolderLookup[folderName] = folderId;
-                            folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
-                        }
+                        var folderId = artistChild.id;
+                        var folderName = $"{collectionName}\\{artistChild.name}";
+                        FolderLookup[folderName] = folderId;
+                        folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
                     }
-                }
             }
             else
             {
@@ -707,18 +683,14 @@ namespace MusicBeePlugin
                 }
 
                 if (content?.index != null)
-                {
                     foreach (var indexChild in content.index)
+                    foreach (var artistChild in indexChild.artist)
                     {
-                        foreach (var artistChild in indexChild.artist)
-                        {
-                            var folderId = artistChild.id;
-                            var folderName = $"{collectionName}\\{artistChild.name}";
-                            FolderLookup[folderName] = folderId;
-                            folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
-                        }
+                        var folderId = artistChild.id;
+                        var folderName = $"{collectionName}\\{artistChild.name}";
+                        FolderLookup[folderName] = folderId;
+                        folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
                     }
-                }
             }
 
             SetBackgroundTaskMessage("Done Running GetIndexes");
@@ -729,10 +701,7 @@ namespace MusicBeePlugin
             ICollection<KeyValuePair<byte, string>[]> files)
         {
             //SetBackgroundTaskMessage("Running GetMusicDirectory...");
-            var request = new RestRequest
-            {
-                Resource = "getMusicDirectory.view"
-            };
+            var request = new RestRequest("getMusicDirectory");
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
 
@@ -844,10 +813,7 @@ namespace MusicBeePlugin
                 else if (folderId != null)
                 {
                     var folderName = url.Substring(sectionStartIndex, charIndex - sectionStartIndex);
-                    var request = new RestRequest
-                    {
-                        Resource = "getMusicDirectory.view"
-                    };
+                    var request = new RestRequest("getMusicDirectory");
                     request.AddParameter("id", folderId);
                     var response = SendRequest(request);
 
@@ -864,9 +830,7 @@ namespace MusicBeePlugin
                         var content = result.Item as Directory;
 
                         if (content?.child != null)
-                        {
                             foreach (var childEntry in content.child)
-                            {
                                 if (childEntry.isDir && childEntry.title == folderName)
                                 {
                                     folderId = childEntry.id;
@@ -874,8 +838,6 @@ namespace MusicBeePlugin
                                         FolderLookup.Add(url.Substring(0, charIndex), folderId);
                                     break;
                                 }
-                            }
-                        }
                     }
                     else
                     {
@@ -890,9 +852,7 @@ namespace MusicBeePlugin
                         var content = result.Item as LibreSonicAPI.Directory;
 
                         if (content?.child != null)
-                        {
                             foreach (var childEntry in content.child)
-                            {
                                 if (childEntry.isDir && childEntry.title == folderName)
                                 {
                                     folderId = childEntry.id;
@@ -900,8 +860,6 @@ namespace MusicBeePlugin
                                         FolderLookup.Add(url.Substring(0, charIndex), folderId);
                                     break;
                                 }
-                            }
-                        }
                     }
                 }
 
@@ -922,10 +880,7 @@ namespace MusicBeePlugin
             var folderId = GetFolderId(url);
             if (folderId == null) return null;
 
-            var request = new RestRequest
-            {
-                Resource = "getMusicDirectory.view"
-            };
+            var request = new RestRequest("getMusicDirectory");
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
 
@@ -945,10 +900,8 @@ namespace MusicBeePlugin
                 if (content?.child == null) return null;
 
                 foreach (var childEntry in content.child)
-                {
                     if (childEntry.path == filePath)
                         return childEntry.id;
-                }
             }
             else
             {
@@ -966,10 +919,8 @@ namespace MusicBeePlugin
                 if (content?.child == null) return null;
 
                 foreach (var childEntry in content.child)
-                {
                     if (childEntry.path == filePath)
                         return childEntry.id;
-                }
             }
 
             return null;
@@ -1030,10 +981,8 @@ namespace MusicBeePlugin
                 if (content?.child == null) return null;
 
                 foreach (var childEntry in content.child)
-                {
                     if (childEntry.path == filePath)
                         return childEntry.coverArt;
-                }
             }
             else
             {
@@ -1051,10 +1000,8 @@ namespace MusicBeePlugin
                 if (content?.child == null) return null;
 
                 foreach (var childEntry in content.child)
-                {
                     if (childEntry.path == filePath)
                         return childEntry.coverArt;
-                }
             }
 
             return null;
@@ -1071,10 +1018,7 @@ namespace MusicBeePlugin
             if (folderId == null) return null;
             var baseFolderName = url.Substring(0, url.IndexOf(@"\", StringComparison.Ordinal));
 
-            var request = new RestRequest
-            {
-                Resource = "getMusicDirectory.view"
-            };
+            var request = new RestRequest("getMusicDirectory");
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
 
@@ -1094,10 +1038,8 @@ namespace MusicBeePlugin
                 if (content?.child == null) return null;
 
                 foreach (var childEntry in content.child)
-                {
                     if (childEntry.path == filePath)
                         return GetTags(childEntry, baseFolderName);
-                }
             }
             else
             {
@@ -1115,10 +1057,8 @@ namespace MusicBeePlugin
                 if (content?.child == null) return null;
 
                 foreach (var childEntry in content.child)
-                {
                     if (childEntry.path == filePath)
                         return GetTags(childEntry, baseFolderName);
-                }
             }
 
             return null;
@@ -1157,7 +1097,8 @@ namespace MusicBeePlugin
             tags[12] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.RatingLove,
                 child.starred != default ? "L" : "");
             tags[13] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Custom16, child.id ?? "");
-            tags[14] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Rating, child.userRating.ToString());
+            tags[14] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Rating,
+                child.userRating.ToString());
 
             return tags;
         }
@@ -1195,7 +1136,8 @@ namespace MusicBeePlugin
             tags[12] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.RatingLove,
                 child.starred != default ? "L" : "");
             tags[13] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Custom16, child.id ?? "");
-            tags[14] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Rating, child.userRating.ToString());
+            tags[14] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Rating,
+                child.userRating.ToString());
 
             return tags;
         }
@@ -1209,10 +1151,7 @@ namespace MusicBeePlugin
                 var id = GetCoverArtId(url);
                 if (id != null)
                 {
-                    var request = new RestRequest
-                    {
-                        Resource = "getCoverArt.view"
-                    };
+                    var request = new RestRequest("getCoverArt");
                     request.AddParameter("id", id);
                     bytes = DownloadData(request);
                 }
@@ -1230,10 +1169,7 @@ namespace MusicBeePlugin
             _lastEx = null;
             var playlists = new List<KeyValuePair<string, string>>();
 
-            var request = new RestRequest
-            {
-                Resource = "getPlaylists.view"
-            };
+            var request = new RestRequest("getPlaylists");
             var response = SendRequest(request);
 
             if (_serverType == SubsonicSettings.ServerType.Subsonic)
@@ -1332,10 +1268,7 @@ namespace MusicBeePlugin
             if (string.IsNullOrEmpty(rating)) return;
             int.TryParse(rating, out var result);
 
-            var request = new RestRequest
-            {
-                Resource = "setRating"
-            };
+            var request = new RestRequest("setRating");
             request.AddParameter("id", id);
             request.AddParameter("rating", result);
             SendRequest(request);
@@ -1355,10 +1288,7 @@ namespace MusicBeePlugin
         public static void CreatePlaylist(string name, List<int> songIds)
         {
             //TODO
-            var request = new RestRequest
-            {
-                Resource = "createPlaylist"
-            };
+            var request = new RestRequest("createPlaylist");
             request.AddParameter("name", name);
             foreach (var songId in songIds) request.AddParameter("songId", songId);
 
@@ -1374,10 +1304,7 @@ namespace MusicBeePlugin
         public static void DeletePlaylist(int playlistId)
         {
             //TODO
-            var request = new RestRequest
-            {
-                Resource = "deletePlaylist"
-            };
+            var request = new RestRequest("deletePlaylist");
             request.AddParameter("id", playlistId);
             SendRequest(request);
         }
@@ -1414,16 +1341,12 @@ namespace MusicBeePlugin
                 var uri = new Uri(uriLine);
                 var stream = new ConnectStream(uri);
                 if (stream.ContentType.StartsWith("text/xml"))
-                {
                     using (stream)
                     {
                         _lastEx = new InvalidDataException();
                     }
-                }
                 else
-                {
                     return stream;
-                }
             }
 
             return null;
@@ -1450,7 +1373,7 @@ namespace MusicBeePlugin
             return _lastEx;
         }
 
-        private static string SendRequest(RestRequest request)
+        private static string SendRequest(IRestRequest request)
         {
             var client = new RestClient {BaseUrl = new Uri(_serverName + "rest/")};
             request.AddParameter("u", _currentSettings.Username);
@@ -1474,8 +1397,8 @@ namespace MusicBeePlugin
             request.AddParameter("c", "MusicBee");
 
             var response = client.Execute(request);
+            if (response.IsSuccessful) return response.Content;
 
-            if (response.ErrorException == null) return response.Content;
             const string message = "Error retrieving response from Subsonic server:";
             MessageBox.Show($@"{message}
 
@@ -1484,7 +1407,7 @@ namespace MusicBeePlugin
             return response.Content;
         }
 
-        private static byte[] DownloadData(RestRequest request)
+        private static byte[] DownloadData(IRestRequest request)
         {
             var client = new RestClient {BaseUrl = new Uri(_serverName + "rest/")};
             request.AddParameter("u", _currentSettings.Username);
