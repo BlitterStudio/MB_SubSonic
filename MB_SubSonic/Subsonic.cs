@@ -198,10 +198,7 @@ namespace MusicBeePlugin
                 }
                 else
                 {
-                    var request = new RestRequest
-                    {
-                        Resource = "getMusicDirectory.view"
-                    };
+                    var request = new RestRequest("getMusicDirectory");
                     request.AddParameter("id", folderId);
                     var response = SendRequest(request);
 
@@ -1212,10 +1209,7 @@ namespace MusicBeePlugin
         {
             _lastEx = null;
             var files = new List<KeyValuePair<byte, string>[]>();
-            var request = new RestRequest
-            {
-                Resource = "getPlaylist.view"
-            };
+            var request = new RestRequest("getPlaylist");
             request.AddParameter("id", id);
             var response = SendRequest(request);
 
