@@ -6,8 +6,8 @@ namespace MusicBeePlugin.Interfaces
     public partial class Plugin
     {
         public const short PluginInfoVersion = 1;
-        public const short MinInterfaceVersion = 41;
-        public const short MinApiRevision = 53;
+        public const short MinInterfaceVersion = 39;
+        public const short MinApiRevision = 51;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct MusicBeeApiInterface
