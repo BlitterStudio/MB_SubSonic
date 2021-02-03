@@ -6,6 +6,7 @@ using System.Linq;
 using MusicBeePlugin.Helpers;
 using MusicBeePlugin.Properties;
 using MusicBeePlugin.Windows;
+// ReSharper disable UnusedMember.Global
 
 namespace MusicBeePlugin
 {
@@ -49,7 +50,6 @@ namespace MusicBeePlugin
             return _about;
         }
 
-        // ReSharper disable once UnusedMember.Global
         public bool Configure(IntPtr panelHandle)
         {
             // panelHandle will only be set if you set about.ConfigurationPanelHeight to a non-zero value
