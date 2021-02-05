@@ -18,6 +18,7 @@ namespace MusicBeePlugin
     {
         private const int TagCount = 14;
         private const string ApiVersion = "1.13.0";
+        private const string ApiVersionOlder = "1.12.0";
         private const string CaptionServerError = "Error reported from Server";
         private static SubsonicSettings _currentSettings;
         private static SubsonicSettings.ServerType _serverType;
@@ -1324,7 +1325,7 @@ namespace MusicBeePlugin
                     hexString = hexString.Replace("-", "");
                     var hexPass = $"enc:{hexString}";
                     uriLine =
-                        $"{_serverName}rest/stream.view?u={_currentSettings.Username}&p={hexPass}&v={ApiVersion}&c=MusicBee&id={id}&{transcodeAndBitRate}";
+                        $"{_serverName}rest/stream.view?u={_currentSettings.Username}&p={hexPass}&v={ApiVersionOlder}&c=MusicBee&id={id}&{transcodeAndBitRate}";
                 }
                 else
                 {
@@ -1378,6 +1379,7 @@ namespace MusicBeePlugin
                 hexString = hexString.Replace("-", "");
                 var hexPass = $"enc:{hexString}";
                 request.AddParameter("p", hexPass);
+                request.AddParameter("v", ApiVersionOlder);
             }
             else
             {
@@ -1385,9 +1387,10 @@ namespace MusicBeePlugin
                 var token = Md5(_currentSettings.Password + salt);
                 request.AddParameter("t", token);
                 request.AddParameter("s", salt);
+                request.AddParameter("v", ApiVersion);
             }
 
-            request.AddParameter("v", ApiVersion);
+            
             request.AddParameter("c", "MusicBee");
 
             var response = client.Execute(request);
@@ -1413,6 +1416,7 @@ namespace MusicBeePlugin
                 hexString = hexString.Replace("-", "");
                 var hexPass = $"enc:{hexString}";
                 request.AddParameter("p", hexPass);
+                request.AddParameter("v", ApiVersionOlder);
             }
             else
             {
@@ -1420,9 +1424,10 @@ namespace MusicBeePlugin
                 var token = Md5(_currentSettings.Password + salt);
                 request.AddParameter("t", token);
                 request.AddParameter("s", salt);
+                request.AddParameter("v", ApiVersion);
             }
 
-            request.AddParameter("v", ApiVersion);
+            
             request.AddParameter("c", "MusicBee");
             var response = client.Execute(request);
 
