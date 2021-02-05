@@ -17,9 +17,7 @@ namespace MusicBeePlugin.Helpers
                 Protocol = SubsonicSettings.ConnectionProtocol.Http,
                 Auth = SubsonicSettings.AuthMethod.Token,
                 BitRate = string.Empty,
-                Transcode = false,
-                UseIndexCache = true,
-                PreCacheAll = false
+                Transcode = false
             };
         }
 
@@ -34,9 +32,7 @@ namespace MusicBeePlugin.Helpers
                          || !newSettings.Protocol.Equals(oldSettings.Protocol)
                          || !newSettings.Auth.Equals(oldSettings.Auth)
                          || !newSettings.Transcode.Equals(oldSettings.Transcode)
-                         || !newSettings.BitRate.Equals(oldSettings.BitRate)
-                         || !newSettings.UseIndexCache.Equals(oldSettings.UseIndexCache)
-                         || !newSettings.PreCacheAll.Equals(oldSettings.PreCacheAll);
+                         || !newSettings.BitRate.Equals(oldSettings.BitRate);
             return result;
         }
 

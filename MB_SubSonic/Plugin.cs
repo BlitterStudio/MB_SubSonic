@@ -23,7 +23,6 @@ namespace MusicBeePlugin
             _mbApiInterface = new Interfaces.Plugin.MusicBeeApiInterface();
             _mbApiInterface.Initialise(apiInterfacePtr);
             Subsonic.SendNotificationsHandler = _mbApiInterface.MB_SendNotification;
-            Subsonic.CreateBackgroundTask = _mbApiInterface.MB_CreateBackgroundTask;
             Subsonic.SetBackgroundTaskMessage = _mbApiInterface.MB_SetBackgroundTaskMessage;
             Subsonic.RefreshPanels = _mbApiInterface.MB_RefreshPanels;
             Subsonic.GetFileTag = _mbApiInterface.Library_GetFileTag;
@@ -37,7 +36,7 @@ namespace MusicBeePlugin
             // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
             _about.Type = Interfaces.Plugin.PluginType.Storage;
             _about.VersionMajor = 2; // your plugin version
-            _about.VersionMinor = 29;
+            _about.VersionMinor = 30;
             _about.Revision = 0;
             _about.MinInterfaceVersion = Interfaces.Plugin.MinInterfaceVersion;
             _about.MinApiRevision = Interfaces.Plugin.MinApiRevision;
@@ -94,7 +93,6 @@ namespace MusicBeePlugin
             {
                 case Interfaces.Plugin.NotificationType.PluginStartup:
                     var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
-                    Subsonic.CacheFilename = Path.Combine(dataPath, "subsonicCache.dat");
                     Subsonic.SettingsFilename = Path.Combine(dataPath, "subsonicSettings.dat");
 
                     Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()

@@ -66,8 +66,6 @@ namespace MusicBeePlugin.Windows
 
             ComboBoxProtocol.SelectedItem = currentSettings.Protocol.ToFriendlyString();
             ComboBoxAuth.SelectedIndex = (int) currentSettings.Auth;
-
-            CheckBoxCache.Checked = currentSettings.UseIndexCache;
         }
 
         private void OnVisibleChanged(object sender, EventArgs eventArgs)
@@ -94,20 +92,6 @@ namespace MusicBeePlugin.Windows
             if (!isChanged) return;
 
             var saved = Subsonic.SaveSettings(settings);
-            if (saved && settings.UseIndexCache)
-            {
-                const string caption = "Regenerate local cache?";
-                const string text = "Settings saved successfully. Do you want to regenerate the local cache file?";
-                var dialog = MessageBox.Show(
-                    text,
-                    caption,
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question,
-                    MessageBoxDefaultButton.Button2);
-                if (dialog == DialogResult.Yes)
-                    DeleteCacheFile();
-            }
-
             if (Subsonic.IsInitialized)
             {
                 Subsonic.Refresh();
@@ -180,9 +164,7 @@ https://github.com/midwan/MB_SubSonic", caption, MessageBoxButtons.OK, MessageBo
                     : SubsonicSettings.AuthMethod.HexPass,
                 BitRate = string.IsNullOrEmpty(ComboBoxBitrate.SelectedItem.ToString())
                     ? "128K"
-                    : ComboBoxBitrate.SelectedItem.ToString(),
-                UseIndexCache = CheckBoxCache.Checked,
-                PreCacheAll = CheckBoxPreCache.Checked
+                    : ComboBoxBitrate.SelectedItem.ToString()
             };
         }
 

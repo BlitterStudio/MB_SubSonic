@@ -24,9 +24,7 @@ namespace MusicBeePlugin
         private static SubsonicSettings.ServerType _serverType;
         public static bool IsInitialized;
         public static string SettingsFilename;
-        public static string CacheFilename;
         public static Interfaces.Plugin.MB_SendNotificationDelegate SendNotificationsHandler;
-        public static Interfaces.Plugin.MB_CreateBackgroundTaskDelegate CreateBackgroundTask;
         public static Interfaces.Plugin.MB_SetBackgroundTaskMessageDelegate SetBackgroundTaskMessage;
         public static Interfaces.Plugin.MB_RefreshPanelsDelegate RefreshPanels;
 
@@ -37,13 +35,10 @@ namespace MusicBeePlugin
         private static string _serverName;
         private static Exception _lastEx;
         private static readonly object CacheFileLock = new object();
-        private static readonly object CacheLock = new object();
-        private static KeyValuePair<byte, string>[][] _cachedFiles;
         private static string[] _collectionNames;
         private static readonly Dictionary<string, ulong> LastModified = new Dictionary<string, ulong>();
         private static readonly object FolderLookupLock = new object();
         private static readonly Dictionary<string, string> FolderLookup = new Dictionary<string, string>();
-        private static bool _cacheUpdating;
 
         public static bool Initialize()
         {
@@ -182,7 +177,7 @@ namespace MusicBeePlugin
                 {
                     var alwaysFalse = false;
                     list.AddRange(
-                        GetRootFolders(folderId, path.Substring(0, path.Length - 1), false, false, ref alwaysFalse)
+                        GetIndexes(folderId, path.Substring(0, path.Length - 1), false, false, ref alwaysFalse)
                             .Select(folder => folder.Key));
                 }
 
@@ -218,7 +213,7 @@ namespace MusicBeePlugin
                         if (content?.child != null)
                         {
                             var total = content.child.Count;
-                            for (var index = 0; index < content.child.Count; index++)
+                            for (var index = 0; index < total; index++)
                             {
                                 var dirChild = content.child[index];
                                 SetBackgroundTaskMessage($"Processing {index} of {total} Folders...");
@@ -247,7 +242,7 @@ namespace MusicBeePlugin
                         if (content?.child != null)
                         {
                             var total = content.child.Count;
-                            for (var index = 0; index < content.child.Count; index++)
+                            for (var index = 0; index < total; index++)
                             {
                                 var dirChild = content.child[index];
                                 SetBackgroundTaskMessage($"Processing {index} of {total} Folders...");
@@ -274,235 +269,14 @@ namespace MusicBeePlugin
         public static KeyValuePair<byte, string>[][] GetFiles(string path)
         {
             SetBackgroundTaskMessage("Running GetFiles...");
-            var threadStarted = false;
             _lastEx = null;
-            KeyValuePair<byte, string>[][] files;
-            if (!IsInitialized)
-            {
-                files = new KeyValuePair<byte, string>[][] { };
-            }
-            else
-            {
-                var cacheLoaded = _cachedFiles != null;
-                if (!cacheLoaded && !File.Exists(CacheFilename))
-                    files = null;
-                else
-                    files = GetCachedFiles();
 
-                if (!_cacheUpdating && (string.IsNullOrEmpty(path) || !cacheLoaded))
-                {
-                    threadStarted = true;
-                    CreateBackgroundTask(ExecuteGetFolderFiles, Form.ActiveForm);
-                }
-
-                if (!string.IsNullOrEmpty(path)) return GetFolderFiles(path);
+            if (!IsInitialized || string.IsNullOrEmpty(path))
+            {
+                return new KeyValuePair<byte, string>[][] { };
             }
 
-            if (threadStarted) return files;
-            try
-            {
-                SendNotificationsHandler.Invoke(Interfaces.Plugin.CallbackType.FilesRetrievedNoChange);
-            }
-            catch (Exception ex)
-            {
-                _lastEx = ex;
-            }
-
-            SetBackgroundTaskMessage("Done running GetFiles");
-            return files;
-        }
-
-        private static KeyValuePair<byte, string>[][] GetCachedFiles()
-        {
-            SetBackgroundTaskMessage("Running GetCachedFiles...");
-            if (_cachedFiles != null) return _cachedFiles;
-            KeyValuePair<byte, string>[][] files = null;
-            lock (CacheFileLock)
-            {
-                using (
-                    var stream = new FileStream(CacheFilename, FileMode.Open, FileAccess.Read, FileShare.Read, 4096,
-                        FileOptions.SequentialScan))
-                using (var reader = new BinaryReader(stream))
-                {
-                    try
-                    {
-                        var version = reader.ReadInt32();
-                        var count = reader.ReadInt32();
-                        files = new KeyValuePair<byte, string>[count][];
-                        for (var index = 0; index < count; index++)
-                        {
-                            var tags = new KeyValuePair<byte, string>[TagCount + 1];
-                            for (var tagIndex = 0; tagIndex <= TagCount; tagIndex++)
-                            {
-                                var tagType = reader.ReadByte();
-                                tags[tagIndex] = new KeyValuePair<byte, string>(tagType, reader.ReadString());
-                            }
-
-                            files[index] = tags;
-                        }
-
-                        if (version.Equals(2))
-                        {
-                            count = reader.ReadInt32();
-                            for (var index = 1; index <= count; index++)
-                            {
-                                var collectionName = reader.ReadString();
-                                if (!LastModified.ContainsKey(collectionName))
-                                    LastModified.Add(collectionName, reader.ReadUInt64());
-                            }
-                        }
-
-                        reader.Close();
-                    }
-                    catch (EndOfStreamException)
-                    {
-                        const string text = "The Cache file seems to be empty!";
-                        MessageBox.Show(text);
-                    }
-                }
-            }
-
-            lock (CacheLock)
-            {
-                if (_cachedFiles == null && files != null)
-                    _cachedFiles = files;
-            }
-
-            SetBackgroundTaskMessage("Done running GetCachedFiles");
-            return _cachedFiles;
-        }
-
-        private static KeyValuePair<byte, string>[][] GetPathFilteredFiles(KeyValuePair<byte, string>[][] files,
-            string path)
-        {
-            if (!path.EndsWith(@"\"))
-                path += @"\";
-            files = files.Where(t => t[0].Value.StartsWith(path)).ToArray();
-            Array.Sort(files, new FileSorter());
-            return files;
-        }
-
-        private static void ExecuteGetFolderFiles()
-        {
-            _cacheUpdating = true;
-            SetBackgroundTaskMessage("Running GetFolderFiles...");
-            try
-            {
-                var files = new KeyValuePair<byte, string>[][] { };
-                var list = new List<KeyValuePair<byte, string>[]>();
-                var folders = GetRootFolders(false, true, true);
-                bool anyChanges;
-                if (folders == null)
-                {
-                    anyChanges = false;
-                }
-                else
-                {
-                    foreach (var folder in folders)
-                        GetFolderFiles(folder.Value, folder.Key, list);
-                    files = list.ToArray();
-                    KeyValuePair<byte, string>[][] oldCachedFiles;
-                    lock (CacheLock)
-                    {
-                        oldCachedFiles = _cachedFiles;
-                        _cachedFiles = files;
-                    }
-
-                    anyChanges = oldCachedFiles == null || _cachedFiles.Length != oldCachedFiles.Length;
-                    if (!anyChanges)
-                        for (var index = 0; index < _cachedFiles.Length; index++)
-                        {
-                            var tags1 = _cachedFiles[index];
-                            var tags2 = oldCachedFiles[index];
-                            for (var tagIndex = 0; tagIndex < TagCount; tagIndex++)
-                            {
-                                if (string.Equals(tags1[tagIndex].Value, tags2[tagIndex].Value,
-                                    StringComparison.Ordinal))
-                                    continue;
-
-                                anyChanges = true;
-                                break;
-                            }
-                        }
-                }
-
-                if (!anyChanges)
-                {
-                    try
-                    {
-                        SendNotificationsHandler.Invoke(Interfaces.Plugin.CallbackType.FilesRetrievedNoChange);
-                    }
-                    catch (Exception ex)
-                    {
-                        _lastEx = ex;
-                    }
-                }
-                else
-                {
-                    try
-                    {
-                        SendNotificationsHandler.Invoke(Interfaces.Plugin.CallbackType.FilesRetrievedChanged);
-                    }
-                    catch (Exception ex)
-                    {
-                        _lastEx = ex;
-                    }
-
-                    try
-                    {
-                        lock (CacheFileLock)
-                        {
-                            using (
-                                var stream = new FileStream(CacheFilename, FileMode.Create, FileAccess.Write,
-                                    FileShare.None))
-                            using (var writer = new BinaryWriter(stream))
-                            {
-                                writer.Write(2); // version
-                                writer.Write(files.Length);
-                                foreach (var tags in files)
-                                    for (var tagIndex = 0; tagIndex <= TagCount; tagIndex++)
-                                    {
-                                        var tag = tags[tagIndex];
-                                        writer.Write(tag.Key);
-                                        writer.Write(tag.Value);
-                                    }
-
-                                writer.Write(LastModified.Count);
-                                foreach (var item in LastModified)
-                                {
-                                    writer.Write(item.Key);
-                                    writer.Write(item.Value);
-                                }
-
-                                writer.Close();
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _lastEx = ex;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _lastEx = ex;
-                try
-                {
-                    SendNotificationsHandler.Invoke(Interfaces.Plugin.CallbackType.FilesRetrievedFail);
-                }
-                catch
-                {
-                    _lastEx = ex;
-                }
-            }
-            finally
-            {
-                _cacheUpdating = false;
-            }
-
-            SetBackgroundTaskMessage("Done running GetFolderFiles");
-            RefreshPanels();
+            return GetFolderFiles(path);
         }
 
         private static List<KeyValuePair<string, string>> GetRootFolders(bool collectionOnly, bool refresh,
@@ -512,10 +286,9 @@ namespace MusicBeePlugin
             var folders = new List<KeyValuePair<string, string>>();
             lock (FolderLookupLock)
             {
-                if (!refresh && !FolderLookup.Count.Equals(0)) return folders;
-                folders = new List<KeyValuePair<string, string>>();
+                if (!refresh && !FolderLookup.Count.Equals(0)) return FolderLookup.ToList();
                 var collection = new List<KeyValuePair<string, string>>();
-
+                
                 var request = new RestRequest("getMusicFolders");
                 var response = SendRequest(request);
                 if (_serverType == SubsonicSettings.ServerType.Subsonic)
@@ -529,11 +302,10 @@ namespace MusicBeePlugin
                     }
 
                     var content = (MusicFolders) result.Item;
-
                     if (content.musicFolder != null)
                     {
                         var total = content.musicFolder.Count;
-                        for (var index = 0; index < content.musicFolder.Count; index++)
+                        for (var index = 0; index < total; index++)
                         {
                             SetBackgroundTaskMessage($"Processing {index} of {total} music folders");
                             var folder = content.musicFolder[index];
@@ -563,7 +335,7 @@ namespace MusicBeePlugin
                     if (content.musicFolder != null)
                     {
                         var total = content.musicFolder.Count;
-                        for (var index = 0; index < content.musicFolder.Count; index++)
+                        for (var index = 0; index < total; index++)
                         {
                             SetBackgroundTaskMessage($"Processing {index} of {total} music folders");
                             var folder = content.musicFolder[index];
@@ -583,15 +355,14 @@ namespace MusicBeePlugin
                 for (var index = 0; index < collection.Count; index++)
                     _collectionNames[index] = collection[index].Value + @"\";
 
-                var isDirty = false;
-
-                foreach (var collectionItem in collection)
-                    folders.AddRange(GetRootFolders(collectionItem.Key, collectionItem.Value, true,
-                        refresh && dirtyOnly,
-                        ref isDirty));
-
                 if (collectionOnly)
                     return collection;
+
+                var isDirty = false;
+                foreach (var collectionItem in collection)
+                    folders.AddRange(GetIndexes(collectionItem.Key, collectionItem.Value, true,
+                        refresh && dirtyOnly,
+                        ref isDirty));
 
                 if (dirtyOnly && !isDirty)
                     return null;
@@ -601,7 +372,7 @@ namespace MusicBeePlugin
             return folders;
         }
 
-        private static IEnumerable<KeyValuePair<string, string>> GetRootFolders(string collectionId,
+        private static IEnumerable<KeyValuePair<string, string>> GetIndexes(string collectionId,
             string collectionName,
             bool indices, bool updateIsDirty, ref bool isDirty)
         {
@@ -698,7 +469,11 @@ namespace MusicBeePlugin
         private static void GetFolderFiles(string baseFolderName, string folderId,
             ICollection<KeyValuePair<byte, string>[]> files)
         {
-            //SetBackgroundTaskMessage("Running GetMusicDirectory...");
+            // Workaround for MusicBee calling GetFile on root folder(s)
+            var rootFolders = GetRootFolders(true, true, false);
+            if (rootFolders.Any(x => x.Key.Equals(folderId)))
+                return;
+
             var request = new RestRequest("getMusicDirectory");
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
@@ -722,11 +497,7 @@ namespace MusicBeePlugin
                     {
                         SetBackgroundTaskMessage($"Processing MusicDirectory {index} of {total}...");
                         var childEntry = content.child[index];
-                        if (childEntry.isDir && _currentSettings.PreCacheAll)
-                        {
-                            GetFolderFiles(baseFolderName, childEntry.id, files);
-                        }
-                        else
+                        if (!childEntry.isDir)
                         {
                             var tags = GetTags(childEntry, baseFolderName);
                             if (tags != null)
@@ -754,11 +525,7 @@ namespace MusicBeePlugin
                     {
                         SetBackgroundTaskMessage($"Processing MusicDirectory {index} of {total}...");
                         var childEntry = content.child[index];
-                        if (childEntry.isDir && _currentSettings.PreCacheAll)
-                        {
-                            GetFolderFiles(baseFolderName, childEntry.id, files);
-                        }
-                        else
+                        if (!childEntry.isDir)
                         {
                             var tags = GetTags(childEntry, baseFolderName);
                             if (tags != null)
@@ -767,8 +534,6 @@ namespace MusicBeePlugin
                     }
                 }
             }
-
-            SetBackgroundTaskMessage("Done Running GetMusicDirectory");
         }
 
         private static KeyValuePair<byte, string>[][] GetFolderFiles(string path)
@@ -781,6 +546,11 @@ namespace MusicBeePlugin
             if (folderId == null)
                 return new KeyValuePair<byte, string>[][] { };
 
+            // Workaround for MusicBee calling this on root folder(s)
+            var rootFolders = GetRootFolders(true, true, false);
+            if (rootFolders.Any(x => x.Key.Equals(folderId)))
+                return new KeyValuePair<byte, string>[][] { };
+
             GetFolderFiles(path.Substring(0, path.IndexOf(@"\", StringComparison.Ordinal)), folderId, files);
             return files.ToArray();
         }
@@ -791,8 +561,8 @@ namespace MusicBeePlugin
             if (charIndex.Equals(-1))
                 throw new ArgumentException();
 
-            if (FolderLookup.Count.Equals(0))
-                GetRootFolders(false, false, false);
+            if (FolderLookup.Count.Equals(0)) return string.Empty;
+                //GetRootFolders(false, false, false);
 
             if (FolderLookup.TryGetValue(url.Substring(0, charIndex), out var folderId)) return folderId;
 
@@ -876,7 +646,12 @@ namespace MusicBeePlugin
         private static string GetFileId(string url)
         {
             var folderId = GetFolderId(url);
-            if (folderId == null) return null;
+            if (string.IsNullOrWhiteSpace(folderId)) return null;
+
+            // Workaround for MusicBee calling this on root folder(s)
+            var rootFolders = GetRootFolders(true, true, false);
+            if (rootFolders.Any(x => x.Key.Equals(folderId)))
+                return null;
 
             var request = new RestRequest("getMusicDirectory");
             request.AddParameter("id", folderId);
@@ -926,8 +701,9 @@ namespace MusicBeePlugin
 
         private static string GetResolvedUrl(string url)
         {
-            if (FolderLookup.Count.Equals(0))
-                GetRootFolders(false, false, false);
+            if (FolderLookup.Count.Equals(0)) return string.Empty;
+                //GetRootFolders(false, false, false);
+                
             if (_collectionNames.Length.Equals(1))
                 return _collectionNames[0] + url;
             var path = url.Substring(0, url.LastIndexOf(@"\", StringComparison.Ordinal));
@@ -954,12 +730,14 @@ namespace MusicBeePlugin
         private static string GetCoverArtId(string url)
         {
             var folderId = GetFolderId(url);
-            if (folderId == null) return null;
+            if (string.IsNullOrWhiteSpace(folderId)) return null;
 
-            var request = new RestRequest
-            {
-                Resource = "getMusicDirectory.view"
-            };
+            // Workaround for MusicBee calling this on root folder(s)
+            var rootFolders = GetRootFolders(true, true, false);
+            if (rootFolders.Any(x => x.Key.Equals(folderId)))
+                return null;
+
+            var request = new RestRequest("getMusicDirectory");
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
 
@@ -1013,7 +791,13 @@ namespace MusicBeePlugin
         public static KeyValuePair<byte, string>[] GetFile(string url)
         {
             var folderId = GetFolderId(url);
-            if (folderId == null) return null;
+            if (string.IsNullOrWhiteSpace(folderId)) return null;
+            
+            // Workaround for MusicBee calling this on root folder(s)
+            var rootFolders = GetRootFolders(true, true, false);
+            if (rootFolders.Any(x => x.Key.Equals(folderId)))
+                return null;
+            
             var baseFolderName = url.Substring(0, url.IndexOf(@"\", StringComparison.Ordinal));
 
             var request = new RestRequest("getMusicDirectory");
@@ -1483,16 +1267,6 @@ namespace MusicBeePlugin
         {
             var result = SettingsHelper.IsSettingChanged(settings, _currentSettings);
             return result;
-        }
-
-        private sealed class FileSorter : Comparer<KeyValuePair<byte, string>[]>
-        {
-            public override int Compare(KeyValuePair<byte, string>[] x, KeyValuePair<byte, string>[] y)
-            {
-                if (x != null && y != null)
-                    return string.Compare(x[0].Value, y[0].Value, StringComparison.OrdinalIgnoreCase);
-                return 0;
-            }
         }
     }
 }

@@ -31,8 +31,6 @@ namespace MusicBeePlugin.Domain
         public ConnectionProtocol Protocol { get; set; }
         public AuthMethod Auth { get; set; }
         public string BitRate { get; set; }
-        public bool UseIndexCache { get; set; }
-        public bool PreCacheAll { get; set; }
     }
 
     public static class SubsonicSettingsExtensions
