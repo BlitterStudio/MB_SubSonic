@@ -561,8 +561,8 @@ namespace MusicBeePlugin
             if (charIndex.Equals(-1))
                 throw new ArgumentException();
 
-            if (FolderLookup.Count.Equals(0)) return string.Empty;
-                //GetRootFolders(false, false, false);
+            if (FolderLookup.Count.Equals(0))
+                GetRootFolders(false, false, false);
 
             if (FolderLookup.TryGetValue(url.Substring(0, charIndex), out var folderId)) return folderId;
 
