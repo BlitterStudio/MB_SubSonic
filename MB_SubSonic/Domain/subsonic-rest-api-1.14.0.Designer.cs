@@ -19970,14 +19970,14 @@ namespace MusicBeePlugin.SubsonicAPI
         
         private bool _shouldSerializeid;
         
-        private int _id;
+        private string _id;
         
         private string _name;
         
         private static XmlSerializer serializer;
         
         [System.Xml.Serialization.XmlAttributeAttribute()]
-        public int id
+        public string id
         {
             get
             {
@@ -20024,7 +20024,7 @@ namespace MusicBeePlugin.SubsonicAPI
             {
                 return true;
             }
-            return (_id != default(int));
+            return !string.IsNullOrEmpty(_id);
         }
         
         /// <summary>
