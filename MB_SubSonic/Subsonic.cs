@@ -466,7 +466,7 @@ namespace MusicBeePlugin
             return folders;
         }
 
-        private static void GetFolderFiles(string baseFolderName, string folderId,
+        private static void GetFolderFiles(string baseFolderName, string folderPath, string folderId,
             ICollection<KeyValuePair<byte, string>[]> files)
         {
             // Workaround for MusicBee calling GetFile on root folder(s)
@@ -499,6 +499,12 @@ namespace MusicBeePlugin
                         var childEntry = content.child[index];
                         if (!childEntry.isDir)
                         {
+                            // Support for servers that does not provide path (eg. ownCloud Music)
+                            if (childEntry.path == null)
+                            {
+                                childEntry.path = string.Concat(folderPath.Substring(baseFolderName.Length + 1), childEntry.id);
+                            }
+
                             var tags = GetTags(childEntry, baseFolderName);
                             if (tags != null)
                                 files.Add(tags);
@@ -551,7 +557,7 @@ namespace MusicBeePlugin
             if (rootFolders.Any(x => x.Key.Equals(folderId)))
                 return new KeyValuePair<byte, string>[][] { };
 
-            GetFolderFiles(path.Substring(0, path.IndexOf(@"\", StringComparison.Ordinal)), folderId, files);
+            GetFolderFiles(path.Substring(0, path.IndexOf(@"\", StringComparison.Ordinal)), path, folderId, files);
             return files.ToArray();
         }
 
@@ -646,7 +652,8 @@ namespace MusicBeePlugin
         private static string GetFileId(string url)
         {
             var folderId = GetFolderId(url);
-            if (string.IsNullOrWhiteSpace(folderId)) return null;
+            if (string.IsNullOrWhiteSpace(folderId))
+                return null;
 
             // Workaround for MusicBee calling this on root folder(s)
             var rootFolders = GetRootFolders(true, true, false);
@@ -670,11 +677,22 @@ namespace MusicBeePlugin
                 var content = result.Item as Directory;
                 var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
 
-                if (content?.child == null) return null;
+                if (content?.child == null)
+                    return null;
 
                 foreach (var childEntry in content.child)
-                    if (childEntry.path == filePath)
+                {
+                    // Support for servers that does not provide path (eg. ownCloud Music)
+                    if (childEntry.path == null && filePath.EndsWith(childEntry.id))
+                    {
                         return childEntry.id;
+                    }
+
+                    if (childEntry.path == filePath)
+                    {
+                        return childEntry.id;
+                    }
+                }
             }
             else
             {
@@ -689,7 +707,8 @@ namespace MusicBeePlugin
                 var content = result.Item as LibreSonicAPI.Directory;
                 var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
 
-                if (content?.child == null) return null;
+                if (content?.child == null)
+                    return null;
 
                 foreach (var childEntry in content.child)
                     if (childEntry.path == filePath)
