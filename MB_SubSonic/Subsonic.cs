@@ -892,9 +892,9 @@ namespace MusicBeePlugin
             return _lastEx;
         }
 
-        private static string SendRequest(IRestRequest request)
+        private static string SendRequest(RestRequest request)
         {
-            var client = new RestClient {BaseUrl = new Uri(_serverName + "rest/")};
+            var client = new RestClient(_serverName + "rest/");
             request.AddParameter("u", _currentSettings.Username);
             if (_currentSettings.Auth == SubsonicSettings.AuthMethod.HexPass)
             {
@@ -917,7 +917,7 @@ namespace MusicBeePlugin
             
             request.AddParameter("c", "MusicBee");
 
-            var response = client.Execute(request);
+            var response = client.ExecuteAsync(request).Result;
             if (response.IsSuccessful) return response.Content;
 
             const string message = "Error retrieving response from Subsonic server:";
@@ -928,9 +928,9 @@ namespace MusicBeePlugin
             return response.Content;
         }
 
-        private static byte[] DownloadData(IRestRequest request)
+        private static byte[] DownloadData(RestRequest request)
         {
-            var client = new RestClient {BaseUrl = new Uri(_serverName + "rest/")};
+            var client = new RestClient(_serverName + "rest/");
             request.AddParameter("u", _currentSettings.Username);
 
             if (_currentSettings.Auth == SubsonicSettings.AuthMethod.HexPass)
@@ -953,7 +953,7 @@ namespace MusicBeePlugin
 
             
             request.AddParameter("c", "MusicBee");
-            var response = client.Execute(request);
+            var response = client.ExecuteAsync(request).Result;
 
             if (!response.ContentType.StartsWith("text/xml")) return response.RawBytes;
 
