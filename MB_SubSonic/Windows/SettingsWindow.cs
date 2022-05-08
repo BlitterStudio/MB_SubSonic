@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.Windows.Forms;
 using MusicBeePlugin.Domain;
-using MusicBeePlugin.Helpers;
 
 namespace MusicBeePlugin.Windows
 {
@@ -65,7 +64,7 @@ namespace MusicBeePlugin.Windows
             ComboBoxBitrate.Enabled = CheckBoxTranscode.Checked;
 
             ComboBoxProtocol.SelectedItem = currentSettings.Protocol.ToFriendlyString();
-            ComboBoxAuth.SelectedIndex = (int) currentSettings.Auth;
+            ComboBoxAuth.SelectedIndex = (int)currentSettings.Auth;
         }
 
         private void OnVisibleChanged(object sender, EventArgs eventArgs)
@@ -93,15 +92,11 @@ namespace MusicBeePlugin.Windows
 
             var saved = Subsonic.SaveSettings(settings);
             if (Subsonic.IsInitialized)
-            {
                 Subsonic.Refresh();
-            }
             else
-            {
                 Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
-                   ? Interfaces.Plugin.CallbackType.StorageReady
-                   : Interfaces.Plugin.CallbackType.StorageFailed);
-            }
+                    ? Interfaces.Plugin.CallbackType.StorageReady
+                    : Interfaces.Plugin.CallbackType.StorageFailed);
         }
 
         private void ButtonAbout_Click(object sender, EventArgs e)
@@ -166,27 +161,6 @@ https://github.com/midwan/MB_SubSonic", caption, MessageBoxButtons.OK, MessageBo
                     ? "128K"
                     : ComboBoxBitrate.SelectedItem.ToString()
             };
-        }
-
-        private void DeleteCacheFile()
-        {
-            var path = _mbApiInterface.Setting_GetPersistentStoragePath();
-            const string filename = "subsonicCache.dat";
-            FileHelper.DeleteFile(path, filename);
-        }
-
-        private void ButtonDeleteCache_Click(object sender, EventArgs e)
-        {
-            const string text = "Are you sure you want to delete the Cache file?";
-            const string caption = "Are you sure?";
-            var dialog = MessageBox.Show(
-                text,
-                caption,
-                MessageBoxButtons.OKCancel,
-                MessageBoxIcon.Warning,
-                MessageBoxDefaultButton.Button2);
-            if (dialog == DialogResult.OK)
-                DeleteCacheFile();
         }
     }
 }
