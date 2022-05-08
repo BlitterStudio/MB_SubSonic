@@ -62,12 +62,12 @@ namespace MusicBeePlugin
         {
             settings = SettingsHelper.SanitizeSettings(settings);
 
-            SetBackgroundTaskMessage("Attempting to Ping the server...");
+            SetBackgroundTaskMessage("Subsonic server configured, attempting to Ping it...");
             _serverName = BuildServerUri(settings);
 
             try
             {
-                var request = new RestRequest("ping.view");
+                var request = new RestRequest("ping");
                 var response = SendRequest(request);
                 _serverType = GetServerTypeFromResponse(response);
                 return IsPingOk(response);
@@ -193,7 +193,7 @@ namespace MusicBeePlugin
                 }
                 else
                 {
-                    var request = new RestRequest("getMusicDirectory.view");
+                    var request = new RestRequest("getMusicDirectory");
                     request.AddParameter("id", folderId);
                     var response = SendRequest(request);
 
@@ -260,7 +260,7 @@ namespace MusicBeePlugin
                 if (!refresh && !FolderLookup.Count.Equals(0)) return FolderLookup.ToList();
                 var collection = new List<KeyValuePair<string, string>>();
                 
-                var request = new RestRequest("getMusicFolders.view");
+                var request = new RestRequest("getMusicFolders");
                 var response = SendRequest(request);
                 if (_serverType == SubsonicSettings.ServerType.Subsonic)
                 {
@@ -280,7 +280,7 @@ namespace MusicBeePlugin
                         {
                             SetBackgroundTaskMessage($"Processing {index} of {total} music folders");
                             var folder = content.musicFolder[index];
-                            var folderId = folder.id.ToString();
+                            var folderId = folder.id;
                             var folderName = folder.name;
 
                             if (folderName != null && FolderLookup.ContainsKey(folderName))
@@ -322,7 +322,7 @@ namespace MusicBeePlugin
             SetBackgroundTaskMessage("Running GetIndexes...");
             var folders = new List<KeyValuePair<string, string>>();
 
-            var request = new RestRequest("getIndexes.view");
+            var request = new RestRequest("getIndexes");
             request.AddParameter("musicFolderId", collectionId);
             var response = SendRequest(request);
 
@@ -378,7 +378,7 @@ namespace MusicBeePlugin
             if (rootFolders.Any(x => x.Key.Equals(folderId)))
                 return;
 
-            var request = new RestRequest("getMusicDirectory.view");
+            var request = new RestRequest("getMusicDirectory");
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
 
@@ -463,7 +463,7 @@ namespace MusicBeePlugin
                 else if (folderId != null)
                 {
                     var folderName = url.Substring(sectionStartIndex, charIndex - sectionStartIndex);
-                    var request = new RestRequest("getMusicDirectory.view");
+                    var request = new RestRequest("getMusicDirectory");
                     request.AddParameter("id", folderId);
                     var response = SendRequest(request);
 
@@ -514,7 +514,7 @@ namespace MusicBeePlugin
             if (rootFolders.Any(x => x.Key.Equals(folderId)))
                 return null;
 
-            var request = new RestRequest("getMusicDirectory.view");
+            var request = new RestRequest("getMusicDirectory");
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
 
@@ -634,7 +634,7 @@ namespace MusicBeePlugin
             
             var baseFolderName = url.Substring(0, url.IndexOf(@"\", StringComparison.Ordinal));
 
-            var request = new RestRequest("getMusicDirectory.view");
+            var request = new RestRequest("getMusicDirectory");
             request.AddParameter("id", folderId);
             var response = SendRequest(request);
 
@@ -709,7 +709,7 @@ namespace MusicBeePlugin
                 var id = GetCoverArtId(url);
                 if (id != null)
                 {
-                    var request = new RestRequest("getCoverArt.view");
+                    var request = new RestRequest("getCoverArt");
                     request.AddParameter("id", id);
                     bytes = DownloadData(request);
                 }
@@ -727,7 +727,7 @@ namespace MusicBeePlugin
             _lastEx = null;
             var playlists = new List<KeyValuePair<string, string>>();
 
-            var request = new RestRequest("getPlaylists.view");
+            var request = new RestRequest("getPlaylists");
             var response = SendRequest(request);
 
             if (_serverType == SubsonicSettings.ServerType.Subsonic)
@@ -754,7 +754,7 @@ namespace MusicBeePlugin
         {
             _lastEx = null;
             var files = new List<KeyValuePair<byte, string>[]>();
-            var request = new RestRequest("getPlaylist.view");
+            var request = new RestRequest("getPlaylist");
             request.AddParameter("id", id);
             var response = SendRequest(request);
 
@@ -787,7 +787,7 @@ namespace MusicBeePlugin
             if (string.IsNullOrEmpty(rating)) return;
             int.TryParse(rating, out var result);
 
-            var request = new RestRequest("setRating.view");
+            var request = new RestRequest("setRating");
             request.AddParameter("id", id);
             request.AddParameter("rating", result);
             SendRequest(request);
@@ -807,7 +807,7 @@ namespace MusicBeePlugin
         public static void CreatePlaylist(string name, List<int> songIds)
         {
             //TODO
-            var request = new RestRequest("createPlaylist.view");
+            var request = new RestRequest("createPlaylist");
             request.AddParameter("name", name);
             foreach (var songId in songIds) request.AddParameter("songId", songId);
 
@@ -823,7 +823,7 @@ namespace MusicBeePlugin
         public static void DeletePlaylist(int playlistId)
         {
             //TODO
-            var request = new RestRequest("deletePlaylist.view");
+            var request = new RestRequest("deletePlaylist");
             request.AddParameter("id", playlistId);
             SendRequest(request);
         }
@@ -849,12 +849,12 @@ namespace MusicBeePlugin
                     hexString = hexString.Replace("-", "");
                     var hexPass = $"enc:{hexString}";
                     uriLine =
-                        $"{_serverName}rest/stream.view?u={_currentSettings.Username}&p={hexPass}&v={ApiVersionOlder}&c=MusicBee&id={id}&{transcodeAndBitRate}";
+                        $"{_serverName}rest/stream?u={_currentSettings.Username}&p={hexPass}&v={ApiVersionOlder}&c=MusicBee&id={id}&{transcodeAndBitRate}";
                 }
                 else
                 {
                     uriLine =
-                        $"{_serverName}rest/stream.view?u={_currentSettings.Username}&t={token}&s={salt}&v={ApiVersion}&c=MusicBee&id={id}&{transcodeAndBitRate}";
+                        $"{_serverName}rest/stream?u={_currentSettings.Username}&t={token}&s={salt}&v={ApiVersion}&c=MusicBee&id={id}&{transcodeAndBitRate}";
                 }
 
                 var uri = new Uri(uriLine);
