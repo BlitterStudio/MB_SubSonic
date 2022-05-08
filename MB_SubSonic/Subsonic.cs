@@ -103,8 +103,8 @@ namespace MusicBeePlugin
                 {
                     SetBackgroundTaskMessage("Could not get a valid response to Ping from the Subsonic server");
                     return false;
+                }
             }
-        }
         }
 
         private static string BuildServerUri(SubsonicSettings settings)
@@ -967,8 +967,8 @@ namespace MusicBeePlugin
                 return null;
             }
 
-                return null;
-            }
+            return null;
+        }
 
         private static string NewSalt()
         {
