@@ -18,8 +18,8 @@ namespace MusicBeePlugin.Domain
 
         public enum ServerType
         {
-            Subsonic,
-            LibreSonic
+            None,
+            Subsonic
         }
 
         public string Host { get; set; }

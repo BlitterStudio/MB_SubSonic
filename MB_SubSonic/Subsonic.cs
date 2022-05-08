@@ -81,10 +81,11 @@ namespace MusicBeePlugin
 
         private static SubsonicSettings.ServerType GetServerTypeFromResponse(string response)
         {
-            // Default server type is Subsonic, but check if we're connected to a LibreSonic server
-            return response.Contains("libresonic")
-                ? SubsonicSettings.ServerType.LibreSonic
-                : SubsonicSettings.ServerType.Subsonic;
+            if (string.IsNullOrEmpty(response)) return SubsonicSettings.ServerType.None;
+            // Default server type is Subsonic
+            return response.Contains("subsonic-response")
+                ? SubsonicSettings.ServerType.Subsonic
+                : SubsonicSettings.ServerType.None;
         }
 
         private static bool IsPingOk(string response)
@@ -93,19 +94,17 @@ namespace MusicBeePlugin
             {
                 case SubsonicSettings.ServerType.Subsonic:
                 {
-                    SetBackgroundTaskMessage("Detected a Subsonic server");
+                    SetBackgroundTaskMessage("Detected a Subsonic server, Ping response was OK");
                     var result = Response.Deserialize(response);
                     return result.status == ResponseStatus.ok;
                 }
-                case SubsonicSettings.ServerType.LibreSonic:
-                {
-                    SetBackgroundTaskMessage("Detected a LibreSonic server");
-                    var result = LibreSonicAPI.Response.Deserialize(response);
-                    return result.status == LibreSonicAPI.ResponseStatus.ok;
-                }
+                case SubsonicSettings.ServerType.None:
                 default:
+                {
+                    SetBackgroundTaskMessage("Could not get a valid response to Ping from the Subsonic server");
                     return false;
             }
+        }
         }
 
         private static string BuildServerUri(SubsonicSettings settings)
@@ -226,35 +225,7 @@ namespace MusicBeePlugin
                                 if (!FolderLookup.ContainsKey(folderName))
                                     FolderLookup.Add(folderName, folderId);
                             }
-                        }
-                    }
-                    else
-                    {
-                        var result = LibreSonicAPI.Response.Deserialize(response);
-                        if (result.Item is LibreSonicAPI.Error error)
-                        {
-                            MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            return null;
-                        }
-
-                        var content = result.Item as LibreSonicAPI.Directory;
-                        if (content?.child != null)
-                        {
-                            var total = content.child.Count;
-                            for (var index = 0; index < total; index++)
-                            {
-                                var dirChild = content.child[index];
-                                SetBackgroundTaskMessage($"Processing {index} of {total} Folders...");
-
-                                if (!dirChild.isDir) continue;
-
-                                folderId = dirChild.id;
-                                var folderName = path + dirChild.title;
-                                list.Add(folderName);
-                                if (!FolderLookup.ContainsKey(folderName))
-                                    FolderLookup.Add(folderName, folderId);
-                            }
+                            SetBackgroundTaskMessage("");
                         }
                     }
 
@@ -318,36 +289,8 @@ namespace MusicBeePlugin
 
                             collection.Add(new KeyValuePair<string, string>(folderId, folderName));
                         }
-                    }
-                }
-                else
-                {
-                    var result = LibreSonicAPI.Response.Deserialize(response);
-                    if (result.Item is LibreSonicAPI.Error error)
-                    {
-                        MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return null;
-                    }
 
-                    var content = (LibreSonicAPI.MusicFolders) result.Item;
-
-                    if (content.musicFolder != null)
-                    {
-                        var total = content.musicFolder.Count;
-                        for (var index = 0; index < total; index++)
-                        {
-                            SetBackgroundTaskMessage($"Processing {index} of {total} music folders");
-                            var folder = content.musicFolder[index];
-                            var folderId = folder.id.ToString();
-                            var folderName = folder.name;
-
-                            if (folderName != null && FolderLookup.ContainsKey(folderName))
-                                FolderLookup[folderName] = folderId;
-                            else if (folderName != null) FolderLookup.Add(folderName, folderId);
-
-                            collection.Add(new KeyValuePair<string, string>(folderId, folderName));
-                        }
+                        SetBackgroundTaskMessage("");
                     }
                 }
 
@@ -422,45 +365,6 @@ namespace MusicBeePlugin
                         folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
                     }
             }
-            else
-            {
-                var result = LibreSonicAPI.Response.Deserialize(response);
-                if (result.Item is LibreSonicAPI.Error error)
-                {
-                    MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return null;
-                }
-
-                var content = result.Item as LibreSonicAPI.Indexes;
-                if (updateIsDirty && content?.lastModified != null)
-                {
-                    var serverLastModified = (ulong) content.lastModified;
-                    lock (CacheFileLock)
-                    {
-                        if (!LastModified.TryGetValue(collectionName, out var clientLastModified))
-                        {
-                            isDirty = true;
-                            LastModified.Add(collectionName, serverLastModified);
-                        }
-                        else if (serverLastModified > clientLastModified)
-                        {
-                            isDirty = true;
-                            LastModified[collectionName] = serverLastModified;
-                        }
-                    }
-                }
-
-                if (content?.index != null)
-                    foreach (var indexChild in content.index)
-                    foreach (var artistChild in indexChild.artist)
-                    {
-                        var folderId = artistChild.id;
-                        var folderName = $"{collectionName}\\{artistChild.name}";
-                        FolderLookup[folderName] = folderId;
-                        folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
-                    }
-            }
 
             SetBackgroundTaskMessage("Done Running GetIndexes");
             return folders;
@@ -505,34 +409,6 @@ namespace MusicBeePlugin
                                 childEntry.path = string.Concat(folderPath.Substring(baseFolderName.Length + 1), childEntry.id);
                             }
 
-                            var tags = GetTags(childEntry, baseFolderName);
-                            if (tags != null)
-                                files.Add(tags);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                var result = LibreSonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
-                if (result.Item is LibreSonicAPI.Error error)
-                {
-                    MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-
-                var content = result.Item as LibreSonicAPI.Directory;
-
-                if (content?.child != null)
-                {
-                    var total = content.child.Count;
-                    for (var index = 0; index < total; index++)
-                    {
-                        SetBackgroundTaskMessage($"Processing MusicDirectory {index} of {total}...");
-                        var childEntry = content.child[index];
-                        if (!childEntry.isDir)
-                        {
                             var tags = GetTags(childEntry, baseFolderName);
                             if (tags != null)
                                 files.Add(tags);
@@ -613,28 +489,6 @@ namespace MusicBeePlugin
                                     break;
                                 }
                     }
-                    else
-                    {
-                        var result = LibreSonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
-                        if (result.Item is LibreSonicAPI.Error error)
-                        {
-                            MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            return null;
-                        }
-
-                        var content = result.Item as LibreSonicAPI.Directory;
-
-                        if (content?.child != null)
-                            foreach (var childEntry in content.child)
-                                if (childEntry.isDir && childEntry.title == folderName)
-                                {
-                                    folderId = childEntry.id;
-                                    if (!FolderLookup.ContainsKey(url.Substring(0, charIndex)))
-                                        FolderLookup.Add(url.Substring(0, charIndex), folderId);
-                                    break;
-                                }
-                    }
                 }
 
                 sectionStartIndex = charIndex + 1;
@@ -693,26 +547,6 @@ namespace MusicBeePlugin
                         return childEntry.id;
                     }
                 }
-            }
-            else
-            {
-                var result = LibreSonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
-                if (result.Item is LibreSonicAPI.Error error)
-                {
-                    MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return null;
-                }
-
-                var content = result.Item as LibreSonicAPI.Directory;
-                var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
-
-                if (content?.child == null)
-                    return null;
-
-                foreach (var childEntry in content.child)
-                    if (childEntry.path == filePath)
-                        return childEntry.id;
             }
 
             return null;
@@ -779,25 +613,6 @@ namespace MusicBeePlugin
                     if (childEntry.path == filePath)
                         return childEntry.coverArt;
             }
-            else
-            {
-                var result = LibreSonicAPI.Response.Deserialize(response);
-                if (result.Item is LibreSonicAPI.Error error)
-                {
-                    MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return null;
-                }
-
-                var content = result.Item as LibreSonicAPI.Directory;
-                var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
-
-                if (content?.child == null) return null;
-
-                foreach (var childEntry in content.child)
-                    if (childEntry.path == filePath)
-                        return childEntry.coverArt;
-            }
 
             return null;
         }
@@ -842,69 +657,11 @@ namespace MusicBeePlugin
                     if (childEntry.path == filePath)
                         return GetTags(childEntry, baseFolderName);
             }
-            else
-            {
-                var result = LibreSonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
-                if (result.Item is LibreSonicAPI.Error error)
-                {
-                    MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return null;
-                }
-
-                var content = result.Item as LibreSonicAPI.Directory;
-                var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
-
-                if (content?.child == null) return null;
-
-                foreach (var childEntry in content.child)
-                    if (childEntry.path == filePath)
-                        return GetTags(childEntry, baseFolderName);
-            }
 
             return null;
         }
 
         private static KeyValuePair<byte, string>[] GetTags(Child child, string baseFolderName)
-        {
-            if (child.isVideo)
-                return null;
-
-            var tags = new KeyValuePair<byte, string>[TagCount + 1];
-            var path = string.Empty;
-            var attribute = child.path;
-            if (attribute != null)
-                path = attribute.Replace("/", @"\");
-            path = baseFolderName == null ? GetResolvedUrl(path) : $"{baseFolderName}\\{path}";
-            tags[0] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Url, path);
-            tags[1] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artist, child.artist ?? "");
-            tags[2] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.TrackTitle,
-                child.title ?? "");
-            tags[3] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Album, child.album ?? "");
-            tags[4] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Year, child.year.ToString());
-            tags[5] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.TrackNo,
-                child.track.ToString());
-            tags[6] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Genre, child.genre ?? "");
-            tags[7] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Duration,
-                (child.duration * 1000).ToString());
-            tags[8] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Bitrate,
-                child.bitRate.ToString());
-            tags[9] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Size,
-                child.size.ToString());
-            tags[10] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artwork,
-                string.IsNullOrEmpty(child.coverArt) ? "" : "Y");
-            tags[11] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.DiscNo,
-                child.discNumber.ToString());
-            tags[12] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.RatingLove,
-                child.starred != default ? "L" : "");
-            tags[13] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Custom16, child.id ?? "");
-            tags[14] = new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Rating,
-                child.userRating.ToString());
-
-            return tags;
-        }
-
-        private static KeyValuePair<byte, string>[] GetTags(LibreSonicAPI.Child child, string baseFolderName)
         {
             if (child.isVideo)
                 return null;
@@ -989,22 +746,6 @@ namespace MusicBeePlugin
                 foreach (var playlistEntry in content.playlist)
                     playlists.Add(new KeyValuePair<string, string>(playlistEntry.id, playlistEntry.name));
             }
-            else
-            {
-                var result = LibreSonicAPI.Response.Deserialize(response);
-                if (result.Item is LibreSonicAPI.Error error)
-                {
-                    MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return null;
-                }
-
-                var content = result.Item as LibreSonicAPI.Playlists;
-                if (content?.playlist == null) return playlists.ToArray();
-
-                foreach (var playlistEntry in content.playlist)
-                    playlists.Add(new KeyValuePair<string, string>(playlistEntry.id, playlistEntry.name));
-            }
 
             return playlists.ToArray();
         }
@@ -1028,26 +769,6 @@ namespace MusicBeePlugin
                 }
 
                 var content = result.Item as PlaylistWithSongs;
-                if (content?.entry == null) return files.ToArray();
-
-                foreach (var playlistEntry in content.entry)
-                {
-                    var tags = GetTags(playlistEntry, null);
-                    if (tags != null)
-                        files.Add(tags);
-                }
-            }
-            else
-            {
-                var result = LibreSonicAPI.Response.Deserialize(response.Replace("\0", string.Empty));
-                if (result.Item is LibreSonicAPI.Error error)
-                {
-                    MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return null;
-                }
-
-                var content = result.Item as LibreSonicAPI.PlaylistWithSongs;
                 if (content?.entry == null) return files.ToArray();
 
                 foreach (var playlistEntry in content.entry)
@@ -1245,16 +966,9 @@ namespace MusicBeePlugin
 {error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return null;
             }
-            else
-            {
-                var result = LibreSonicAPI.Response.Deserialize(response.Content.Replace("\0", string.Empty));
-                if (!(result.Item is LibreSonicAPI.Error error)) return response.RawBytes;
 
-                MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return null;
             }
-        }
 
         private static string NewSalt()
         {

@@ -44,7 +44,6 @@
   <ItemGroup>
     <Compile Include="Domain\AesEncryption.cs" />
     <Compile Include="Domain\ConnectStream.cs" />
-    <Compile Include="Domain\libresonic-rest-api.Designer.cs" />
     <Compile Include="Domain\subsonic-rest-api-1.14.0.Designer.cs" />
     <Compile Include="Domain\SubsonicSettings.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
