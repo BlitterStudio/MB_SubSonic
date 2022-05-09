@@ -23,6 +23,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -31,6 +32,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -44,7 +46,7 @@
   <ItemGroup>
     <Compile Include="Domain\AesEncryption.cs" />
     <Compile Include="Domain\ConnectStream.cs" />
-    <Compile Include="Domain\subsonic-rest-api-1.14.0.Designer.cs" />
+    <Compile Include="Domain\subsonic-rest-api-1_16_1.cs" />
     <Compile Include="Domain\SubsonicSettings.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
     <Compile Include="Helpers\SettingsHelper.cs" />
@@ -74,7 +76,22 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Domain\subsonic-rest-api-1.12.0.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Domain\subsonic-rest-api-1.13.0.xsd">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="Domain\subsonic-rest-api-1.14.0.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Domain\subsonic-rest-api-1.15.0.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Domain\subsonic-rest-api-1.16.0.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Domain\subsonic-rest-api-1.16.1.xsd">
       <SubType>Designer</SubType>
     </None>
     <None Include="SubSonic.png" />
