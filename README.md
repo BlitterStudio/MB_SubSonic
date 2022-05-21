@@ -17,8 +17,8 @@ Any bugs or improvement suggestions can be reported in the Issues section.
 Requirements
 ============
 - MusicBee (v2.x or 3.x) - get it from http://getmusicbee.com
-- .NET Framework 4.5.2 - normally delivered through Windows Update automatically
-- Subsonic / LibreSonic server (tested with v5.x and 6.x) - more information at http://www.subsonic.org
+- .NET Framework 4.8 - normally delivered through Windows Update automatically
+- Subsonic / AirSonic server (tested with v5.x and 6.x) - more information at http://www.subsonic.org
 
 Installation
 ============
