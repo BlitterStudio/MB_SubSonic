@@ -30,10 +30,8 @@ Installation
 Configuration
 =============
 You will find the configuration section in MusicBee's "Preferences" window -> Plugins.
-The necessary information you need to provide is "Hostname", "Port", "Username" and "Password".
+The necessary information you will need to provide is "Hostname", "Port", "Username" and "Password" for your Subsonic compatible server.
 You can optionally specify a "Path" as well, if your Subsonic server needs one. Otherwise the default "/" will be used.
-
-Please note that the first time it connects, it will scan through your collection and create a local cache. This operation might take a while (depending on the size of your collection and the network speed) during which you won't be able to see anything in the Subsonic node. Please be patient. :)
 
 Usage
 =============
