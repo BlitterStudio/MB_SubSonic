@@ -13,7 +13,7 @@ namespace MusicBeePlugin
     // ReSharper disable once ClassNeverInstantiated.Global
     public class Plugin
     {
-        private readonly Interfaces.Plugin.PluginInfo _about = new Interfaces.Plugin.PluginInfo();
+        private readonly Interfaces.Plugin.PluginInfo _about = new();
         private Interfaces.Plugin.MusicBeeApiInterface _mbApiInterface;
         private SettingsWindow _settingsWindow;
 

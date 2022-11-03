@@ -16,29 +16,27 @@ namespace MusicBeePlugin.Helpers
             {
                 if (!File.Exists(settingsFilename)) return Subsonic.GetCurrentSettings();
 
-                using (var reader = new StreamReader(settingsFilename))
-                {
-                    var protocolText = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                using var reader = new StreamReader(settingsFilename);
+                var protocolText = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
 
-                    settings.Protocol = protocolText.Equals("HTTP")
-                        ? SubsonicSettings.ConnectionProtocol.Http
-                        : SubsonicSettings.ConnectionProtocol.Https;
-                    settings.Host = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                    settings.Port = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                    settings.BasePath = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                    settings.Username = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                    settings.Password = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-                    settings.Transcode = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "Y";
-                    settings.Auth = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "HexPass"
-                        ? SubsonicSettings.AuthMethod.HexPass
-                        : SubsonicSettings.AuthMethod.Token;
-                    settings.BitRate = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                settings.Protocol = protocolText.Equals("HTTP")
+                    ? SubsonicSettings.ConnectionProtocol.Http
+                    : SubsonicSettings.ConnectionProtocol.Https;
+                settings.Host = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                settings.Port = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                settings.BasePath = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                settings.Username = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                settings.Password = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                settings.Transcode = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "Y";
+                settings.Auth = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "HexPass"
+                    ? SubsonicSettings.AuthMethod.HexPass
+                    : SubsonicSettings.AuthMethod.Token;
+                settings.BitRate = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
 
-                    if (string.IsNullOrEmpty(settings.BitRate))
-                        settings.BitRate = "Unlimited";
+                if (string.IsNullOrEmpty(settings.BitRate))
+                    settings.BitRate = "Unlimited";
 
-                    return settings;
-                }
+                return settings;
             }
             catch (Exception ex)
             {
@@ -55,27 +53,25 @@ Exception: {ex}",
         {
             try
             {
-                using (var writer = new StreamWriter(filename))
-                {
-                    writer.WriteLine(
-                        AesEncryption.Encrypt(
-                            settings.Protocol == SubsonicSettings.ConnectionProtocol.Http ? "HTTP" : "HTTPS",
-                            Passphrase));
-                    writer.WriteLine(AesEncryption.Encrypt(settings.Host, Passphrase));
-                    writer.WriteLine(AesEncryption.Encrypt(settings.Port, Passphrase));
-                    writer.WriteLine(AesEncryption.Encrypt(settings.BasePath, Passphrase));
-                    writer.WriteLine(AesEncryption.Encrypt(settings.Username, Passphrase));
-                    writer.WriteLine(AesEncryption.Encrypt(settings.Password, Passphrase));
-                    writer.WriteLine(settings.Transcode
-                        ? AesEncryption.Encrypt("Y", Passphrase)
-                        : AesEncryption.Encrypt("N", Passphrase));
-                    writer.WriteLine(
-                        AesEncryption.Encrypt(
-                            settings.Auth == SubsonicSettings.AuthMethod.HexPass ? "HexPass" : "Token",
-                            Passphrase));
-                    writer.WriteLine(AesEncryption.Encrypt(settings.BitRate, Passphrase));
-                    return true;
-                }
+                using var writer = new StreamWriter(filename);
+                writer.WriteLine(
+                    AesEncryption.Encrypt(
+                        settings.Protocol == SubsonicSettings.ConnectionProtocol.Http ? "HTTP" : "HTTPS",
+                        Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.Host, Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.Port, Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.BasePath, Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.Username, Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.Password, Passphrase));
+                writer.WriteLine(settings.Transcode
+                    ? AesEncryption.Encrypt("Y", Passphrase)
+                    : AesEncryption.Encrypt("N", Passphrase));
+                writer.WriteLine(
+                    AesEncryption.Encrypt(
+                        settings.Auth == SubsonicSettings.AuthMethod.HexPass ? "HexPass" : "Token",
+                        Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.BitRate, Passphrase));
+                return true;
             }
             catch (Exception ex)
             {

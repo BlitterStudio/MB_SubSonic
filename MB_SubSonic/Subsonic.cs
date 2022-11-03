@@ -382,10 +382,7 @@ namespace MusicBeePlugin
                     if (!childEntry.isDir)
                     {
                         // Support for servers that does not provide path (eg. ownCloud Music)
-                        if (childEntry.path == null)
-                        {
-                            childEntry.path = string.Concat(folderPath.Substring(baseFolderName.Length + 1), childEntry.id);
-                        }
+                        childEntry.path ??= string.Concat(folderPath.Substring(baseFolderName.Length + 1), childEntry.id);
 
                         var tags = GetTags(childEntry, baseFolderName);
                         if (tags != null)

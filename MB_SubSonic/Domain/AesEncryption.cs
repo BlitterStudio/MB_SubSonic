@@ -33,21 +33,14 @@ namespace MusicBeePlugin.Domain
             var derivedPassword = new Rfc2898DeriveBytes(password, saltValueBytes, passwordIterations);
             var keyBytes = derivedPassword.GetBytes(keySize/8);
             var symmetricKey = new RijndaelManaged {Mode = CipherMode.CBC};
-            byte[] cipherTextBytes = null;
-            using (var encryptor = symmetricKey.CreateEncryptor(keyBytes, initialVectorBytes))
-            {
-                using (var memStream = new MemoryStream())
-                {
-                    using (var cryptoStream = new CryptoStream(memStream, encryptor, CryptoStreamMode.Write))
-                    {
-                        cryptoStream.Write(plainTextBytes, 0, plainTextBytes.Length);
-                        cryptoStream.FlushFinalBlock();
-                        cipherTextBytes = memStream.ToArray();
-                        memStream.Close();
-                        cryptoStream.Close();
-                    }
-                }
-            }
+            using var encryptor = symmetricKey.CreateEncryptor(keyBytes, initialVectorBytes);
+            using var memStream = new MemoryStream();
+            using var cryptoStream = new CryptoStream(memStream, encryptor, CryptoStreamMode.Write);
+            cryptoStream.Write(plainTextBytes, 0, plainTextBytes.Length);
+            cryptoStream.FlushFinalBlock();
+            var cipherTextBytes = memStream.ToArray();
+            memStream.Close();
+            cryptoStream.Close();
             symmetricKey.Clear();
             return Convert.ToBase64String(cipherTextBytes);
         }
@@ -74,19 +67,12 @@ namespace MusicBeePlugin.Domain
             var keyBytes = derivedPassword.GetBytes(keySize/8);
             var symmetricKey = new RijndaelManaged {Mode = CipherMode.CBC};
             var plainTextBytes = new byte[cipherTextBytes.Length];
-            var byteCount = 0;
-            using (var decryptor = symmetricKey.CreateDecryptor(keyBytes, initialVectorBytes))
-            {
-                using (var memStream = new MemoryStream(cipherTextBytes))
-                {
-                    using (var cryptoStream = new CryptoStream(memStream, decryptor, CryptoStreamMode.Read))
-                    {
-                        byteCount = cryptoStream.Read(plainTextBytes, 0, plainTextBytes.Length);
-                        memStream.Close();
-                        cryptoStream.Close();
-                    }
-                }
-            }
+            using var decryptor = symmetricKey.CreateDecryptor(keyBytes, initialVectorBytes);
+            using var memStream = new MemoryStream(cipherTextBytes);
+            using var cryptoStream = new CryptoStream(memStream, decryptor, CryptoStreamMode.Read);
+            var byteCount = cryptoStream.Read(plainTextBytes, 0, plainTextBytes.Length);
+            memStream.Close();
+            cryptoStream.Close();
             symmetricKey.Clear();
             return Encoding.UTF8.GetString(plainTextBytes, 0, byteCount);
         }
