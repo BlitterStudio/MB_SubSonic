@@ -162,5 +162,20 @@ https://github.com/midwan/MB_SubSonic", caption, MessageBoxButtons.OK, MessageBo
                     : ComboBoxBitrate.SelectedItem.ToString()
             };
         }
+
+        private void cmbProfile_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            //TODO
+        }
+
+        private void btnProfileNew_Click(object sender, EventArgs e)
+        {
+            //TODO
+        }
+
+        private void btnProfileDelete_Click(object sender, EventArgs e)
+        {
+            //TODO
+        }
     }
 }

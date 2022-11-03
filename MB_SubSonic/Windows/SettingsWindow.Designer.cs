@@ -51,6 +51,10 @@
             this.GroupBoxTranscoding = new System.Windows.Forms.GroupBox();
             this.ButtonPing = new System.Windows.Forms.Button();
             this.GroupBoxServer = new System.Windows.Forms.GroupBox();
+            this.lblProfile = new System.Windows.Forms.Label();
+            this.cmbProfile = new System.Windows.Forms.ComboBox();
+            this.btnProfileNew = new System.Windows.Forms.Button();
+            this.btnProfileDelete = new System.Windows.Forms.Button();
             this.GroupBoxTranscoding.SuspendLayout();
             this.GroupBoxServer.SuspendLayout();
             this.SuspendLayout();
@@ -275,18 +279,60 @@
             this.GroupBoxServer.Controls.Add(this.LabelPassword);
             this.GroupBoxServer.Controls.Add(this.TextBoxUsername);
             this.GroupBoxServer.Controls.Add(this.TextBoxPassword);
-            this.GroupBoxServer.Location = new System.Drawing.Point(15, 12);
+            this.GroupBoxServer.Location = new System.Drawing.Point(12, 71);
             this.GroupBoxServer.Name = "GroupBoxServer";
             this.GroupBoxServer.Size = new System.Drawing.Size(385, 236);
             this.GroupBoxServer.TabIndex = 23;
             this.GroupBoxServer.TabStop = false;
             this.GroupBoxServer.Text = "Subsonic Server";
             // 
+            // lblProfile
+            // 
+            this.lblProfile.AutoSize = true;
+            this.lblProfile.Location = new System.Drawing.Point(12, 21);
+            this.lblProfile.Name = "lblProfile";
+            this.lblProfile.Size = new System.Drawing.Size(39, 13);
+            this.lblProfile.TabIndex = 24;
+            this.lblProfile.Text = "Profile:";
+            // 
+            // cmbProfile
+            // 
+            this.cmbProfile.FormattingEnabled = true;
+            this.cmbProfile.Location = new System.Drawing.Point(57, 18);
+            this.cmbProfile.Name = "cmbProfile";
+            this.cmbProfile.Size = new System.Drawing.Size(121, 21);
+            this.cmbProfile.TabIndex = 25;
+            this.cmbProfile.SelectedIndexChanged += new System.EventHandler(this.cmbProfile_SelectedIndexChanged);
+            // 
+            // btnProfileNew
+            // 
+            this.btnProfileNew.Location = new System.Drawing.Point(184, 12);
+            this.btnProfileNew.Name = "btnProfileNew";
+            this.btnProfileNew.Size = new System.Drawing.Size(75, 30);
+            this.btnProfileNew.TabIndex = 26;
+            this.btnProfileNew.Text = "New";
+            this.btnProfileNew.UseVisualStyleBackColor = true;
+            this.btnProfileNew.Click += new System.EventHandler(this.btnProfileNew_Click);
+            // 
+            // btnProfileDelete
+            // 
+            this.btnProfileDelete.Location = new System.Drawing.Point(265, 12);
+            this.btnProfileDelete.Name = "btnProfileDelete";
+            this.btnProfileDelete.Size = new System.Drawing.Size(75, 30);
+            this.btnProfileDelete.TabIndex = 27;
+            this.btnProfileDelete.Text = "Delete";
+            this.btnProfileDelete.UseVisualStyleBackColor = true;
+            this.btnProfileDelete.Click += new System.EventHandler(this.btnProfileDelete_Click);
+            // 
             // SettingsWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(598, 319);
+            this.Controls.Add(this.btnProfileDelete);
+            this.Controls.Add(this.btnProfileNew);
+            this.Controls.Add(this.cmbProfile);
+            this.Controls.Add(this.lblProfile);
             this.Controls.Add(this.GroupBoxServer);
             this.Controls.Add(this.GroupBoxTranscoding);
             this.Controls.Add(this.ButtonSave);
@@ -302,6 +348,7 @@
             this.GroupBoxServer.ResumeLayout(false);
             this.GroupBoxServer.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -329,5 +376,9 @@
         private System.Windows.Forms.GroupBox GroupBoxTranscoding;
         private System.Windows.Forms.Button ButtonPing;
         private System.Windows.Forms.GroupBox GroupBoxServer;
+        private System.Windows.Forms.Label lblProfile;
+        private System.Windows.Forms.ComboBox cmbProfile;
+        private System.Windows.Forms.Button btnProfileNew;
+        private System.Windows.Forms.Button btnProfileDelete;
     }
 }

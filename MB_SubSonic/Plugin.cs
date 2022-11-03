@@ -42,8 +42,10 @@ namespace MusicBeePlugin
             _about.MinApiRevision = Interfaces.Plugin.MinApiRevision;
             _about.ReceiveNotifications = Interfaces.Plugin.ReceiveNotificationFlags.PlayerEvents
                                           | Interfaces.Plugin.ReceiveNotificationFlags.TagEvents;
-            _about.ConfigurationPanelHeight =
-                0; // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
+
+            // height in pixels that MusicBee should reserve in a panel for config settings.
+            // When set, a handle to an empty panel will be passed to the Configure function
+            _about.ConfigurationPanelHeight = 0; 
 
             _settingsWindow = new SettingsWindow(_mbApiInterface, _about);
             return _about;
