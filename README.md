@@ -1,3 +1,5 @@
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X8X4FHDY4)
+
 # MB_SubSonic
 MusicBee SubSonic/LibreSonic plugin
 
