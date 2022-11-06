@@ -98,9 +98,6 @@ namespace MusicBeePlugin.Windows
         private void PersistValues()
         {
             var settings = GetFormSettings();
-            var isChanged = Subsonic.IsSettingChanged(settings);
-            if (!isChanged) return;
-
             var saved = Subsonic.SaveSettings(settings);
             if (Subsonic.IsInitialized)
                 Subsonic.Refresh();
