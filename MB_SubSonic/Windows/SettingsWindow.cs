@@ -79,6 +79,8 @@ namespace MusicBeePlugin.Windows
 
             // If we only have one profile, or the default one selected, disable the Delete button
             btnProfileDelete.Enabled = _settings.Count != 1 && !_currentProfile.Equals("Default");
+            // Don't allow renaming of the Default profile
+            btnProfileRename.Enabled = !_currentProfile.Equals("Default");
         }
 
         private void OnVisibleChanged(object sender, EventArgs eventArgs)
