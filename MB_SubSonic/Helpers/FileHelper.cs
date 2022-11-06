@@ -56,13 +56,13 @@ Exception: {ex}",
         {
             try
             {
-                if (!File.Exists(settingsFilename)) return Subsonic.GetCurrentSettings();
+                if (!File.Exists(settingsFilename)) return null;
 
                 var fileContents = File.ReadAllText(settingsFilename);
                 if (string.IsNullOrWhiteSpace(fileContents)) return Subsonic.GetCurrentSettings();
-
-                var settings = JsonSerializer.Deserialize<SubsonicSettings>(fileContents);
-                if (string.IsNullOrWhiteSpace(settings.ProfileName))
+                var decrypted = AesEncryption.Decrypt(fileContents, Passphrase);
+                var settings = JsonSerializer.Deserialize<SubsonicSettings>(decrypted);
+                if (settings != null && string.IsNullOrWhiteSpace(settings.ProfileName))
                     settings.ProfileName = "Default";
                 return settings;
             }
@@ -81,30 +81,8 @@ Exception: {ex}",
         {
             try
             {
-#if false
-                using var writer = new StreamWriter(filename);
-                writer.WriteLine(
-                    AesEncryption.Encrypt(
-                        settings.Protocol == SubsonicSettings.ConnectionProtocol.Http ? "HTTP" : "HTTPS",
-                        Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(settings.Host, Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(settings.Port, Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(settings.BasePath, Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(settings.Username, Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(settings.Password, Passphrase));
-                writer.WriteLine(settings.Transcode
-                    ? AesEncryption.Encrypt("Y", Passphrase)
-                    : AesEncryption.Encrypt("N", Passphrase));
-                writer.WriteLine(
-                    AesEncryption.Encrypt(
-                        settings.Auth == SubsonicSettings.AuthMethod.HexPass ? "HexPass" : "Token",
-                        Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(settings.BitRate, Passphrase));
-                writer.WriteLine(AesEncryption.Encrypt(settings.ProfileName, Passphrase));
-#endif
                 var json = JsonSerializer.Serialize(settings);
-                File.WriteAllText(filename, json);
-
+                File.WriteAllText(filename, AesEncryption.Encrypt(json, Passphrase));
                 return true;
             }
             catch (Exception ex)
