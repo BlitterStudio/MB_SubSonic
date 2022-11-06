@@ -252,5 +252,10 @@ https://github.com/BlitterStudio/MB_SubSonic", caption, MessageBoxButtons.OK, Me
                 PopulateFields();
             }
         }
+
+        private void CheckBoxTranscode_CheckedChanged(object sender, EventArgs e)
+        {
+            ComboBoxBitrate.Enabled = CheckBoxTranscode.Checked;
+        }
     }
 }

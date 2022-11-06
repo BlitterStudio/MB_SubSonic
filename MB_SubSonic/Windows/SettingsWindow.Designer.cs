@@ -223,6 +223,7 @@
             this.CheckBoxTranscode.TabIndex = 14;
             this.CheckBoxTranscode.Text = "Transcode as mp3";
             this.CheckBoxTranscode.UseVisualStyleBackColor = true;
+            this.CheckBoxTranscode.CheckedChanged += new System.EventHandler(this.CheckBoxTranscode_CheckedChanged);
             // 
             // ComboBoxBitrate
             // 
