@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Windows.Forms;
 using MusicBeePlugin.Domain;
@@ -52,18 +54,20 @@ Exception: {ex}",
             }
         }
 
-        public static SubsonicSettings ReadSettingsFromFile(string settingsFilename)
+        public static List<SubsonicSettings> ReadSettingsFromFile(string settingsFilename)
         {
             try
             {
                 if (!File.Exists(settingsFilename)) return null;
 
                 var fileContents = File.ReadAllText(settingsFilename);
-                if (string.IsNullOrWhiteSpace(fileContents)) return Subsonic.GetCurrentSettings();
-                var decrypted = AesEncryption.Decrypt(fileContents, Passphrase);
-                var settings = JsonSerializer.Deserialize<SubsonicSettings>(decrypted);
-                if (settings != null && string.IsNullOrWhiteSpace(settings.ProfileName))
-                    settings.ProfileName = "Default";
+                if (string.IsNullOrWhiteSpace(fileContents)) return new List<SubsonicSettings>{ Subsonic.GetCurrentSettings() };
+
+                //var decrypted = AesEncryption.Decrypt(fileContents, Passphrase);
+                //var settings = JsonSerializer.Deserialize<List<SubsonicSettings>>(decrypted);
+                var settings = JsonSerializer.Deserialize<List<SubsonicSettings>>(fileContents);
+                if (settings is { Count: 1 } && string.IsNullOrWhiteSpace(settings.First().ProfileName))
+                    settings.First().ProfileName = "Default";
                 return settings;
             }
             catch (Exception ex)
@@ -73,16 +77,17 @@ Exception: {ex}",
 
 Exception: {ex}",
                     caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return Subsonic.GetCurrentSettings();
+                return new List<SubsonicSettings> { Subsonic.GetCurrentSettings() };
             }
         }
 
-        public static bool SaveSettingsToFile(SubsonicSettings settings, string filename)
+        public static bool SaveSettingsToFile(List<SubsonicSettings> settings, string filename)
         {
             try
             {
                 var json = JsonSerializer.Serialize(settings);
-                File.WriteAllText(filename, AesEncryption.Encrypt(json, Passphrase));
+                //File.WriteAllText(filename, AesEncryption.Encrypt(json, Passphrase));
+                File.WriteAllText(filename, json);
                 return true;
             }
             catch (Exception ex)

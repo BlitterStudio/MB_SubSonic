@@ -59,6 +59,7 @@
     </Compile>
     <Compile Include="Subsonic.cs" />
     <Compile Include="Plugin.cs" />
+    <Compile Include="Windows\Prompt.cs" />
     <Compile Include="Windows\SettingsWindow.cs">
       <SubType>Form</SubType>
     </Compile>

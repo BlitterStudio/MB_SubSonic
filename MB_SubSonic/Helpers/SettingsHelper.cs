@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using MusicBeePlugin.Domain;
 
 namespace MusicBeePlugin.Helpers
@@ -22,17 +23,21 @@ namespace MusicBeePlugin.Helpers
             };
         }
 
-        public static SubsonicSettings SanitizeSettings(SubsonicSettings settings)
+        public static List<SubsonicSettings> SanitizeSettings(List<SubsonicSettings> settings)
         {
-            settings.Host = settings.Host.Trim();
-            if (settings.Host.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
-                settings.Host = settings.Host.Substring(7);
-            else if (settings.Host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                settings.Host = settings.Host.Substring(8);
-            settings.Port = settings.Port.Trim();
-            settings.BasePath = settings.BasePath.Trim();
-            if (!settings.BasePath.EndsWith("/"))
-                settings.BasePath += "/";
+            foreach (var setting in settings)
+            {
+                setting.Host = setting.Host.Trim();
+                if (setting.Host.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+                    setting.Host = setting.Host.Substring(7);
+                else if (setting.Host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    setting.Host = setting.Host.Substring(8);
+                setting.Port = setting.Port.Trim();
+                setting.BasePath = setting.BasePath.Trim();
+                if (!setting.BasePath.EndsWith("/"))
+                    setting.BasePath += "/";
+            }
+            
             return settings;
         }
     }

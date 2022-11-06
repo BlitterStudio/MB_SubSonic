@@ -30,6 +30,7 @@ namespace MusicBeePlugin
 
         //public static Interfaces.Plugin.Library_GetFileTagsDelegate GetFileTags;
         public static Interfaces.Plugin.Playlist_QueryFilesExDelegate QueryPlaylistFilesEx;
+        public static string CurrentProfile = "Default";
         private static string _serverName;
         private static Exception _lastEx;
         private static readonly object CacheFileLock = new();
@@ -43,8 +44,8 @@ namespace MusicBeePlugin
         {
             _lastEx = null;
 
-            _currentSettings = FileHelper.ReadSettingsFromFile(SettingsFilename);
-            if (_currentSettings == null)
+            var settings = FileHelper.ReadSettingsFromFile(SettingsFilename);
+            if (settings == null)
             {
                 // No settings were found, notify user and set the defaults
                 MessageBox.Show(@"No MB_SubSonic settings were found!
@@ -57,6 +58,7 @@ The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK
             }
             else
             {
+                _currentSettings = settings.Find(s => s.ProfileName.Equals(CurrentProfile));
                 _validSettings = true;
                 IsInitialized = PingServer(_currentSettings);
             }
@@ -81,7 +83,7 @@ Note: This operation cannot be reversed!
             if (result == DialogResult.No) return;
 
             var settings = FileHelper.ReadSettingsFromOldFile(oldSettingsFilename);
-            FileHelper.SaveSettingsToFile(settings, newSettingsFilename);
+            FileHelper.SaveSettingsToFile(new List<SubsonicSettings>{settings}, newSettingsFilename);
             File.Delete(oldSettingsFilename);
         }
 
@@ -90,9 +92,19 @@ Note: This operation cannot be reversed!
             return _currentSettings ?? SettingsHelper.DefaultSettings();
         }
 
+        public static List<SubsonicSettings> LoadSettingsFromFile()
+        {
+            var settings = FileHelper.ReadSettingsFromFile(SettingsFilename);
+            if (settings == null)
+            {
+                return new List<SubsonicSettings>{SettingsHelper.DefaultSettings()};
+            }
+            return settings;
+        }
+
         public static bool PingServer(SubsonicSettings settings)
         {
-            _currentSettings = SettingsHelper.SanitizeSettings(settings);
+            _currentSettings = SettingsHelper.SanitizeSettings(new List<SubsonicSettings>{settings}).First();
             _serverName = BuildServerUri(_currentSettings);
             _validSettings = true;
 
@@ -139,14 +151,14 @@ Note: This operation cannot be reversed!
         {
         }
 
-        public static bool SaveSettings(SubsonicSettings settings)
+        public static bool SaveSettings(List<SubsonicSettings> settings)
         {
             settings = SettingsHelper.SanitizeSettings(settings);
             var savedResult = FileHelper.SaveSettingsToFile(settings, SettingsFilename);
             if (!savedResult)
                 return false;
 
-            _currentSettings = settings;
+            _currentSettings = settings.Find(s => s.ProfileName.Equals(CurrentProfile));
             IsInitialized = true;
             try
             {
