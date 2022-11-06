@@ -51,9 +51,27 @@ namespace MusicBeePlugin
             return IsInitialized;
         }
 
+        public static void MigrateOldSettings(string oldSettingsFilename, string newSettingsFilename)
+        {
+            if (!File.Exists(oldSettingsFilename)) return;
+
+            var result = MessageBox.Show(
+                @"Detected an older MB_SubSonic settings file.
+Should it be migrated to the new format and then deleted?
+
+Note: This operation cannot be reversed!
+",
+                @"Old settings file detected", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (result == DialogResult.No) return;
+
+            var settings = FileHelper.ReadSettingsFromOldFile(oldSettingsFilename);
+            FileHelper.SaveSettingsToFile(settings, newSettingsFilename);
+            File.Delete(oldSettingsFilename);
+        }
+
         public static SubsonicSettings GetCurrentSettings()
         {
-            return _currentSettings ?? SettingsHelper.SetDefaultSettings();
+            return _currentSettings ?? SettingsHelper.DefaultSettings();
         }
 
         public static bool PingServer(SubsonicSettings settings)

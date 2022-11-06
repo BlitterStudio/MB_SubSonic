@@ -83,6 +83,9 @@ namespace MusicBeePlugin
 
             filename = "subsonicSettings.dat";
             FileHelper.DeleteFile(path, filename);
+
+            filename = "mb_subsonic.json";
+            FileHelper.DeleteFile(path, filename);
         }
 
         // receive event notifications from MusicBee
@@ -95,7 +98,15 @@ namespace MusicBeePlugin
             {
                 case Interfaces.Plugin.NotificationType.PluginStartup:
                     var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
-                    Subsonic.SettingsFilename = Path.Combine(dataPath, "subsonicSettings.dat");
+
+                    // Pre-v3.x filename and format
+                    var oldSettingsFilename = Path.Combine(dataPath, "subsonicSettings.dat");
+                    // New filename and format from v3.x onwards
+                    Subsonic.SettingsFilename = Path.Combine(dataPath, "mb_subsonic.json");
+                    if (File.Exists(Subsonic.SettingsFilename))
+                    {
+                        Subsonic.MigrateOldSettings(oldSettingsFilename, Subsonic.SettingsFilename);
+                    }
 
                     Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
                         ? Interfaces.Plugin.CallbackType.StorageReady

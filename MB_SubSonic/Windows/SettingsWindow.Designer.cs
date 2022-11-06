@@ -55,6 +55,7 @@
             this.cmbProfile = new System.Windows.Forms.ComboBox();
             this.btnProfileNew = new System.Windows.Forms.Button();
             this.btnProfileDelete = new System.Windows.Forms.Button();
+            this.btnProfileRename = new System.Windows.Forms.Button();
             this.GroupBoxTranscoding.SuspendLayout();
             this.GroupBoxServer.SuspendLayout();
             this.SuspendLayout();
@@ -66,7 +67,7 @@
             this.ButtonAbout.Margin = new System.Windows.Forms.Padding(5);
             this.ButtonAbout.Name = "ButtonAbout";
             this.ButtonAbout.Size = new System.Drawing.Size(75, 30);
-            this.ButtonAbout.TabIndex = 1;
+            this.ButtonAbout.TabIndex = 5;
             this.ButtonAbout.Text = "About";
             this.ButtonAbout.UseVisualStyleBackColor = true;
             this.ButtonAbout.Click += new System.EventHandler(this.ButtonAbout_Click);
@@ -78,7 +79,7 @@
             this.ButtonCancel.Margin = new System.Windows.Forms.Padding(5);
             this.ButtonCancel.Name = "ButtonCancel";
             this.ButtonCancel.Size = new System.Drawing.Size(75, 30);
-            this.ButtonCancel.TabIndex = 2;
+            this.ButtonCancel.TabIndex = 17;
             this.ButtonCancel.Text = "Cancel";
             this.ButtonCancel.UseVisualStyleBackColor = true;
             this.ButtonCancel.Click += new System.EventHandler(this.ButtonCancel_Click);
@@ -90,7 +91,7 @@
             this.ButtonSave.Margin = new System.Windows.Forms.Padding(5);
             this.ButtonSave.Name = "ButtonSave";
             this.ButtonSave.Size = new System.Drawing.Size(75, 30);
-            this.ButtonSave.TabIndex = 3;
+            this.ButtonSave.TabIndex = 16;
             this.ButtonSave.Text = "Save";
             this.ButtonSave.UseVisualStyleBackColor = true;
             this.ButtonSave.Click += new System.EventHandler(this.ButtonSave_Click);
@@ -109,7 +110,7 @@
             this.TextBoxHostname.Location = new System.Drawing.Point(87, 64);
             this.TextBoxHostname.Name = "TextBoxHostname";
             this.TextBoxHostname.Size = new System.Drawing.Size(151, 20);
-            this.TextBoxHostname.TabIndex = 5;
+            this.TextBoxHostname.TabIndex = 7;
             // 
             // ComboBoxProtocol
             // 
@@ -159,7 +160,7 @@
             this.TextBoxUsername.Location = new System.Drawing.Point(87, 124);
             this.TextBoxUsername.Name = "TextBoxUsername";
             this.TextBoxUsername.Size = new System.Drawing.Size(151, 20);
-            this.TextBoxUsername.TabIndex = 11;
+            this.TextBoxUsername.TabIndex = 10;
             // 
             // TextBoxPassword
             // 
@@ -167,7 +168,7 @@
             this.TextBoxPassword.Name = "TextBoxPassword";
             this.TextBoxPassword.PasswordChar = '*';
             this.TextBoxPassword.Size = new System.Drawing.Size(151, 20);
-            this.TextBoxPassword.TabIndex = 12;
+            this.TextBoxPassword.TabIndex = 11;
             // 
             // LabelPassword
             // 
@@ -192,7 +193,7 @@
             this.TextBoxPort.Location = new System.Drawing.Point(293, 64);
             this.TextBoxPort.Name = "TextBoxPort";
             this.TextBoxPort.Size = new System.Drawing.Size(75, 20);
-            this.TextBoxPort.TabIndex = 15;
+            this.TextBoxPort.TabIndex = 8;
             // 
             // LabelAuth
             // 
@@ -210,7 +211,7 @@
             this.ComboBoxAuth.Location = new System.Drawing.Point(116, 184);
             this.ComboBoxAuth.Name = "ComboBoxAuth";
             this.ComboBoxAuth.Size = new System.Drawing.Size(121, 21);
-            this.ComboBoxAuth.TabIndex = 17;
+            this.ComboBoxAuth.TabIndex = 12;
             // 
             // CheckBoxTranscode
             // 
@@ -218,7 +219,7 @@
             this.CheckBoxTranscode.Location = new System.Drawing.Point(18, 32);
             this.CheckBoxTranscode.Name = "CheckBoxTranscode";
             this.CheckBoxTranscode.Size = new System.Drawing.Size(114, 17);
-            this.CheckBoxTranscode.TabIndex = 18;
+            this.CheckBoxTranscode.TabIndex = 14;
             this.CheckBoxTranscode.Text = "Transcode as mp3";
             this.CheckBoxTranscode.UseVisualStyleBackColor = true;
             // 
@@ -229,7 +230,7 @@
             this.ComboBoxBitrate.Location = new System.Drawing.Point(52, 60);
             this.ComboBoxBitrate.Name = "ComboBoxBitrate";
             this.ComboBoxBitrate.Size = new System.Drawing.Size(100, 21);
-            this.ComboBoxBitrate.TabIndex = 19;
+            this.ComboBoxBitrate.TabIndex = 15;
             // 
             // LabelBitrate
             // 
@@ -248,7 +249,7 @@
             this.GroupBoxTranscoding.Location = new System.Drawing.Point(406, 75);
             this.GroupBoxTranscoding.Name = "GroupBoxTranscoding";
             this.GroupBoxTranscoding.Size = new System.Drawing.Size(163, 111);
-            this.GroupBoxTranscoding.TabIndex = 21;
+            this.GroupBoxTranscoding.TabIndex = 14;
             this.GroupBoxTranscoding.TabStop = false;
             this.GroupBoxTranscoding.Text = "Transcoding options";
             // 
@@ -257,7 +258,7 @@
             this.ButtonPing.Location = new System.Drawing.Point(293, 178);
             this.ButtonPing.Name = "ButtonPing";
             this.ButtonPing.Size = new System.Drawing.Size(75, 30);
-            this.ButtonPing.TabIndex = 22;
+            this.ButtonPing.TabIndex = 13;
             this.ButtonPing.Text = "Ping Server";
             this.ButtonPing.UseVisualStyleBackColor = true;
             this.ButtonPing.Click += new System.EventHandler(this.ButtonPing_Click);
@@ -282,7 +283,7 @@
             this.GroupBoxServer.Location = new System.Drawing.Point(12, 71);
             this.GroupBoxServer.Name = "GroupBoxServer";
             this.GroupBoxServer.Size = new System.Drawing.Size(385, 236);
-            this.GroupBoxServer.TabIndex = 23;
+            this.GroupBoxServer.TabIndex = 6;
             this.GroupBoxServer.TabStop = false;
             this.GroupBoxServer.Text = "Subsonic Server";
             // 
@@ -301,7 +302,7 @@
             this.cmbProfile.Location = new System.Drawing.Point(57, 18);
             this.cmbProfile.Name = "cmbProfile";
             this.cmbProfile.Size = new System.Drawing.Size(121, 21);
-            this.cmbProfile.TabIndex = 25;
+            this.cmbProfile.TabIndex = 1;
             this.cmbProfile.SelectedIndexChanged += new System.EventHandler(this.cmbProfile_SelectedIndexChanged);
             // 
             // btnProfileNew
@@ -309,26 +310,37 @@
             this.btnProfileNew.Location = new System.Drawing.Point(184, 12);
             this.btnProfileNew.Name = "btnProfileNew";
             this.btnProfileNew.Size = new System.Drawing.Size(75, 30);
-            this.btnProfileNew.TabIndex = 26;
+            this.btnProfileNew.TabIndex = 2;
             this.btnProfileNew.Text = "New";
             this.btnProfileNew.UseVisualStyleBackColor = true;
             this.btnProfileNew.Click += new System.EventHandler(this.btnProfileNew_Click);
             // 
             // btnProfileDelete
             // 
-            this.btnProfileDelete.Location = new System.Drawing.Point(265, 12);
+            this.btnProfileDelete.Location = new System.Drawing.Point(346, 12);
             this.btnProfileDelete.Name = "btnProfileDelete";
             this.btnProfileDelete.Size = new System.Drawing.Size(75, 30);
-            this.btnProfileDelete.TabIndex = 27;
+            this.btnProfileDelete.TabIndex = 4;
             this.btnProfileDelete.Text = "Delete";
             this.btnProfileDelete.UseVisualStyleBackColor = true;
             this.btnProfileDelete.Click += new System.EventHandler(this.btnProfileDelete_Click);
+            // 
+            // btnProfileRename
+            // 
+            this.btnProfileRename.Location = new System.Drawing.Point(265, 12);
+            this.btnProfileRename.Name = "btnProfileRename";
+            this.btnProfileRename.Size = new System.Drawing.Size(75, 30);
+            this.btnProfileRename.TabIndex = 3;
+            this.btnProfileRename.Text = "Rename";
+            this.btnProfileRename.UseVisualStyleBackColor = true;
+            this.btnProfileRename.Click += new System.EventHandler(this.btnProfileRename_Click);
             // 
             // SettingsWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(598, 319);
+            this.Controls.Add(this.btnProfileRename);
             this.Controls.Add(this.btnProfileDelete);
             this.Controls.Add(this.btnProfileNew);
             this.Controls.Add(this.cmbProfile);
@@ -380,5 +392,6 @@
         private System.Windows.Forms.ComboBox cmbProfile;
         private System.Windows.Forms.Button btnProfileNew;
         private System.Windows.Forms.Button btnProfileDelete;
+        private System.Windows.Forms.Button btnProfileRename;
     }
 }

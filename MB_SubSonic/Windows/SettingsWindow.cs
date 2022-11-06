@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Windows.Forms;
 using MusicBeePlugin.Domain;
@@ -9,6 +10,8 @@ namespace MusicBeePlugin.Windows
     {
         private readonly Interfaces.Plugin.PluginInfo _about;
         private Interfaces.Plugin.MusicBeeApiInterface _mbApiInterface;
+
+        private readonly ObservableCollection<string> _profiles = new();
 
         public SettingsWindow()
         {
@@ -49,6 +52,8 @@ namespace MusicBeePlugin.Windows
 
         private void UpdateAll()
         {
+            _profiles.Clear();
+
             var currentSettings = Subsonic.GetCurrentSettings();
             TextBoxHostname.Text = currentSettings.Host;
             TextBoxPort.Text = currentSettings.Port;
@@ -65,6 +70,12 @@ namespace MusicBeePlugin.Windows
 
             ComboBoxProtocol.SelectedItem = currentSettings.Protocol.ToFriendlyString();
             ComboBoxAuth.SelectedIndex = (int)currentSettings.Auth;
+
+            _profiles.Add(currentSettings.ProfileName);
+            // If we only have the default profile, disable the Delete button
+            if (_profiles.Count == 1) btnProfileDelete.Enabled = false;
+
+            cmbProfile.DataSource = _profiles;
         }
 
         private void OnVisibleChanged(object sender, EventArgs eventArgs)
@@ -169,6 +180,11 @@ https://github.com/midwan/MB_SubSonic", caption, MessageBoxButtons.OK, MessageBo
         }
 
         private void btnProfileNew_Click(object sender, EventArgs e)
+        {
+            //TODO
+        }
+
+        private void btnProfileRename_Click(object sender, EventArgs e)
         {
             //TODO
         }

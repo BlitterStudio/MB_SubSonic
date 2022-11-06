@@ -5,10 +5,11 @@ namespace MusicBeePlugin.Helpers
 {
     public static class SettingsHelper
     {
-        public static SubsonicSettings SetDefaultSettings()
+        public static SubsonicSettings DefaultSettings()
         {
             return new SubsonicSettings
             {
+                ProfileName = "Default",
                 Host = "localhost",
                 Port = "80",
                 BasePath = "/",

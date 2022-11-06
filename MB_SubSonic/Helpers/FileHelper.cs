@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text.Json;
 using System.Windows.Forms;
 using MusicBeePlugin.Domain;
 
@@ -9,13 +10,11 @@ namespace MusicBeePlugin.Helpers
     {
         private const string Passphrase = "PeekAndPoke";
 
-        public static SubsonicSettings ReadSettingsFromFile(string settingsFilename)
+        public static SubsonicSettings ReadSettingsFromOldFile(string settingsFilename)
         {
-            var settings = new SubsonicSettings();
             try
             {
-                if (!File.Exists(settingsFilename)) return Subsonic.GetCurrentSettings();
-
+                var settings = new SubsonicSettings();
                 using var reader = new StreamReader(settingsFilename);
                 var protocolText = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
 
@@ -36,6 +35,35 @@ namespace MusicBeePlugin.Helpers
                 if (string.IsNullOrEmpty(settings.BitRate))
                     settings.BitRate = "Unlimited";
 
+                settings.ProfileName = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
+                if (string.IsNullOrEmpty(settings.ProfileName))
+                    settings.ProfileName = "Default";
+                
+                return settings;
+            }
+            catch (Exception ex)
+            {
+                const string caption = "Error while trying to load settings";
+                MessageBox.Show($@"An error occurred while trying to load the settings file! Reverting to defaults...
+
+Exception: {ex}",
+                    caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return Subsonic.GetCurrentSettings();
+            }
+        }
+
+        public static SubsonicSettings ReadSettingsFromFile(string settingsFilename)
+        {
+            try
+            {
+                if (!File.Exists(settingsFilename)) return Subsonic.GetCurrentSettings();
+
+                var fileContents = File.ReadAllText(settingsFilename);
+                if (string.IsNullOrWhiteSpace(fileContents)) return Subsonic.GetCurrentSettings();
+
+                var settings = JsonSerializer.Deserialize<SubsonicSettings>(fileContents);
+                if (string.IsNullOrWhiteSpace(settings.ProfileName))
+                    settings.ProfileName = "Default";
                 return settings;
             }
             catch (Exception ex)
@@ -53,6 +81,7 @@ Exception: {ex}",
         {
             try
             {
+#if false
                 using var writer = new StreamWriter(filename);
                 writer.WriteLine(
                     AesEncryption.Encrypt(
@@ -71,6 +100,11 @@ Exception: {ex}",
                         settings.Auth == SubsonicSettings.AuthMethod.HexPass ? "HexPass" : "Token",
                         Passphrase));
                 writer.WriteLine(AesEncryption.Encrypt(settings.BitRate, Passphrase));
+                writer.WriteLine(AesEncryption.Encrypt(settings.ProfileName, Passphrase));
+#endif
+                var json = JsonSerializer.Serialize(settings);
+                File.WriteAllText(filename, json);
+
                 return true;
             }
             catch (Exception ex)
