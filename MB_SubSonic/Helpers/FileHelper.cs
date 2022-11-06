@@ -63,9 +63,9 @@ Exception: {ex}",
                 var fileContents = File.ReadAllText(settingsFilename);
                 if (string.IsNullOrWhiteSpace(fileContents)) return new List<SubsonicSettings>{ Subsonic.GetCurrentSettings() };
 
-                //var decrypted = AesEncryption.Decrypt(fileContents, Passphrase);
-                //var settings = JsonSerializer.Deserialize<List<SubsonicSettings>>(decrypted);
-                var settings = JsonSerializer.Deserialize<List<SubsonicSettings>>(fileContents);
+                var decrypted = AesEncryption.Decrypt(fileContents, Passphrase);
+                var settings = JsonSerializer.Deserialize<List<SubsonicSettings>>(decrypted);
+                //var settings = JsonSerializer.Deserialize<List<SubsonicSettings>>(fileContents);
                 if (settings is { Count: 1 } && string.IsNullOrWhiteSpace(settings.First().ProfileName))
                     settings.First().ProfileName = "Default";
                 return settings;
@@ -86,8 +86,8 @@ Exception: {ex}",
             try
             {
                 var json = JsonSerializer.Serialize(settings);
-                //File.WriteAllText(filename, AesEncryption.Encrypt(json, Passphrase));
-                File.WriteAllText(filename, json);
+                File.WriteAllText(filename, AesEncryption.Encrypt(json, Passphrase));
+                //File.WriteAllText(filename, json);
                 return true;
             }
             catch (Exception ex)
