@@ -37,14 +37,30 @@ namespace MusicBeePlugin
         private static readonly Dictionary<string, ulong> LastModified = new();
         private static readonly object FolderLookupLock = new();
         private static readonly Dictionary<string, string> FolderLookup = new();
+        private static bool _validSettings;
 
         public static bool Initialize()
         {
             _lastEx = null;
 
             _currentSettings = FileHelper.ReadSettingsFromFile(SettingsFilename);
-            IsInitialized = PingServer(_currentSettings);
-
+            if (_currentSettings == null)
+            {
+                // No settings were found, notify user and set the defaults
+                MessageBox.Show(@"No MB_SubSonic settings were found!
+The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                _currentSettings = SettingsHelper.DefaultSettings();
+                _serverName = BuildServerUri(_currentSettings);
+                // No need to try a Ping in this case
+                IsInitialized = true;
+                _validSettings = false;
+            }
+            else
+            {
+                _validSettings = true;
+                IsInitialized = PingServer(_currentSettings);
+            }
+            
             if (_lastEx != null)
                 IsInitialized = false;
 
@@ -76,17 +92,18 @@ Note: This operation cannot be reversed!
 
         public static bool PingServer(SubsonicSettings settings)
         {
-            settings = SettingsHelper.SanitizeSettings(settings);
+            _currentSettings = SettingsHelper.SanitizeSettings(settings);
+            _serverName = BuildServerUri(_currentSettings);
+            _validSettings = true;
 
             SetBackgroundTaskMessage("Subsonic server configured, attempting to Ping it...");
-            _serverName = BuildServerUri(settings);
-
             try
             {
                 var request = new RestRequest("ping");
                 var result = SendRequest(request);
                 _serverType = result != null ? SubsonicSettings.ServerType.Subsonic : SubsonicSettings.ServerType.None;
-                return IsPingOk(result);
+                _validSettings = IsPingOk(result);
+                return _validSettings;
             }
             catch (Exception ex)
             {
@@ -202,7 +219,7 @@ Note: This operation cannot be reversed!
                     var request = new RestRequest("getMusicDirectory");
                     request.AddParameter("id", folderId);
                     var result = SendRequest(request);
-
+                    if (result == null) return Array.Empty<string>();
                     var list = new List<string>();
                     if (result.Item is Error error)
                     {
@@ -264,6 +281,7 @@ Note: This operation cannot be reversed!
                 
                 var request = new RestRequest("getMusicFolders");
                 var result = SendRequest(request);
+                if (result == null) return new List<KeyValuePair<string, string>>();
 
                 if (result.Item is Error error)
                 {
@@ -326,7 +344,7 @@ Note: This operation cannot be reversed!
             var request = new RestRequest("getIndexes");
             request.AddParameter("musicFolderId", collectionId);
             var result = SendRequest(request);
-
+            if (result == null) return new List<KeyValuePair<string, string>>();
             if (result.Item is Error error)
             {
                 MessageBox.Show($@"An error has occurred:
@@ -380,7 +398,7 @@ Note: This operation cannot be reversed!
             var request = new RestRequest("getMusicDirectory");
             request.AddParameter("id", folderId);
             var result = SendRequest(request);
-
+            if (result == null) return;
             if (result.Item is Error error)
             {
                 MessageBox.Show($@"An error has occurred:
@@ -458,7 +476,7 @@ Note: This operation cannot be reversed!
                     var request = new RestRequest("getMusicDirectory");
                     request.AddParameter("id", folderId);
                     var result = SendRequest(request);
-
+                    if (result == null) return string.Empty;
                     if (result.Item is Error error)
                     {
                         MessageBox.Show($@"An error has occurred:
@@ -509,7 +527,7 @@ Note: This operation cannot be reversed!
             var request = new RestRequest("getMusicDirectory");
             request.AddParameter("id", folderId);
             var result = SendRequest(request);
-
+            if (result == null) return null;
             if (result.Item is Error error)
             {
                 MessageBox.Show($@"An error has occurred:
@@ -581,7 +599,7 @@ Note: This operation cannot be reversed!
             var request = new RestRequest("getMusicDirectory");
             request.AddParameter("id", folderId);
             var result = SendRequest(request);
-
+            if (result == null) return null;
             if (result.Item is Error error)
             {
                 MessageBox.Show($@"An error has occurred:
@@ -623,7 +641,7 @@ Note: This operation cannot be reversed!
             var request = new RestRequest("getMusicDirectory");
             request.AddParameter("id", folderId);
             var result = SendRequest(request);
-
+            if (result == null) return null;
             if (result.Item is Error error)
             {
                 MessageBox.Show($@"An error has occurred:
@@ -713,7 +731,7 @@ Note: This operation cannot be reversed!
 
             var request = new RestRequest("getPlaylists");
             var result = SendRequest(request);
-
+            if (result == null) return Array.Empty<KeyValuePair<string, string>>();
             if (result.Item is Error error)
             {
                 MessageBox.Show($@"An error has occurred:
@@ -739,7 +757,7 @@ Note: This operation cannot be reversed!
             var request = new RestRequest("getPlaylist");
             request.AddParameter("id", id);
             var result = SendRequest(request);
-
+            if (result == null) return null;
             if (result.Item is Error error)
             {
                 MessageBox.Show($@"An error has occurred:
@@ -872,6 +890,7 @@ Note: This operation cannot be reversed!
 
         private static Response SendRequest(RestRequest request)
         {
+            if (!_validSettings) return null;
             var client = new RestClient(_serverName + "rest/");
             request.AddParameter("u", _currentSettings.Username);
             if (_currentSettings.Auth == SubsonicSettings.AuthMethod.HexPass)
@@ -892,7 +911,6 @@ Note: This operation cannot be reversed!
                 request.AddParameter("v", ApiVersion);
             }
 
-            
             request.AddParameter("c", "MusicBee");
 
             var response = client.ExecuteAsync<Response>(request).Result;
@@ -966,12 +984,6 @@ Note: This operation cannot be reversed!
             var tmpSource = Encoding.ASCII.GetBytes(saltedPassword);
             var result = new MD5CryptoServiceProvider().ComputeHash(tmpSource);
             return BitConverter.ToString(result).Replace("-", string.Empty).ToLower();
-        }
-
-        public static bool IsSettingChanged(SubsonicSettings settings)
-        {
-            var result = SettingsHelper.IsSettingChanged(settings, _currentSettings);
-            return result;
         }
     }
 }

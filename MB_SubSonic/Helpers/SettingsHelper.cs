@@ -22,21 +22,6 @@ namespace MusicBeePlugin.Helpers
             };
         }
 
-        public static bool IsSettingChanged(SubsonicSettings newSettings, SubsonicSettings oldSettings)
-        {
-            newSettings = SanitizeSettings(newSettings);
-            var result = !newSettings.Host.Equals(oldSettings.Host)
-                         || !newSettings.Port.Equals(oldSettings.Port)
-                         || !newSettings.BasePath.Equals(oldSettings.BasePath)
-                         || !newSettings.Username.Equals(oldSettings.Username)
-                         || !newSettings.Password.Equals(oldSettings.Password)
-                         || !newSettings.Protocol.Equals(oldSettings.Protocol)
-                         || !newSettings.Auth.Equals(oldSettings.Auth)
-                         || !newSettings.Transcode.Equals(oldSettings.Transcode)
-                         || !newSettings.BitRate.Equals(oldSettings.BitRate);
-            return result;
-        }
-
         public static SubsonicSettings SanitizeSettings(SubsonicSettings settings)
         {
             settings.Host = settings.Host.Trim();
