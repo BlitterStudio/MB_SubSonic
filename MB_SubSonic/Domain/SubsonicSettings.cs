@@ -48,18 +48,5 @@ namespace MusicBeePlugin.Domain
                     throw new ArgumentOutOfRangeException(nameof(me), me, null);
             }
         }
-
-        public static string ToFriendlyString(this SubsonicSettings.AuthMethod me)
-        {
-            switch (me)
-            {
-                case SubsonicSettings.AuthMethod.Token:
-                    return "Token";
-                case SubsonicSettings.AuthMethod.HexPass:
-                    return "HexPass";
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(me), me, null);
-            }
-        }
     }
 }
