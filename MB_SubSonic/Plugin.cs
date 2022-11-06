@@ -35,8 +35,8 @@ namespace MusicBeePlugin
             _about.TargetApplication = "Subsonic";
             // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
             _about.Type = Interfaces.Plugin.PluginType.Storage;
-            _about.VersionMajor = 2; // your plugin version
-            _about.VersionMinor = 41;
+            _about.VersionMajor = 3; // your plugin version
+            _about.VersionMinor = 0;
             _about.Revision = 0;
             _about.MinInterfaceVersion = Interfaces.Plugin.MinInterfaceVersion;
             _about.MinApiRevision = Interfaces.Plugin.MinApiRevision;
