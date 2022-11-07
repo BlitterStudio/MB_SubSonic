@@ -102,6 +102,13 @@ Note: This operation cannot be reversed!
             return settings;
         }
 
+        public static void ChangeServerProfile(SubsonicSettings settings)
+        {
+            _currentSettings = SettingsHelper.SanitizeSettings(new List<SubsonicSettings> { settings }).First();
+            _serverName = BuildServerUri(_currentSettings);
+            _validSettings = true;
+        }
+
         public static bool PingServer(SubsonicSettings settings)
         {
             _currentSettings = SettingsHelper.SanitizeSettings(new List<SubsonicSettings>{settings}).First();

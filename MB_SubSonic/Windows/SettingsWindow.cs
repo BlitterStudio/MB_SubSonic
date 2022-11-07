@@ -141,6 +141,7 @@ https://github.com/BlitterStudio/MB_SubSonic", caption, MessageBoxButtons.OK, Me
         {
             StoreCurrentSettings();
             Subsonic.CurrentProfile = _currentProfile;
+            Subsonic.ChangeServerProfile(GetCurrentSettings());
             PersistValues();
             Hide();
         }
@@ -149,6 +150,7 @@ https://github.com/BlitterStudio/MB_SubSonic", caption, MessageBoxButtons.OK, Me
         {
             StoreCurrentSettings();
             Subsonic.CurrentProfile = _currentProfile;
+            Subsonic.ChangeServerProfile(GetCurrentSettings());
         }
 
         private void ButtonPing_Click(object sender, EventArgs e)
