@@ -5,16 +5,16 @@ meta {
 }
 
 get {
-  url: http://localhost:4040/rest/getRandomSongs?u=admin&p=sesame&v=1.12.0&c=postman
+  url: {{hostname}}/rest/getRandomSongs?u={{username}}&p={{password}}&v=1.12.0&c=bruno
   body: none
   auth: none
 }
 
-query {
-  u: admin
-  p: sesame
+params:query {
+  u: {{username}}
+  p: {{password}}
   v: 1.12.0
-  c: postman
+  c: bruno
   ~size: 10
   ~genre: 
   ~fromYear: 

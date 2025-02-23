@@ -5,14 +5,14 @@ meta {
 }
 
 get {
-  url: http://localhost:4040/rest/getStarred2?u=admin&p=sesame&v=1.12.0&c=postman
+  url: {{hostname}}/rest/getStarred2?u={{username}}&p={{password}}&v=1.12.0&c=bruno
   body: none
   auth: none
 }
 
-query {
-  u: admin
-  p: sesame
+params:query {
+  u: {{username}}
+  p: {{password}}
   v: 1.12.0
   c: postman
   ~musicFolderId: 

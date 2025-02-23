@@ -5,17 +5,17 @@ meta {
 }
 
 get {
-  url: http://localhost:4040/rest/hls.m3u8?u=admin&p=sesame&v=1.12.0&c=postman&id
+  url: {{hostname}}/rest/hls.m3u8?u={{username}}&p={{password}}&v=1.12.0&c=bruno&id
   body: none
   auth: none
 }
 
-query {
-  u: admin
-  p: sesame
+params:query {
+  u: {{username}}
+  p: {{password}}
   v: 1.12.0
   c: postman
-  id: null
+  id: 
   ~bitRate: 
   ~audioTrack: 
 }

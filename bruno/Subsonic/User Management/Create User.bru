@@ -5,19 +5,19 @@ meta {
 }
 
 get {
-  url: http://localhost:4040/rest/createUser?u=admin&p=sesame&v=1.12.0&c=postman&username&password&email
+  url: {{hostname}}/rest/createUser?u={{username}}&p={{password}}&v=1.12.0&c=bruno&username&password&email
   body: none
   auth: none
 }
 
-query {
-  u: admin
-  p: sesame
+params:query {
+  u: {{username}}
+  p: {{password}}
   v: 1.12.0
   c: postman
-  username: null
-  password: null
-  email: null
+  username: 
+  password: 
+  email: 
   ~ldapAuthenticated: 
   ~adminRole: 
   ~settingsRole: 
