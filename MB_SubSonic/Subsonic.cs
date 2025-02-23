@@ -396,8 +396,8 @@ Note: This operation cannot be reversed!
         ICollection<KeyValuePair<byte, string>[]> files)
     {
         // Workaround for MusicBee calling GetFile on root folder(s)
-        var rootFolders = GetRootFolders(true, true, false);
-        if (rootFolders.Any(x => x.Key.Equals(folderId)))
+        if (GetRootFolders(true, true, false)
+            .Any(x => x.Key.Equals(folderId)))
             return;
 
         var request = new RestRequest("getMusicDirectory");
@@ -443,8 +443,8 @@ Note: This operation cannot be reversed!
             return [];
 
         // Workaround for MusicBee calling this on root folder(s)
-        var rootFolders = GetRootFolders(true, true, false);
-        if (rootFolders.Any(x => x.Key.Equals(folderId)))
+        if (GetRootFolders(true, true, false)
+            .Any(x => x.Key.Equals(folderId)))
             return [];
 
         var baseFolderName = path.Substring(0, path.IndexOf(@"\", StringComparison.Ordinal));
@@ -528,8 +528,8 @@ Note: This operation cannot be reversed!
             return null;
 
         // Workaround for MusicBee calling this on root folder(s)
-        var rootFolders = GetRootFolders(true, true, false);
-        if (rootFolders.Any(x => x.Key.Equals(folderId)))
+        if (GetRootFolders(true, true, false)
+            .Any(x => x.Key.Equals(folderId)))
             return null;
 
         var request = new RestRequest("getMusicDirectory");
@@ -630,7 +630,8 @@ Note: This operation cannot be reversed!
             return null;
 
         // Workaround for MusicBee calling this on root folder(s)
-        if (GetRootFolders(true, true, false).Any(x => x.Key.Equals(folderId)))
+        if (GetRootFolders(true, true, false)
+            .Any(x => x.Key.Equals(folderId)))
             return null;
 
         var baseFolderName = url.Substring(0, url.IndexOf(@"\", StringComparison.Ordinal));
