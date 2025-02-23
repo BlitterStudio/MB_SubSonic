@@ -18,9 +18,7 @@ public static class FileHelper
         {
             var settings = new SubsonicSettings();
             using var reader = new StreamReader(settingsFilename);
-            var protocolText = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-
-            settings.Protocol = protocolText.Equals("HTTP")
+            settings.Protocol = AesEncryption.Decrypt(reader.ReadLine(), Passphrase) == "HTTP"
                 ? SubsonicSettings.ConnectionProtocol.Http
                 : SubsonicSettings.ConnectionProtocol.Https;
             settings.Host = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
@@ -33,21 +31,15 @@ public static class FileHelper
                 ? SubsonicSettings.AuthMethod.HexPass
                 : SubsonicSettings.AuthMethod.Token;
             settings.BitRate = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-
-            settings.BitRate = string.IsNullOrEmpty(settings.BitRate) ? "Unlimited" : settings.BitRate;
-
+            settings.BitRate = string.IsNullOrWhiteSpace(settings.BitRate) ? "Unlimited" : settings.BitRate;
             settings.ProfileName = AesEncryption.Decrypt(reader.ReadLine(), Passphrase);
-            settings.ProfileName = string.IsNullOrEmpty(settings.ProfileName) ? "Default" : settings.ProfileName;
+            settings.ProfileName = string.IsNullOrWhiteSpace(settings.ProfileName) ? "Default" : settings.ProfileName;
 
             return settings;
         }
         catch (Exception ex)
         {
-            const string caption = "Error while trying to load settings";
-            MessageBox.Show($@"An error occurred while trying to load the settings file! Reverting to defaults...
-
-Exception: {ex}",
-                caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            ShowErrorMessage("Error while trying to load settings", ex);
             return Subsonic.GetCurrentSettings();
         }
     }
@@ -59,7 +51,7 @@ Exception: {ex}",
             if (!File.Exists(settingsFilename)) return null;
 
             var fileContents = File.ReadAllText(settingsFilename);
-            if (string.IsNullOrWhiteSpace(fileContents)) return [Subsonic.GetCurrentSettings()];
+            if (string.IsNullOrWhiteSpace(fileContents)) return new List<SubsonicSettings> { Subsonic.GetCurrentSettings() };
 
             var decrypted = AesEncryption.Decrypt(fileContents, Passphrase);
             var settings = JsonSerializer.Deserialize<List<SubsonicSettings>>(decrypted);
@@ -71,11 +63,7 @@ Exception: {ex}",
         }
         catch (Exception ex)
         {
-            const string caption = "Error while trying to load settings";
-            MessageBox.Show($@"An error occurred while trying to load the settings file! Reverting to defaults...
-
-Exception: {ex}",
-                caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            ShowErrorMessage("Error while trying to load settings", ex);
             return [Subsonic.GetCurrentSettings()];
         }
     }
@@ -90,11 +78,7 @@ Exception: {ex}",
         }
         catch (Exception ex)
         {
-            const string caption = "Error while trying to save settings";
-            MessageBox.Show($@"An error occurred while trying to save the settings file!
-
-Exception: {ex}",
-                caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            ShowErrorMessage("Error while trying to save settings", ex);
             return false;
         }
     }
@@ -110,18 +94,19 @@ Exception: {ex}",
             }
             catch (Exception)
             {
-                const string caption = "An error has occurred";
-                MessageBox.Show(
-                    @"An error has occurred while trying to delete the Subsonic cache file.\nPlease try deleting the file manually.",
-                    caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ShowErrorMessage("An error has occurred", new Exception("An error has occurred while trying to delete the Subsonic cache file.\nPlease try deleting the file manually."));
             }
         }
         else
         {
-            const string caption = "Could not delete file: File not found";
-            var text = $"The file {filename} was not found in {path}!";
-            MessageBox.Show(text, caption, MessageBoxButtons.OK,
-                MessageBoxIcon.Exclamation);
+            MessageBox.Show($@"The file {filename} was not found in {path}!", @"Could not delete file: File not found", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
         }
+    }
+
+    private static void ShowErrorMessage(string caption, Exception ex)
+    {
+        MessageBox.Show($@"An error occurred while trying to load the settings file! Reverting to defaults...
+
+Exception: {ex}", caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
 }
