@@ -47,7 +47,6 @@ public static class Subsonic
         var settings = FileHelper.ReadSettingsFromFile(SettingsFilename);
         if (settings == null)
         {
-            // No settings were found, notify user and set the defaults
             MessageBox.Show(@"No MB_SubSonic settings were found!
 The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK, MessageBoxIcon.Information);
             _currentSettings = SettingsHelper.DefaultSettings();
@@ -203,7 +202,7 @@ Note: This operation cannot be reversed!
         if (string.IsNullOrEmpty(path))
         {
             var rootFolders = GetRootFolders(true, true, false);
-            return rootFolders?.Select(folder => folder.Value).ToArray() ?? Array.Empty<string>();
+            return rootFolders?.Select(folder => folder.Value).ToArray() ?? [];
         }
 
         if (path.IndexOf(@"\", StringComparison.Ordinal)
@@ -419,8 +418,7 @@ Note: This operation cannot be reversed!
             return;
         }
 
-        var content = result.Item as SubsonicAPI.Directory;
-        if (content?.child == null)
+        if (result.Item is not SubsonicAPI.Directory content || content.child == null)
             return;
 
         var total = content.child.Length;
@@ -431,7 +429,7 @@ Note: This operation cannot be reversed!
             if (childEntry.isDir)
                 continue;
 
-            // Support for servers that does not provide path (e.g. ownCloud Music)
+            // Support for servers that do not provide path (e.g. ownCloud Music)
             childEntry.path ??= string.Concat(folderPath.Substring(baseFolderName.Length + 1), childEntry.id);
 
             var tags = GetTags(childEntry, baseFolderName);
@@ -465,7 +463,7 @@ Note: This operation cannot be reversed!
     {
         var charIndex = url.LastIndexOf(@"\", StringComparison.Ordinal);
         if (charIndex == -1)
-            throw new ArgumentException();
+            throw new ArgumentException(nameof(url));
 
         if (!FolderLookup.Any())
             GetRootFolders(false, false, false);
@@ -477,7 +475,7 @@ Note: This operation cannot be reversed!
         charIndex = url.IndexOf(@"\", sectionStartIndex, StringComparison.Ordinal);
 
         if (charIndex == -1)
-            throw new ArgumentException();
+            throw new ArgumentException(nameof(url));
 
         while (charIndex != -1)
         {
@@ -501,9 +499,8 @@ Note: This operation cannot be reversed!
                     return null;
                 }
 
-                var content = result.Item as SubsonicAPI.Directory;
-                if (content?.child == null)
-                    continue;
+                if (result.Item is not SubsonicAPI.Directory content || content.child == null)
+                    return null;
 
                 foreach (var childEntry in content.child)
                 {
@@ -553,8 +550,7 @@ Note: This operation cannot be reversed!
             return null;
         }
 
-        var content = result.Item as SubsonicAPI.Directory;
-        if (content?.child == null)
+        if (result.Item is not SubsonicAPI.Directory content || content.child == null)
             return null;
 
         var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
@@ -584,18 +580,16 @@ Note: This operation cannot be reversed!
             return _collectionNames[0] + url;
 
         var path = url.Substring(0, url.LastIndexOf(@"\", StringComparison.Ordinal));
-        var matchingCollections = _collectionNames.Where(item => GetFolderId(item + path) != null).ToList();
+        var matchingCollections = _collectionNames
+            .Where(item => GetFolderId(item + path) != null)
+            .ToList();
+
         if (matchingCollections.Count == 1)
             return matchingCollections[0] + url;
 
-        foreach (var item in matchingCollections)
-        {
-            var potentialMatch = item + url;
-            if (GetFileId(potentialMatch) != null)
-                return potentialMatch;
-        }
-
-        return url;
+        return matchingCollections
+            .Select(item => item + url)
+            .FirstOrDefault(potentialMatch => GetFileId(potentialMatch) != null) ?? url;
     }
 
     private static string GetCoverArtId(string url)
@@ -605,8 +599,8 @@ Note: This operation cannot be reversed!
             return null;
 
         // Workaround for MusicBee calling this on root folder(s)
-        var rootFolders = GetRootFolders(true, true, false);
-        if (rootFolders.Any(x => x.Key.Equals(folderId)))
+        if (GetRootFolders(true, true, false)
+            .Any(x => x.Key.Equals(folderId)))
             return null;
 
         var request = new RestRequest("getMusicDirectory");
@@ -622,14 +616,11 @@ Note: This operation cannot be reversed!
             return null;
         }
 
-        var content = result.Item as SubsonicAPI.Directory;
-        if (content?.child == null)
+        if (result.Item is not SubsonicAPI.Directory content || content.child == null)
             return null;
 
         var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
-        var coverArtId = content.child.FirstOrDefault(child => child.path == filePath)?.coverArt;
-
-        return coverArtId;
+        return content.child.FirstOrDefault(child => child.path == filePath)?.coverArt;
     }
 
     public static bool FileExists(string url)
@@ -644,8 +635,7 @@ Note: This operation cannot be reversed!
             return null;
 
         // Workaround for MusicBee calling this on root folder(s)
-        var rootFolders = GetRootFolders(true, true, false);
-        if (rootFolders.Any(x => x.Key.Equals(folderId)))
+        if (GetRootFolders(true, true, false).Any(x => x.Key.Equals(folderId)))
             return null;
 
         var baseFolderName = url.Substring(0, url.IndexOf(@"\", StringComparison.Ordinal));
@@ -663,8 +653,7 @@ Note: This operation cannot be reversed!
             return null;
         }
 
-        var content = result.Item as SubsonicAPI.Directory;
-        if (content?.child == null)
+        if (result.Item is not SubsonicAPI.Directory content || content.child == null)
             return null;
 
         var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
@@ -763,59 +752,43 @@ Note: This operation cannot be reversed!
             return null;
         }
 
-        var content = result.Item as PlaylistWithSongs;
-        if (content?.entry == null)
+        if (result.Item is not PlaylistWithSongs content || content.entry == null)
             return [.. files];
 
-        foreach (var playlistEntry in content.entry)
-        {
-            var tags = GetTags(playlistEntry, null);
-            if (tags != null)
-                files.Add(tags);
-        }
+        files.AddRange(content.entry.Select(playlistEntry => GetTags(playlistEntry, null)).Where(tags => tags != null));
 
         return [.. files];
     }
 
     public static void UpdateRating(string id, string rating)
     {
-        if (string.IsNullOrEmpty(rating)) return;
+        if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(rating))
+            throw new ArgumentException("Id and rating parameters cannot be null or empty.");
 
         if (!int.TryParse(rating, out var parsedRating))
-        {
             throw new ArgumentException("Rating must be an integer.");
-        }
 
         var request = new RestRequest("setRating");
         request.AddParameter("id", id);
         request.AddParameter("rating", parsedRating);
 
         var response = SendRequest(request);
-        if (response == null || response.Item is Error)
-        {
+        if (response?.Item is Error)
             throw new Exception("Failed to update rating.");
-        }
     }
 
     public static void UpdateRatingLove(string id, string starred)
     {
         if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(starred))
-        {
             throw new ArgumentException("Id and starred parameters cannot be null or empty.");
-        }
 
-        var request = new RestRequest
-        {
-            Resource = starred.Equals("L") ? "star" : "unstar"
-        };
-
+        var resource = starred.Equals("L", StringComparison.OrdinalIgnoreCase) ? "star" : "unstar";
+        var request = new RestRequest { Resource = resource };
         request.AddParameter("id", id);
         var response = SendRequest(request);
 
-        if (response == null || response.Item is Error)
-        {
+        if (response?.Item is Error)
             throw new Exception("Failed to update rating love.");
-        }
     }
 
     public static void CreatePlaylist(string name, List<int> songIds)
@@ -855,17 +828,9 @@ Note: This operation cannot be reversed!
         var salt = GenerateSalt();
         var token = Md5(_currentSettings.Password + salt);
         var transcodeAndBitRate = GetTranscodeAndBitRate();
-        string uriLine;
-
-        if (_currentSettings.Auth == SubsonicSettings.AuthMethod.HexPass)
-        {
-            var hexPass = $"enc:{BitConverter.ToString(Encoding.Default.GetBytes(_currentSettings.Password)).Replace("-", "")}";
-            uriLine = $"{_serverName}rest/stream?u={_currentSettings.Username}&p={hexPass}&v={ApiVersionOlder}&c=MusicBee&id={fileId}&{transcodeAndBitRate}";
-        }
-        else
-        {
-            uriLine = $"{_serverName}rest/stream?u={_currentSettings.Username}&t={token}&s={salt}&v={ApiVersion}&c=MusicBee&id={fileId}&{transcodeAndBitRate}";
-        }
+        var uriLine = _currentSettings.Auth == SubsonicSettings.AuthMethod.HexPass
+            ? $"{_serverName}rest/stream?u={_currentSettings.Username}&p=enc:{BitConverter.ToString(Encoding.Default.GetBytes(_currentSettings.Password)).Replace("-", "")}&v={ApiVersionOlder}&c=MusicBee&id={fileId}&{transcodeAndBitRate}"
+            : $"{_serverName}rest/stream?u={_currentSettings.Username}&t={token}&s={salt}&v={ApiVersion}&c=MusicBee&id={fileId}&{transcodeAndBitRate}";
 
         var uri = new Uri(uriLine);
         var stream = new ConnectStream(uri);
@@ -991,7 +956,7 @@ Note: This operation cannot be reversed!
         }
 
         // Convert the byte array to a hexadecimal string.
-        return BitConverter.ToString(saltBytes).Replace("-", "").ToLower();
+        return BitConverter.ToString(saltBytes).Replace("-", "").ToLowerInvariant();
     }
 
     private static string Md5(string saltedPassword)
@@ -1002,11 +967,6 @@ Note: This operation cannot be reversed!
         var hashBytes = md5.ComputeHash(inputBytes);
 
         // Convert the byte array to hexadecimal string.
-        var sb = new StringBuilder();
-        foreach (var t in hashBytes)
-        {
-            sb.Append(t.ToString("X2"));
-        }
-        return sb.ToString();
+        return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
     }
 }
