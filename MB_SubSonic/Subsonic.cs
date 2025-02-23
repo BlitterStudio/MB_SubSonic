@@ -191,8 +191,6 @@ Note: This operation cannot be reversed!
     {
         SetBackgroundTaskMessage("Running GetFolders...");
         _lastEx = null;
-        string folderId;
-        List<string> list;
 
         if (!IsInitialized)
         {
@@ -205,11 +203,11 @@ Note: This operation cannot be reversed!
             return rootFolders?.Select(folder => folder.Value).ToArray() ?? [];
         }
 
-        if (path.IndexOf(@"\", StringComparison.Ordinal)
-            .Equals(path.LastIndexOf(@"\", StringComparison.Ordinal)))
+        var list = new List<string>();
+        var folderId = GetFolderId(path);
+
+        if (path.IndexOf(@"\", StringComparison.Ordinal) == path.LastIndexOf(@"\", StringComparison.Ordinal))
         {
-            list = [];
-            folderId = GetFolderId(path);
             if (folderId != null)
             {
                 var alwaysFalse = false;
@@ -224,7 +222,6 @@ Note: This operation cannot be reversed!
         if (!path.EndsWith(@"\"))
             path += @"\";
 
-        folderId = GetFolderId(path);
         if (string.IsNullOrEmpty(folderId))
         {
             return [];
@@ -236,7 +233,6 @@ Note: This operation cannot be reversed!
         if (result == null)
             return [];
 
-        list = [];
         if (result.Item is Error error)
         {
             MessageBox.Show($@"An error has occurred:
@@ -244,8 +240,7 @@ Note: This operation cannot be reversed!
             return null;
         }
 
-        var content = result.Item as SubsonicAPI.Directory;
-        if (content?.child != null)
+        if (result.Item is SubsonicAPI.Directory { child: not null } content)
         {
             var total = content.child.Length;
             for (var index = 0; index < total; index++)
