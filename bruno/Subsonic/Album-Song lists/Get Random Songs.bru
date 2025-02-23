@@ -1,0 +1,23 @@
+meta {
+  name: Get Random Songs
+  type: http
+  seq: 3
+}
+
+get {
+  url: http://localhost:4040/rest/getRandomSongs?u=admin&p=sesame&v=1.12.0&c=postman
+  body: none
+  auth: none
+}
+
+query {
+  u: admin
+  p: sesame
+  v: 1.12.0
+  c: postman
+  ~size: 10
+  ~genre: 
+  ~fromYear: 
+  ~toYear: 
+  ~musicFolderId: 
+}

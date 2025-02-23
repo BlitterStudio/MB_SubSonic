@@ -1,0 +1,19 @@
+meta {
+  name: Get Chat Messages
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://localhost:4040/rest/getChatMessages?u=admin&p=sesame&v=1.12.0&c=postman
+  body: none
+  auth: none
+}
+
+query {
+  u: admin
+  p: sesame
+  v: 1.12.0
+  c: postman
+  ~since: null
+}

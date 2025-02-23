@@ -1,0 +1,25 @@
+meta {
+  name: Get Album List2
+  type: http
+  seq: 2
+}
+
+get {
+  url: http://localhost:4040/rest/getAlbumList2?u=admin&p=sesame&v=1.12.0&c=postman&type=random
+  body: none
+  auth: none
+}
+
+query {
+  u: admin
+  p: sesame
+  v: 1.12.0
+  c: postman
+  type: random
+  ~size: 10
+  ~offset: 
+  ~fromYear: 
+  ~toYear: 
+  ~genre: 
+  ~musicFolderId: 
+}

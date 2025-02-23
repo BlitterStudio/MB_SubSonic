@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Subsonic",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

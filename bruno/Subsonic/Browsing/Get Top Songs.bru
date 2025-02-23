@@ -1,0 +1,20 @@
+meta {
+  name: Get Top Songs
+  type: http
+  seq: 17
+}
+
+get {
+  url: http://localhost:4040/rest/getTopSongs?u=admin&p=sesame&v=1.12.0&c=postman&artist=Accept
+  body: none
+  auth: none
+}
+
+query {
+  u: admin
+  p: sesame
+  v: 1.12.0
+  c: postman
+  artist: Accept
+  ~count: 10
+}
