@@ -789,9 +789,33 @@ Note: This operation cannot be reversed!
     {
         if (url == null) return null;
 
-        var request = new RestRequest("getMusicDirectory");
+        RestRequest request;
+        Response result;
+        if (_browseByTags)
+        {
+            // the url will be the song ID (e.g. "tr-12")
+            request = new RestRequest("getSong");
+            request.AddParameter("id", url);
+            result = SendRequest(request);
+            if (result == null)
+                return null;
+
+            if (result.Item is Error error1)
+            {
+                MessageBox.Show($@"An error has occurred:
+{error1.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
+
+            if (result.Item is not Child song)
+                return null;
+
+            return GetTags(song, null)[(byte)Interfaces.Plugin.MetaDataType.Artwork].Value;
+        }
+
+        request = new RestRequest("getMusicDirectory");
         request.AddParameter("id", url);
-        var result = SendRequest(request);
+        result = SendRequest(request);
         if (result == null)
             return null;
 
@@ -816,10 +840,29 @@ Note: This operation cannot be reversed!
 
     public static KeyValuePair<byte, string>[] GetFile(string url)
     {
+        RestRequest request;
+        Response result;
+
         if (_browseByTags)
         {
             // the url will be the song ID (e.g. "tr-12")
-            return GetTags(new Child { id = url }, null);
+            request = new RestRequest("getSong");
+            request.AddParameter("id", url);
+            result = SendRequest(request);
+            if (result == null)
+                return null;
+
+            if (result.Item is Error error1)
+            {
+                MessageBox.Show($@"An error has occurred:
+{error1.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
+
+            if (result.Item is not Child song)
+                return null;
+
+            return GetTags(song, null);
         }
 
         var folderId = GetFolderId(url);
@@ -833,16 +876,16 @@ Note: This operation cannot be reversed!
 
         var baseFolderName = url.Substring(0, url.IndexOf(@"\", StringComparison.Ordinal));
 
-        var request = new RestRequest("getMusicDirectory");
+        request = new RestRequest("getMusicDirectory");
         request.AddParameter("id", folderId);
-        var result = SendRequest(request);
+        result = SendRequest(request);
         if (result == null)
             return null;
 
-        if (result.Item is Error error)
+        if (result.Item is Error error2)
         {
             MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
+{error2.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
             return null;
         }
 
@@ -897,7 +940,7 @@ Note: This operation cannot be reversed!
         if (url == null)
             return null;
 
-        var coverArtId = _browseByTags ? url : GetCoverArtId(url);
+        var coverArtId = GetCoverArtId(url);
         
         try
         {
