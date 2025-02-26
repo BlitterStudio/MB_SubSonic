@@ -39,6 +39,9 @@ public static class Subsonic
     private static readonly object FolderLookupLock = new();
     private static readonly Dictionary<string, string> FolderLookup = [];
     private static bool _validSettings;
+    private static bool _browseByTags;
+    private static readonly Dictionary<string, string> ArtistsLookup = [];
+    private static readonly Dictionary<string, string> AlbumsLookup = [];
 
     public static bool Initialize()
     {
@@ -51,6 +54,7 @@ public static class Subsonic
 The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK, MessageBoxIcon.Information);
             _currentSettings = SettingsHelper.DefaultSettings();
             _serverName = BuildServerUri(_currentSettings);
+            _browseByTags = true;
             // No need to try a Ping in this case
             IsInitialized = true;
             _validSettings = false;
@@ -58,6 +62,7 @@ The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK
         else
         {
             _currentSettings = settings.Find(s => s.ProfileName.Equals(CurrentProfile));
+            _browseByTags = _currentSettings.BrowseBy == SubsonicSettings.BrowseType.Tags;
             _validSettings = true;
             IsInitialized = PingServer(_currentSettings);
         }
@@ -187,6 +192,180 @@ Note: This operation cannot be reversed!
                || GetFolderId(directoryPath) != null;
     }
 
+    public static List<KeyValuePair<string, string>> GetArtists()
+    {
+        SetBackgroundTaskMessage("Running GetArtists...");
+        _lastEx = null;
+
+        if (!IsInitialized)
+        {
+            return [];
+        }
+
+        var artists = new List<KeyValuePair<string, string>>();
+        var request = new RestRequest("getArtists");
+        var result = SendRequest(request);
+        if (result == null)
+            return [];
+
+        if (result.Item is Error error)
+        {
+            MessageBox.Show($@"An error has occurred:
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return null;
+        }
+
+        if (result.Item is not ArtistsID3 content || content.index == null)
+            return [];
+
+        foreach (var indexItem in content.index)
+        {
+            foreach (var artist in indexItem.artist)
+            {
+                artists.Add(new KeyValuePair<string, string>(artist.id, artist.name));
+                if (!ArtistsLookup.ContainsKey(artist.name))
+                    ArtistsLookup.Add(artist.name, artist.id);
+
+                var albums = GetArtist(artist.name);
+                foreach (var album in albums)
+                {
+                    if (!AlbumsLookup.ContainsKey(album.Value))
+                        AlbumsLookup.Add(album.Value, album.Key);
+                }
+            }
+        }
+
+        SetBackgroundTaskMessage("Done running GetArtists");
+        return artists;
+    }
+
+    public static List<KeyValuePair<string, string>> GetArtist(string artistName)
+    {
+        SetBackgroundTaskMessage("Running GetArtist...");
+        _lastEx = null;
+
+        if (!IsInitialized)
+        {
+            return [];
+        }
+
+        var artistAlbums = new List<KeyValuePair<string, string>>();
+        var request = new RestRequest("getArtist");
+        if (!string.IsNullOrEmpty(artistName))
+        {
+            // MusicBee would send in the artist name instead of the artist ID
+            // We need to use the ArtistsLookup Dictionary to find the relevant ID
+            artistName = artistName.TrimEnd('\\');
+            if (ArtistsLookup.TryGetValue(artistName, out var id))
+                request.AddParameter("id", id);
+            else return [];
+        }
+        var result = SendRequest(request);
+        if (result == null)
+            return [];
+
+        if (result.Item is Error error)
+        {
+            MessageBox.Show($@"An error has occurred:
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return null;
+        }
+
+        if (result.Item is not ArtistWithAlbumsID3 content || content.album == null)
+            return [];
+
+        foreach (var album in content.album)
+        {
+            artistAlbums.Add(new KeyValuePair<string, string>(album.id, album.name));
+            if (!AlbumsLookup.ContainsKey(album.name))
+                AlbumsLookup.Add(album.name, album.id);
+        }
+
+        SetBackgroundTaskMessage("Done running GetArtist");
+        return artistAlbums;
+    }
+
+    private static KeyValuePair<byte, string>[][] GetAlbumSongs(string albumName)
+    {
+        // The parameter can be the Album name, or the Artist name
+        // If an Artist is selected, we return all the songs from all the albums of that artist
+
+        SetBackgroundTaskMessage("Running GetAlbumSongs...");
+        _lastEx = null;
+
+        if (!IsInitialized)
+        {
+            return [];
+        }
+
+        var songs = new List<KeyValuePair<byte, string>[]>();
+        var baseFolderName = albumName.Substring(0, albumName.IndexOf(@"\", StringComparison.Ordinal));
+        albumName = albumName.TrimEnd('\\');
+
+        // If we have a format of Artist\Album, split them and get the Album part only
+        if (albumName.Contains(@"\"))
+            albumName = albumName.Substring(albumName.LastIndexOf(@"\", StringComparison.Ordinal) + 1);
+
+        if (ArtistsLookup.ContainsKey(albumName))
+        {
+            // This is an Artist name
+            var artistAlbums = GetArtist(albumName);
+            foreach (var album in artistAlbums)
+            {
+                var request = new RestRequest("getAlbum");
+                request.AddParameter("id", album.Key);
+                var result = SendRequest(request);
+                if (result == null)
+                    continue;
+
+                if (result.Item is Error error)
+                {
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    continue;
+                }
+
+                if (result.Item is not AlbumWithSongsID3 content || content.song == null)
+                    continue;
+
+                foreach (var song in content.song)
+                {
+                    var tags = GetTags(song, baseFolderName);
+                    if (tags != null)
+                        songs.Add(tags);
+                }
+            }
+        }
+        else if (AlbumsLookup.TryGetValue(albumName, out var albumId))
+        {
+            // This is an Album name
+            var request = new RestRequest("getAlbum");
+            request.AddParameter("id", albumId);
+            var result = SendRequest(request);
+            if (result == null)
+                return [];
+
+            if (result.Item is Error error)
+            {
+                MessageBox.Show($@"An error has occurred:
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
+
+            if (result.Item is not AlbumWithSongsID3 content || content.song == null)
+                return [];
+
+            foreach (var song in content.song)
+            {
+                var tags = GetTags(song, baseFolderName);
+                if (tags != null)
+                    songs.Add(tags);
+            }
+        }
+
+        return [.. songs];
+    }
+
     public static string[] GetFolders(string path)
     {
         SetBackgroundTaskMessage("Running GetFolders...");
@@ -197,10 +376,29 @@ Note: This operation cannot be reversed!
             return [];
         }
 
+        // If the path is empty, we should return the root-level folders (Artists or Directories)
         if (string.IsNullOrEmpty(path))
         {
+            if (_browseByTags)
+            {
+                var artists = GetArtists();
+                return artists?.Select(artist => artist.Value).ToArray() ?? [];
+            }
+
             var rootFolders = GetRootFolders(true, true, false);
             return rootFolders?.Select(folder => folder.Value).ToArray() ?? [];
+        }
+
+        if (_browseByTags)
+        {
+            // If we have a format of Artist\Album, there are no subfolders
+            path = path.TrimEnd('\\');
+            if (path.Contains(@"\"))
+            {
+                return [];
+            }
+
+            return GetArtist(path)?.Select(album => album.Value).ToArray() ?? [];
         }
 
         var list = new List<string>();
@@ -273,7 +471,7 @@ Note: This operation cannot be reversed!
             return [];
         }
 
-        return GetFolderFiles(directoryPath);
+        return _browseByTags ? GetAlbumSongs(directoryPath) : GetFolderFiles(directoryPath);
     }
 
     private static List<KeyValuePair<string, string>> GetRootFolders(bool collectionOnly, bool refresh, bool dirtyOnly)
@@ -551,7 +749,7 @@ Note: This operation cannot be reversed!
         var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
         foreach (var childEntry in content.child)
         {
-            // Support for servers that does not provide path (e.g. ownCloud Music)
+            // Support for servers that do not provide path (e.g. ownCloud Music)
             if (childEntry.path == null && filePath.EndsWith(childEntry.id))
             {
                 return childEntry.id;
@@ -589,17 +787,10 @@ Note: This operation cannot be reversed!
 
     private static string GetCoverArtId(string url)
     {
-        var folderId = GetFolderId(url);
-        if (string.IsNullOrWhiteSpace(folderId))
-            return null;
-
-        // Workaround for MusicBee calling this on root folder(s)
-        if (GetRootFolders(true, true, false)
-            .Any(x => x.Key.Equals(folderId)))
-            return null;
+        if (url == null) return null;
 
         var request = new RestRequest("getMusicDirectory");
-        request.AddParameter("id", folderId);
+        request.AddParameter("id", url);
         var result = SendRequest(request);
         if (result == null)
             return null;
@@ -625,6 +816,12 @@ Note: This operation cannot be reversed!
 
     public static KeyValuePair<byte, string>[] GetFile(string url)
     {
+        if (_browseByTags)
+        {
+            // the url will be the song ID (e.g. "tr-12")
+            return GetTags(new Child { id = url }, null);
+        }
+
         var folderId = GetFolderId(url);
         if (string.IsNullOrWhiteSpace(folderId))
             return null;
@@ -663,8 +860,16 @@ Note: This operation cannot be reversed!
         if (child.isVideo)
             return null;
 
-        var path = child.path?.Replace("/", @"\") ?? string.Empty;
-        path = baseFolderName == null ? GetResolvedUrl(path) : $"{baseFolderName}\\{path}";
+        string path;
+        if (_browseByTags)
+        {
+            path = child.id;
+        }
+        else
+        {
+            path = child.path?.Replace("/", @"\") ?? string.Empty;
+            path = baseFolderName == null ? GetResolvedUrl(path) : $"{baseFolderName}\\{path}";
+        }
 
         return
         [
@@ -689,10 +894,11 @@ Note: This operation cannot be reversed!
     public static byte[] GetFileArtwork(string url)
     {
         _lastEx = null;
-        var coverArtId = GetCoverArtId(url);
-        if (coverArtId == null)
+        if (url == null)
             return null;
 
+        var coverArtId = _browseByTags ? url : GetCoverArtId(url);
+        
         try
         {
             var request = new RestRequest("getCoverArt");
@@ -814,7 +1020,8 @@ Note: This operation cannot be reversed!
     public static Stream GetStream(string url)
     {
         _lastEx = null;
-        var fileId = GetFileId(url);
+
+        var fileId = _browseByTags ? url : GetFileId(url);
         if (fileId == null)
         {
             _lastEx = new FileNotFoundException();

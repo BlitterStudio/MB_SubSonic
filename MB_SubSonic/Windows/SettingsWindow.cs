@@ -50,6 +50,9 @@ public partial class SettingsWindow : Form
 
         ComboBoxAuth.Items.Add("Token based");
         ComboBoxAuth.Items.Add("Hex enc. password");
+
+        ComboBoxBrowseBy.Items.Add("Tags");
+        ComboBoxBrowseBy.Items.Add("Directories");
     }
 
     private void UpdateProfilesDataSource()
@@ -76,6 +79,8 @@ public partial class SettingsWindow : Form
 
         ComboBoxProtocol.SelectedItem = currentSettings.Protocol.ToFriendlyString();
         ComboBoxAuth.SelectedIndex = (int)currentSettings.Auth;
+
+        ComboBoxBrowseBy.SelectedIndex = (int)currentSettings.BrowseBy;
 
         // If we only have one profile, or the default one selected, disable the Delete button
         btnProfileDelete.Enabled = _settings.Count != 1 && !_currentProfile.Equals("Default");
@@ -189,7 +194,10 @@ https://github.com/BlitterStudio/MB_SubSonic", caption, MessageBoxButtons.OK, Me
                 : SubsonicSettings.AuthMethod.HexPass,
             BitRate = string.IsNullOrEmpty(ComboBoxBitrate.SelectedItem.ToString())
                 ? "128K"
-                : ComboBoxBitrate.SelectedItem.ToString()
+                : ComboBoxBitrate.SelectedItem.ToString(),
+            BrowseBy = ComboBoxBrowseBy.SelectedIndex.Equals(0)
+                ? SubsonicSettings.BrowseType.Tags
+                : SubsonicSettings.BrowseType.Directories
         };
 
         return settings;
@@ -215,6 +223,9 @@ https://github.com/BlitterStudio/MB_SubSonic", caption, MessageBoxButtons.OK, Me
         settings.BitRate = string.IsNullOrEmpty(ComboBoxBitrate.SelectedItem.ToString())
             ? "128K"
             : ComboBoxBitrate.SelectedItem.ToString();
+        settings.BrowseBy = ComboBoxBrowseBy.SelectedIndex.Equals(0)
+            ? SubsonicSettings.BrowseType.Tags
+            : SubsonicSettings.BrowseType.Directories;
     }
 
     private void cmbProfile_SelectedIndexChanged(object sender, EventArgs e)

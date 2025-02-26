@@ -22,6 +22,12 @@ public class SubsonicSettings
         Subsonic
     }
 
+    public enum BrowseType
+    {
+        Tags,
+        Directories
+    }
+
     public string Host { get; set; }
     public string Port { get; set; }
     public string BasePath { get; set; }
@@ -32,6 +38,7 @@ public class SubsonicSettings
     public AuthMethod Auth { get; set; }
     public string BitRate { get; set; }
     public string ProfileName { get; set; }
+    public BrowseType BrowseBy { get; set; }
 }
 
 public static class SubsonicSettingsExtensions

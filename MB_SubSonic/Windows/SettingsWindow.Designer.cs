@@ -57,6 +57,8 @@
             this.btnProfileDelete = new System.Windows.Forms.Button();
             this.btnProfileRename = new System.Windows.Forms.Button();
             this.btnApply = new System.Windows.Forms.Button();
+            this.BrowseBy = new System.Windows.Forms.Label();
+            this.ComboBoxBrowseBy = new System.Windows.Forms.ComboBox();
             this.GroupBoxTranscoding.SuspendLayout();
             this.GroupBoxServer.SuspendLayout();
             this.SuspendLayout();
@@ -349,11 +351,30 @@
             this.btnApply.UseVisualStyleBackColor = true;
             this.btnApply.Click += new System.EventHandler(this.btnApply_Click);
             // 
+            // BrowseBy
+            // 
+            this.BrowseBy.AutoSize = true;
+            this.BrowseBy.Location = new System.Drawing.Point(434, 198);
+            this.BrowseBy.Name = "BrowseBy";
+            this.BrowseBy.Size = new System.Drawing.Size(60, 13);
+            this.BrowseBy.TabIndex = 25;
+            this.BrowseBy.Text = "Browse By:";
+            // 
+            // ComboBoxBrowseBy
+            // 
+            this.ComboBoxBrowseBy.FormattingEnabled = true;
+            this.ComboBoxBrowseBy.Location = new System.Drawing.Point(500, 194);
+            this.ComboBoxBrowseBy.Name = "ComboBoxBrowseBy";
+            this.ComboBoxBrowseBy.Size = new System.Drawing.Size(121, 21);
+            this.ComboBoxBrowseBy.TabIndex = 26;
+            // 
             // SettingsWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(681, 319);
+            this.Controls.Add(this.ComboBoxBrowseBy);
+            this.Controls.Add(this.BrowseBy);
             this.Controls.Add(this.btnApply);
             this.Controls.Add(this.btnProfileRename);
             this.Controls.Add(this.btnProfileDelete);
@@ -409,5 +430,7 @@
         private System.Windows.Forms.Button btnProfileDelete;
         private System.Windows.Forms.Button btnProfileRename;
         private System.Windows.Forms.Button btnApply;
+        private System.Windows.Forms.Label BrowseBy;
+        private System.Windows.Forms.ComboBox ComboBoxBrowseBy;
     }
 }
