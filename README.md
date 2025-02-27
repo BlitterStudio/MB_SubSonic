@@ -10,7 +10,7 @@ Description
 With this plugin MusicBee acts as a Subsonic player.
 In simple terms, that means that you can use MusicBee to stream your music from a Subsonic server you have access to (for example, a home server you setup or a friend's server you have access to, etc). You will need to have a Subsonic server somewhere of course, for this to work.
 
-Subsonic (<www.subsonic.org>) is a free streaming media server that you can install and have it manage your collection. You can access that collection using multiple "players", including a web front-end (which comes with Subsonic), smartphone players (e.g. Android, iPhone), and desktop ones. With this plugin, MusicBee also gets this functionality added.
+Subsonic (<https://www.subsonic.org>) is a free streaming media server that you can install and have it manage your collection. You can access that collection using multiple "players", including a web front-end (which comes with Subsonic), smartphone players (e.g. Android, iPhone), and desktop ones. With this plugin, MusicBee also gets this functionality added.
 
 Any bugs or improvement suggestions can be reported in the Issues section.
 
