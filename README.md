@@ -5,7 +5,6 @@
 MusicBee SubSonic plugin
 
 Description
-
 ===========
 
 With this plugin MusicBee acts as a Subsonic player.
@@ -16,7 +15,6 @@ Subsonic (<www.subsonic.org>) is a free streaming media server that you can inst
 Any bugs or improvement suggestions can be reported in the Issues section.
 
 Requirements
-
 ============
 
 - MusicBee (v2.x or 3.x) - get it from <https://getmusicbee.com>
@@ -26,7 +24,6 @@ Requirements
 - Subsonic compatible server - more information at <https://www.subsonic.org>
 
 Installation
-
 ============
 
 - Download the latest binary file from the Releases section.
@@ -38,7 +35,6 @@ Installation
 - Go to Preferences -> Plugins to configure it to connect to your Subsonic server.
 
 Configuration
-
 =============
 
 You will find the configuration section in MusicBee's "Preferences" window -> Plugins.
@@ -46,7 +42,6 @@ The minimum necessary information you will need to provide is "Hostname", "Port"
 You can optionally specify a "Path" as well, if your Subsonic server needs one. Otherwise the default "/" will be used.
 
 Usage
-
 =============
 
 In the tree menu on the left side there will appear a new subsonic menu item.
