@@ -245,7 +245,6 @@ public class Plugin
         return Subsonic.FolderExists(path);
     }
 
-    // Example: "Firewind\\"
     public string[] GetFolders(string path)
     {
         // MusicBee calls this method in different scenarios:
@@ -261,14 +260,11 @@ public class Plugin
         return Subsonic.GetFolders(path);
     }
 
-    // Example: "Firewind\\Firewind - Firewind (2020)\\"
-    // Example: "AC/DC\\"
     public KeyValuePair<byte, string>[][] GetFiles(string path)
     {
         return Subsonic.GetFiles(path);
     }
 
-    // Example: "Firewind\\Firewind - Firewind (2020)\\01.  Firewind  -  Welcome To The Empire.mp3"
     public KeyValuePair<byte, string>[] GetFile(string url)
     {
         return Subsonic.GetFile(url);
@@ -279,7 +275,6 @@ public class Plugin
         return Subsonic.FileExists(url);
     }
 
-    // Example: "AC/DC\\Rock\\ACDC\\ACDC - POWER UP (2020)\\01. Realize.mp3"
     public byte[] GetFileArtwork(string url)
     {
         return Subsonic.GetFileArtwork(url);
