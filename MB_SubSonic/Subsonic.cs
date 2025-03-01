@@ -14,50 +14,53 @@ namespace MusicBeePlugin;
 
 public static class Subsonic
 {
-    private const int TagCount = 14;
     private const string ApiVersion = "1.13.0";
     private const string ApiVersionOlder = "1.12.0";
     private const string CaptionServerError = "Error reported from Server";
     private static SubsonicSettings _currentSettings;
-    private static SubsonicSettings.ServerType _serverType;
+    private static ServerType _serverType;
     public static bool IsInitialized;
     public static string SettingsFilename;
+
     public static Interfaces.Plugin.MB_SendNotificationDelegate SendNotificationsHandler;
     public static Interfaces.Plugin.MB_SetBackgroundTaskMessageDelegate SetBackgroundTaskMessage;
     public static Interfaces.Plugin.MB_RefreshPanelsDelegate RefreshPanels;
-
     public static Interfaces.Plugin.Library_GetFileTagDelegate GetFileTag;
-
     //public static Interfaces.Plugin.Library_GetFileTagsDelegate GetFileTags;
     public static Interfaces.Plugin.Playlist_QueryFilesExDelegate QueryPlaylistFilesEx;
-    public static string CurrentProfile = "Default";
+
     private static string _serverName;
     private static Exception _lastEx;
-    private static readonly object CacheFileLock = new();
-    private static string[] _collectionNames;
-    private static readonly Dictionary<string, ulong> LastModified = [];
-    private static readonly object FolderLookupLock = new();
-    private static readonly Dictionary<string, string> FolderLookup = [];
     private static bool _validSettings;
+    private static bool _browseByTags;
+    private static int _errors;
+
+    private static readonly Dictionary<string, string> FolderLookup = [];
+    private static readonly Dictionary<string, string> ArtistsLookup = [];
+    private static readonly Dictionary<string, string> AlbumsLookup = [];
+
 
     public static bool Initialize()
     {
         _lastEx = null;
+        _errors = 0;
 
         var settings = FileHelper.ReadSettingsFromFile(SettingsFilename);
         if (settings == null)
         {
             MessageBox.Show(@"No MB_SubSonic settings were found!
 The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            _currentSettings = SettingsHelper.DefaultSettings();
+            _currentSettings = SettingsHelper.DefaultSettings().Settings.First();
             _serverName = BuildServerUri(_currentSettings);
+            _browseByTags = true;
             // No need to try a Ping in this case
             IsInitialized = true;
             _validSettings = false;
         }
         else
         {
-            _currentSettings = settings.Find(s => s.ProfileName.Equals(CurrentProfile));
+            _currentSettings = settings.Settings.Find(s => s.Profile == settings.SelectedProfile);
+            _browseByTags = _currentSettings.BrowseBy == BrowseType.Tags;
             _validSettings = true;
             IsInitialized = PingServer(_currentSettings);
         }
@@ -67,46 +70,24 @@ The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK
 
         return IsInitialized;
     }
-
-    public static void MigrateOldSettings(string oldSettingsFilename, string newSettingsFilename)
-    {
-        if (!File.Exists(oldSettingsFilename)) return;
-
-        var result = MessageBox.Show(
-            @"Detected an older MB_SubSonic settings file.
-Should it be migrated to the new format and then deleted?
-
-Note: This operation cannot be reversed!
-",
-            @"Old settings file detected", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-        if (result == DialogResult.No) return;
-
-        var settings = FileHelper.ReadSettingsFromOldFile(oldSettingsFilename);
-        FileHelper.SaveSettingsToFile([settings], newSettingsFilename);
-        File.Delete(oldSettingsFilename);
-    }
-
-    public static SubsonicSettings GetCurrentSettings()
-    {
-        return _currentSettings ?? SettingsHelper.DefaultSettings();
-    }
-
-    public static List<SubsonicSettings> LoadSettingsFromFile()
+    
+    public static ProfileSettings LoadSettingsFromFile()
     {
         var settings = FileHelper.ReadSettingsFromFile(SettingsFilename);
-        return settings ?? [SettingsHelper.DefaultSettings()];
+        return settings ?? SettingsHelper.DefaultSettings();
     }
 
     public static void ChangeServerProfile(SubsonicSettings settings)
     {
-        _currentSettings = SettingsHelper.SanitizeSettings([settings]).First();
+        _currentSettings = SettingsHelper.SanitizeSettings(settings);
         _serverName = BuildServerUri(_currentSettings);
+        _browseByTags = _currentSettings.BrowseBy == BrowseType.Tags;
         _validSettings = true;
     }
 
     public static bool PingServer(SubsonicSettings settings)
     {
-        _currentSettings = SettingsHelper.SanitizeSettings([settings]).First();
+        _currentSettings = SettingsHelper.SanitizeSettings(settings);
         _serverName = BuildServerUri(_currentSettings);
         _validSettings = true;
 
@@ -115,7 +96,7 @@ Note: This operation cannot be reversed!
         {
             var request = new RestRequest("ping");
             var result = SendRequest(request);
-            _serverType = result != null ? SubsonicSettings.ServerType.Subsonic : SubsonicSettings.ServerType.None;
+            _serverType = result != null ? ServerType.Subsonic : ServerType.None;
             _validSettings = IsPingOk(result);
             return _validSettings;
         }
@@ -130,12 +111,12 @@ Note: This operation cannot be reversed!
     {
         switch (_serverType)
         {
-            case SubsonicSettings.ServerType.Subsonic:
+            case ServerType.Subsonic:
             {
                 SetBackgroundTaskMessage($"Detected a Subsonic server, Ping response was {response.status}");
                 return response.status == SubsonicAPI.ResponseStatus.ok;
             }
-            case SubsonicSettings.ServerType.None:
+            case ServerType.None:
             default:
             {
                 SetBackgroundTaskMessage("Could not get a valid response to Ping from the Subsonic server");
@@ -153,14 +134,14 @@ Note: This operation cannot be reversed!
     {
     }
 
-    public static bool SaveSettings(List<SubsonicSettings> settings)
+    public static bool SaveSettings(ProfileSettings settings)
     {
         settings = SettingsHelper.SanitizeSettings(settings);
         var savedResult = FileHelper.SaveSettingsToFile(settings, SettingsFilename);
         if (!savedResult)
             return false;
 
-        _currentSettings = settings.Find(s => s.ProfileName.Equals(CurrentProfile));
+        _currentSettings = settings.Settings.Find(s => s.Profile == settings.SelectedProfile);
         IsInitialized = true;
         try
         {
@@ -180,16 +161,9 @@ Note: This operation cannot be reversed!
         RefreshPanels();
     }
 
-    public static bool FolderExists(string directoryPath)
+    private static List<KeyValuePair<string, string>> GetArtists()
     {
-        return string.IsNullOrEmpty(directoryPath)
-               || directoryPath.Equals(@"\")
-               || GetFolderId(directoryPath) != null;
-    }
-
-    public static string[] GetFolders(string path)
-    {
-        SetBackgroundTaskMessage("Running GetFolders...");
+        SetBackgroundTaskMessage("Running GetArtists...");
         _lastEx = null;
 
         if (!IsInitialized)
@@ -197,38 +171,8 @@ Note: This operation cannot be reversed!
             return [];
         }
 
-        if (string.IsNullOrEmpty(path))
-        {
-            var rootFolders = GetRootFolders(true, true, false);
-            return rootFolders?.Select(folder => folder.Value).ToArray() ?? [];
-        }
-
-        var list = new List<string>();
-        var folderId = GetFolderId(path);
-
-        if (path.IndexOf(@"\", StringComparison.Ordinal) == path.LastIndexOf(@"\", StringComparison.Ordinal))
-        {
-            if (folderId != null)
-            {
-                var alwaysFalse = false;
-                list.AddRange(
-                    GetIndexes(folderId, path.Substring(0, path.Length - 1), false, false, ref alwaysFalse)
-                        .Select(folder => folder.Key));
-            }
-
-            return [.. list];
-        }
-
-        if (!path.EndsWith(@"\"))
-            path += @"\";
-
-        if (string.IsNullOrEmpty(folderId))
-        {
-            return [];
-        }
-
-        var request = new RestRequest("getMusicDirectory");
-        request.AddParameter("id", folderId);
+        var artists = new List<KeyValuePair<string, string>>();
+        var request = new RestRequest("getArtists");
         var result = SendRequest(request);
         if (result == null)
             return [];
@@ -240,113 +184,245 @@ Note: This operation cannot be reversed!
             return null;
         }
 
-        if (result.Item is SubsonicAPI.Directory { child: not null } content)
+        if (result.Item is not ArtistsID3 content || content.index == null)
+            return [];
+
+        foreach (var indexItem in content.index)
         {
-            var total = content.child.Length;
-            for (var index = 0; index < total; index++)
+            if (_errors > 0) break;
+            foreach (var artist in indexItem.artist)
             {
-                var dirChild = content.child[index];
-                SetBackgroundTaskMessage($"Processing {index} of {total} Folders...");
-
-                if (!dirChild.isDir) continue;
-
-                folderId = dirChild.id;
-                var folderName = path + dirChild.title;
-                list.Add(folderName);
-                if (!FolderLookup.ContainsKey(folderName))
-                    FolderLookup.Add(folderName, folderId);
+                if (_errors > 0) break;
+                artists.Add(new KeyValuePair<string, string>(artist.id, artist.name));
+                if (!ArtistsLookup.ContainsKey(artist.name))
+                    ArtistsLookup.Add(artist.name, artist.id);
             }
-            SetBackgroundTaskMessage("");
         }
 
-        SetBackgroundTaskMessage("Done processing GetFolders");
-        return [.. list];
+        SetBackgroundTaskMessage("Done running GetArtists");
+        return artists;
+    }
+
+    private static List<KeyValuePair<string, string>> GetArtist(string artistName)
+    {
+        SetBackgroundTaskMessage("Running GetArtist...");
+        _lastEx = null;
+
+        if (!IsInitialized)
+        {
+            return [];
+        }
+
+        var artistAlbums = new List<KeyValuePair<string, string>>();
+        var request = new RestRequest("getArtist");
+        if (!string.IsNullOrEmpty(artistName))
+        {
+            // MusicBee would send in the artist name instead of the artist ID
+            // We need to use the ArtistsLookup Dictionary to find the relevant ID
+            artistName = artistName.TrimEnd('\\');
+            if (ArtistsLookup.TryGetValue(artistName, out var id))
+                request.AddParameter("id", id);
+            else return [];
+        }
+        var result = SendRequest(request);
+        if (result == null)
+            return [];
+
+        if (result.Item is Error error)
+        {
+            MessageBox.Show($@"An error has occurred:
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return null;
+        }
+
+        if (result.Item is not ArtistWithAlbumsID3 content || content.album == null)
+            return [];
+
+        foreach (var album in content.album)
+        {
+            if (_errors > 0) break;
+            artistAlbums.Add(new KeyValuePair<string, string>(album.id, album.name));
+            if (!AlbumsLookup.ContainsKey(album.name))
+                AlbumsLookup.Add(album.name, album.id);
+        }
+
+        SetBackgroundTaskMessage("Done running GetArtist");
+        return artistAlbums;
+    }
+
+    private static KeyValuePair<byte, string>[][] GetAlbumSongs(string albumName)
+    {
+        // The parameter can be the Album name, or the Artist name
+        // If an Artist is selected, we return all the songs from all the albums of that artist
+
+        SetBackgroundTaskMessage("Running GetAlbumSongs...");
+        _lastEx = null;
+
+        if (!IsInitialized)
+        {
+            return [];
+        }
+
+        var songs = new List<KeyValuePair<byte, string>[]>();
+        var baseFolderName = albumName.Substring(0, albumName.IndexOf(@"\", StringComparison.Ordinal));
+        albumName = albumName.TrimEnd('\\');
+
+        // If we have a format of Artist\Album, split them and get the Album part only
+        if (albumName.Contains(@"\"))
+            albumName = albumName.Substring(albumName.LastIndexOf(@"\", StringComparison.Ordinal) + 1);
+
+        if (ArtistsLookup.ContainsKey(albumName))
+        {
+            // This is an Artist name
+            var artistAlbums = GetArtist(albumName);
+            foreach (var album in artistAlbums)
+            {
+                if (_errors > 0) break;
+                var request = new RestRequest("getAlbum");
+                request.AddParameter("id", album.Key);
+                var result = SendRequest(request);
+                if (result == null)
+                    continue;
+
+                if (result.Item is Error error)
+                {
+                    MessageBox.Show($@"An error has occurred:
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    continue;
+                }
+
+                if (result.Item is not AlbumWithSongsID3 content || content.song == null)
+                    continue;
+
+                foreach (var song in content.song)
+                {
+                    if (_errors > 0) break;
+                    var tags = GetTags(song, baseFolderName);
+                    if (tags != null)
+                        songs.Add(tags);
+                }
+            }
+        }
+        else if (AlbumsLookup.TryGetValue(albumName, out var albumId))
+        {
+            // This is an Album name
+            var request = new RestRequest("getAlbum");
+            request.AddParameter("id", albumId);
+            var result = SendRequest(request);
+            if (result == null)
+                return [];
+
+            if (result.Item is Error error)
+            {
+                MessageBox.Show($@"An error has occurred:
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
+
+            if (result.Item is not AlbumWithSongsID3 content || content.song == null)
+                return [];
+
+            foreach (var song in content.song)
+            {
+                if (_errors > 0) break;
+                var tags = GetTags(song, baseFolderName);
+                if (tags != null)
+                    songs.Add(tags);
+            }
+        }
+
+        SetBackgroundTaskMessage("Done running GetAlbumSongs");
+        return [.. songs];
+    }
+
+    private static KeyValuePair<byte, string>[][] GetRandomSongs(int size = 100)
+    {
+        SetBackgroundTaskMessage("Running GetRandomSongs...");
+        _lastEx = null;
+
+        if (!IsInitialized)
+        {
+            return [];
+        }
+
+        var songs = new List<KeyValuePair<byte, string>[]>();
+        var request = new RestRequest("getRandomSongs");
+        request.AddParameter("size", size);
+        var result = SendRequest(request);
+        if (result == null)
+            return [];
+
+        if (result.Item is Error error)
+        {
+            MessageBox.Show($@"An error has occurred:
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return [];
+        }
+
+        if (result.Item is not Songs content || content.song == null)
+            return [];
+
+        foreach (var song in content.song)
+        {
+            if (_errors > 0) break;
+            var tags = GetTags(song, null);
+            if (tags != null)
+                songs.Add(tags);
+        }
+
+        SetBackgroundTaskMessage("Done running GetRandomSongs");
+        return [.. songs];
+    }
+
+    public static string[] GetFolders(string path)
+    {
+        // If the path is empty, we should return the root-level folders (Artists or Directories)
+        if (string.IsNullOrEmpty(path))
+        {
+            var rootFolders = _browseByTags ? GetArtists() : GetIndexes(null);
+            return rootFolders?.Select(artist => artist.Value).ToArray() ?? [];
+        }
+
+        // Otherwise, the user selected an existing item (Artist or Directory)
+        // If we have a format of Artist\Album, there are no subfolders
+        path = path.TrimEnd('\\');
+        if (path.Contains(@"\"))
+        {
+            return [];
+        }
+
+        return _browseByTags 
+            ? GetArtist(path)?.Select(album => album.Value).ToArray() ?? [] 
+            : GetMusicDirectoryDirs(path)?.Select(item => item.Value).ToArray() ?? [];
     }
 
     public static KeyValuePair<byte, string>[][] GetFiles(string directoryPath)
     {
-        SetBackgroundTaskMessage("Running GetFiles...");
-        _lastEx = null;
-
-        if (!IsInitialized || string.IsNullOrEmpty(directoryPath))
+        if (string.IsNullOrEmpty(directoryPath))
         {
-            return [];
+            // Root level selected
+            // Let's return some random songs
+            return GetRandomSongs();
         }
-
-        return GetFolderFiles(directoryPath);
+        return _browseByTags 
+            ? GetAlbumSongs(directoryPath) 
+            : GetMusicDirectoryFiles(directoryPath);
     }
 
-    private static List<KeyValuePair<string, string>> GetRootFolders(bool collectionOnly, bool refresh, bool dirtyOnly)
-    {
-        SetBackgroundTaskMessage("Running GetMusicFolders");
-        var folders = new List<KeyValuePair<string, string>>();
-        var collection = new List<KeyValuePair<string, string>>();
-
-        if (!refresh && FolderLookup.Any())
-            return [.. FolderLookup];
-
-        var result = SendRequest(new RestRequest("getMusicFolders"));
-        if (result == null)
-            return [];
-
-        if (result.Item is Error error)
-        {
-            MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            return null;
-        }
-
-        var content = (MusicFolders)result.Item;
-        if (content.musicFolder == null)
-            return [];
-
-        lock (FolderLookupLock)
-        {
-            var total = content.musicFolder.Length;
-            for (var index = 0; index < total; index++)
-            {
-                SetBackgroundTaskMessage($"Processing {index} of {total} music folders");
-                var folder = content.musicFolder[index];
-                var folderId = folder.id.ToString();
-                var folderName = folder.name;
-
-                if (folderName == null)
-                    continue;
-
-                FolderLookup[folderName] = folderId;
-                collection.Add(new KeyValuePair<string, string>(folderId, folderName));
-            }
-
-            SetBackgroundTaskMessage("");
-
-            _collectionNames = collection.Select(c => c.Value + @"\").ToArray();
-
-            if (collectionOnly)
-                return collection;
-
-            var isDirty = false;
-            foreach (var collectionItem in collection)
-            {
-                folders.AddRange(GetIndexes(collectionItem.Key, collectionItem.Value, true, refresh && dirtyOnly, ref isDirty));
-            }
-
-            if (dirtyOnly && !isDirty)
-                return null;
-        }
-
-        SetBackgroundTaskMessage("Done running GetMusicFolders");
-        return folders;
-    }
-
-    private static IEnumerable<KeyValuePair<string, string>> GetIndexes(string collectionId,
-        string collectionName,
-        bool indices, bool updateIsDirty, ref bool isDirty)
+    private static List<KeyValuePair<string, string>> GetIndexes(string musicFolderId)
     {
         SetBackgroundTaskMessage("Running GetIndexes...");
-        var folders = new List<KeyValuePair<string, string>>();
+        _lastEx = null;
 
+        if (!IsInitialized)
+        {
+            return [];
+        }
+
+        var folders = new List<KeyValuePair<string, string>>();
         var request = new RestRequest("getIndexes");
-        request.AddParameter("musicFolderId", collectionId);
+        if (!string.IsNullOrEmpty(musicFolderId))
+            request.AddParameter("musicFolderId", musicFolderId);
         var result = SendRequest(request);
         if (result == null)
             return [];
@@ -358,33 +434,18 @@ Note: This operation cannot be reversed!
             return null;
         }
 
-        if (result.Item is not Indexes content)
+        if (result.Item is not Indexes content || content.index == null)
             return [];
 
-        if (updateIsDirty)
+        foreach (var indexItem in content.index)
         {
-            var serverLastModified = (ulong)content.lastModified;
-            lock (CacheFileLock)
+            if (_errors > 0) break;
+            foreach (var artist in indexItem.artist)
             {
-                if (!LastModified.TryGetValue(collectionName, out var clientLastModified) || serverLastModified > clientLastModified)
-                {
-                    isDirty = true;
-                    LastModified[collectionName] = serverLastModified;
-                }
-            }
-        }
-
-        if (content.index == null)
-            return [];
-
-        foreach (var indexChild in content.index)
-        {
-            foreach (var artistChild in indexChild.artist)
-            {
-                var folderId = artistChild.id;
-                var folderName = $"{collectionName}\\{artistChild.name}";
-                FolderLookup[folderName] = folderId;
-                folders.Add(new KeyValuePair<string, string>(indices ? folderId : folderName, collectionName));
+                if (_errors > 0) break;
+                folders.Add(new KeyValuePair<string, string>(artist.id, artist.name));
+                if (!FolderLookup.ContainsKey(artist.name))
+                    FolderLookup.Add(artist.name, artist.id);
             }
         }
 
@@ -392,252 +453,152 @@ Note: This operation cannot be reversed!
         return folders;
     }
 
-    private static void GetFolderFiles(string baseFolderName, string folderPath, string folderId,
-        ICollection<KeyValuePair<byte, string>[]> files)
+    private static SubsonicAPI.Directory GetMusicDirectory(string id)
     {
-        // Workaround for MusicBee calling GetFile on root folder(s)
-        if (GetRootFolders(true, true, false)
-            .Any(x => x.Key.Equals(folderId)))
-            return;
-
         var request = new RestRequest("getMusicDirectory");
-        request.AddParameter("id", folderId);
+        request.AddParameter("id", id);
         var result = SendRequest(request);
         if (result == null)
-            return;
+            return null;
 
         if (result.Item is Error error)
         {
             MessageBox.Show($@"An error has occurred:
 {error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            return;
+            return null;
         }
 
         if (result.Item is not SubsonicAPI.Directory content || content.child == null)
-            return;
+            return null;
 
-        var total = content.child.Length;
-        for (var index = 0; index < total; index++)
-        {
-            SetBackgroundTaskMessage($"Processing MusicDirectory {index} of {total}...");
-            var childEntry = content.child[index];
-            if (childEntry.isDir)
-                continue;
-
-            // Support for servers that do not provide path (e.g. ownCloud Music)
-            childEntry.path ??= string.Concat(folderPath.Substring(baseFolderName.Length + 1), childEntry.id);
-
-            var tags = GetTags(childEntry, baseFolderName);
-            if (tags != null)
-                files.Add(tags);
-        }
+        return content;
     }
 
-    private static KeyValuePair<byte, string>[][] GetFolderFiles(string path)
+    /// <summary>
+    /// Get the directory contents of a music directory.
+    /// </summary>
+    /// <param name="path"></param>
+    /// <returns></returns>
+    private static List<KeyValuePair<string, string>> GetMusicDirectoryDirs(string path)
     {
-        if (!path.EndsWith(@"\"))
-            path += @"\";
+        SetBackgroundTaskMessage("Running GetMusicDirectory...");
+        _lastEx = null;
 
-        var folderId = GetFolderId(path);
-        if (folderId == null)
+        if (!IsInitialized)
+        {
+            return [];
+        }
+
+        var items = new List<KeyValuePair<string, string>>();
+        if (!FolderLookup.TryGetValue(path, out var id))
+        {
+            return [];
+        }
+
+        var content = GetMusicDirectory(id);
+        if (content?.child == null)
             return [];
 
-        // Workaround for MusicBee calling this on root folder(s)
-        if (GetRootFolders(true, true, false)
-            .Any(x => x.Key.Equals(folderId)))
-            return [];
+        foreach (var child in content.child)
+        {
+            if (_errors > 0) break;
+            // Only add directories
+            if (!child.isDir) continue;
 
+            items.Add(new KeyValuePair<string, string>(child.id, child.title));
+            if (!FolderLookup.ContainsKey(child.title))
+                FolderLookup.Add(child.title, child.id);
+        }
+
+        SetBackgroundTaskMessage("Done Running GetMusicDirectory");
+        return items;
+    }
+
+    /// <summary>
+    /// Get the file contents of a music directory.
+    /// </summary>
+    /// <param name="path"></param>
+    /// <returns></returns>
+    private static KeyValuePair<byte, string>[][] GetMusicDirectoryFiles(string path)
+    {
+        SetBackgroundTaskMessage("Running GetMusicDirectory...");
+        _lastEx = null;
+
+        if (!IsInitialized)
+        {
+            return [];
+        }
+
+        var songs = new List<KeyValuePair<byte, string>[]>();
         var baseFolderName = path.Substring(0, path.IndexOf(@"\", StringComparison.Ordinal));
-        var files = new List<KeyValuePair<byte, string>[]>();
-        GetFolderFiles(baseFolderName, path, folderId, files);
+        path = path.TrimEnd('\\');
 
-        return [.. files];
-    }
+        // If we have a format of Artist\Album, split them and get the Album part only
+        if (path.Contains(@"\"))
+            path = path.Substring(path.LastIndexOf(@"\", StringComparison.Ordinal) + 1);
 
-    private static string GetFolderId(string url)
-    {
-        var charIndex = url.LastIndexOf(@"\", StringComparison.Ordinal);
-        if (charIndex == -1)
-            throw new ArgumentException(nameof(url));
-
-        if (!FolderLookup.Any())
-            GetRootFolders(false, false, false);
-
-        if (FolderLookup.TryGetValue(url.Substring(0, charIndex), out var folderId))
-            return folderId;
-
-        var sectionStartIndex = url.IndexOf(@"\", StringComparison.Ordinal) + 1;
-        charIndex = url.IndexOf(@"\", sectionStartIndex, StringComparison.Ordinal);
-
-        if (charIndex == -1)
-            throw new ArgumentException(nameof(url));
-
-        while (charIndex != -1)
+        if (FolderLookup.TryGetValue(path, out var id))
         {
-            if (FolderLookup.TryGetValue(url.Substring(0, charIndex), out var subFolderId))
-            {
-                folderId = subFolderId;
-            }
-            else if (folderId != null)
-            {
-                var folderName = url.Substring(sectionStartIndex, charIndex - sectionStartIndex);
-                var request = new RestRequest("getMusicDirectory");
-                request.AddParameter("id", folderId);
-                var result = SendRequest(request);
-                if (result == null)
-                    return string.Empty;
-
-                if (result.Item is Error error)
-                {
-                    MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return null;
-                }
-
-                if (result.Item is not SubsonicAPI.Directory content || content.child == null)
-                    return null;
-
-                foreach (var childEntry in content.child)
-                {
-                    if (!childEntry.isDir || childEntry.title != folderName)
-                        continue;
-
-                    folderId = childEntry.id;
-                    if (!FolderLookup.ContainsKey(url.Substring(0, charIndex)))
-                        FolderLookup.Add(url.Substring(0, charIndex), folderId);
-                    break;
-                }
-            }
-
-            sectionStartIndex = charIndex + 1;
-            charIndex = url.IndexOf(@"\", sectionStartIndex, StringComparison.Ordinal);
+            RetrieveFilesFromDirectory(id, baseFolderName, songs);
         }
 
-        return folderId;
+        SetBackgroundTaskMessage("Done running GetMusicDirectory");
+        return songs.ToArray();
     }
 
-    private static string GetTranslatedUrl(string url)
+    private static void RetrieveFilesFromDirectory(string directoryId, string baseFolderName, List<KeyValuePair<byte, string>[]> songs)
     {
-        return url?.Replace(@"\", "/");
-    }
+        var content = GetMusicDirectory(directoryId);
+        if (content?.child == null)
+            return;
 
-    private static string GetFileId(string url)
-    {
-        var folderId = GetFolderId(url);
-        if (string.IsNullOrWhiteSpace(folderId))
-            return null;
-
-        // Workaround for MusicBee calling this on root folder(s)
-        if (GetRootFolders(true, true, false)
-            .Any(x => x.Key.Equals(folderId)))
-            return null;
-
-        var request = new RestRequest("getMusicDirectory");
-        request.AddParameter("id", folderId);
-        var result = SendRequest(request);
-        if (result == null)
-            return null;
-
-        if (result.Item is Error error)
+        foreach (var child in content.child)
         {
-            MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            return null;
-        }
+            if (_errors > 0) break;
 
-        if (result.Item is not SubsonicAPI.Directory content || content.child == null)
-            return null;
-
-        var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
-        foreach (var childEntry in content.child)
-        {
-            // Support for servers that does not provide path (e.g. ownCloud Music)
-            if (childEntry.path == null && filePath.EndsWith(childEntry.id))
+            if (child.isDir)
             {
-                return childEntry.id;
+                // Recursively retrieve files from subdirectories
+                RetrieveFilesFromDirectory(child.id, baseFolderName, songs);
             }
-
-            if (childEntry.path == filePath)
+            else
             {
-                return childEntry.id;
+                var tags = GetTags(child, baseFolderName);
+                if (tags != null)
+                    songs.Add(tags);
             }
         }
-
-        return null;
-    }
-
-    private static string GetResolvedUrl(string url)
-    {
-        if (!FolderLookup.Any())
-            return string.Empty;
-
-        if (_collectionNames.Length == 1)
-            return _collectionNames[0] + url;
-
-        var path = url.Substring(0, url.LastIndexOf(@"\", StringComparison.Ordinal));
-        var matchingCollections = _collectionNames
-            .Where(item => GetFolderId(item + path) != null)
-            .ToList();
-
-        if (matchingCollections.Count == 1)
-            return matchingCollections[0] + url;
-
-        return matchingCollections
-            .Select(item => item + url)
-            .FirstOrDefault(potentialMatch => GetFileId(potentialMatch) != null) ?? url;
-    }
-
-    private static string GetCoverArtId(string url)
-    {
-        var folderId = GetFolderId(url);
-        if (string.IsNullOrWhiteSpace(folderId))
-            return null;
-
-        // Workaround for MusicBee calling this on root folder(s)
-        if (GetRootFolders(true, true, false)
-            .Any(x => x.Key.Equals(folderId)))
-            return null;
-
-        var request = new RestRequest("getMusicDirectory");
-        request.AddParameter("id", folderId);
-        var result = SendRequest(request);
-        if (result == null)
-            return null;
-
-        if (result.Item is Error error)
-        {
-            MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            return null;
-        }
-
-        if (result.Item is not SubsonicAPI.Directory content || content.child == null)
-            return null;
-
-        var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
-        return content.child.FirstOrDefault(child => child.path == filePath)?.coverArt;
-    }
-
-    public static bool FileExists(string url)
-    {
-        return !string.IsNullOrEmpty(url) && GetFileId(url) != null;
     }
 
     public static KeyValuePair<byte, string>[] GetFile(string url)
     {
-        var folderId = GetFolderId(url);
-        if (string.IsNullOrWhiteSpace(folderId))
+        // the url will be the song ID (e.g. "tr-12")
+        var request = new RestRequest("getSong");
+        request.AddParameter("id", url);
+        var result = SendRequest(request);
+        if (result == null)
             return null;
 
-        // Workaround for MusicBee calling this on root folder(s)
-        if (GetRootFolders(true, true, false)
-            .Any(x => x.Key.Equals(folderId)))
+        if (result.Item is Error error1)
+        {
+            MessageBox.Show($@"An error has occurred:
+{error1.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return null;
+        }
+
+        if (result.Item is not Child song)
             return null;
 
-        var baseFolderName = url.Substring(0, url.IndexOf(@"\", StringComparison.Ordinal));
+        return GetTags(song, null);
+    }
 
-        var request = new RestRequest("getMusicDirectory");
-        request.AddParameter("id", folderId);
+    private static string GetCoverArtId(string url)
+    {
+        if (url == null) return null;
+
+        // the url will be the song ID (e.g. "tr-12")
+        var request = new RestRequest("getSong");
+        request.AddParameter("id", url);
         var result = SendRequest(request);
         if (result == null)
             return null;
@@ -649,22 +610,17 @@ Note: This operation cannot be reversed!
             return null;
         }
 
-        if (result.Item is not SubsonicAPI.Directory content || content.child == null)
-            return null;
-
-        var filePath = GetTranslatedUrl(url.Substring(url.IndexOf(@"\", StringComparison.Ordinal) + 1));
-        var matchingChild = content.child.FirstOrDefault(child => child.path == filePath);
-
-        return matchingChild != null ? GetTags(matchingChild, baseFolderName) : null;
+        return result.Item is not Child song 
+            ? null 
+            : song.coverArt;
     }
-
+    
     private static KeyValuePair<byte, string>[] GetTags(Child child, string baseFolderName)
     {
         if (child.isVideo)
             return null;
 
-        var path = child.path?.Replace("/", @"\") ?? string.Empty;
-        path = baseFolderName == null ? GetResolvedUrl(path) : $"{baseFolderName}\\{path}";
+        var path = child.id;
 
         return
         [
@@ -678,7 +634,7 @@ Note: This operation cannot be reversed!
             new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Duration, (child.duration * 1000).ToString()),
             new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Bitrate, child.bitRate.ToString()),
             new KeyValuePair<byte, string>((byte) Interfaces.Plugin.FilePropertyType.Size, child.size.ToString()),
-            new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artwork, string.IsNullOrEmpty(child.coverArt) ? "" : "Y"),
+            new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Artwork, child.coverArt ?? ""),
             new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.DiscNo, child.discNumber.ToString()),
             new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.RatingLove, child.starred != default ? "L" : ""),
             new KeyValuePair<byte, string>((byte) Interfaces.Plugin.MetaDataType.Custom16, child.id ?? ""),
@@ -689,10 +645,11 @@ Note: This operation cannot be reversed!
     public static byte[] GetFileArtwork(string url)
     {
         _lastEx = null;
-        var coverArtId = GetCoverArtId(url);
-        if (coverArtId == null)
+        if (url == null)
             return null;
 
+        var coverArtId = GetCoverArtId(url);
+        
         try
         {
             var request = new RestRequest("getCoverArt");
@@ -814,7 +771,8 @@ Note: This operation cannot be reversed!
     public static Stream GetStream(string url)
     {
         _lastEx = null;
-        var fileId = GetFileId(url);
+
+        var fileId = url;
         if (fileId == null)
         {
             _lastEx = new FileNotFoundException();
@@ -824,7 +782,7 @@ Note: This operation cannot be reversed!
         var salt = GenerateSalt();
         var token = Md5(_currentSettings.Password + salt);
         var transcodeAndBitRate = GetTranscodeAndBitRate();
-        var uriLine = _currentSettings.Auth == SubsonicSettings.AuthMethod.HexPass
+        var uriLine = _currentSettings.Auth == AuthMethod.HexPass
             ? $"{_serverName}rest/stream?u={_currentSettings.Username}&p=enc:{BitConverter.ToString(Encoding.Default.GetBytes(_currentSettings.Password)).Replace("-", "")}&v={ApiVersionOlder}&c=MusicBee&id={fileId}&{transcodeAndBitRate}"
             : $"{_serverName}rest/stream?u={_currentSettings.Username}&t={token}&s={salt}&v={ApiVersion}&c=MusicBee&id={fileId}&{transcodeAndBitRate}";
 
@@ -842,8 +800,8 @@ Note: This operation cannot be reversed!
 
     private static string GetTranscodeAndBitRate()
     {
-        /* If the Transcode is set, then there must be a bitrate that you would want to set.
-         * ... and if the maxbitrate is already set at the server side, this would not
+        /* If the Transcode is set, then there must be a bit rate that you would want to set.
+         * ... and if the max bit rate is already set at the server side, this would not
          * cause any harm.
          */
         if (_currentSettings.Transcode)
@@ -869,7 +827,7 @@ Note: This operation cannot be reversed!
         var client = new RestClient($"{_serverName}rest/");
         request.AddParameter("u", _currentSettings.Username);
 
-        if (_currentSettings.Auth == SubsonicSettings.AuthMethod.HexPass)
+        if (_currentSettings.Auth == AuthMethod.HexPass)
         {
             var hexPass = $"enc:{BitConverter.ToString(Encoding.Default.GetBytes(_currentSettings.Password)).Replace("-", "")}";
             request.AddParameter("p", hexPass);
@@ -889,14 +847,19 @@ Note: This operation cannot be reversed!
         var response = client.ExecuteAsync<Response>(request).Result;
         if (!response.IsSuccessful)
         {
+            if (_errors > 0) return response.Data;
             MessageBox.Show($@"Error retrieving response from Subsonic server:
 
 {response.ErrorException}",
                 @"Subsonic Plugin Error",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
+
+            _errors++;
+            return response.Data;
         }
 
+        _errors = 0;
         return response.Data;
     }
 
@@ -905,7 +868,7 @@ Note: This operation cannot be reversed!
         var client = new RestClient($"{_serverName}rest/");
         request.AddParameter("u", _currentSettings.Username);
 
-        if (_currentSettings.Auth == SubsonicSettings.AuthMethod.HexPass)
+        if (_currentSettings.Auth == AuthMethod.HexPass)
         {
             var hexPass = $"enc:{BitConverter.ToString(Encoding.Default.GetBytes(_currentSettings.Password)).Replace("-", "")}";
             request.AddParameter("p", hexPass);
@@ -964,5 +927,18 @@ Note: This operation cannot be reversed!
 
         // Convert the byte array to hexadecimal string.
         return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+    }
+
+    public static bool FolderExists(string path)
+    {
+        path = path.TrimEnd('\\');
+        return _browseByTags 
+            ? FolderLookup.ContainsKey(path)
+            : ArtistsLookup.ContainsKey(path) || AlbumsLookup.ContainsKey(path);
+    }
+
+    public static bool FileExists(string url)
+    {
+        return GetFile(url) != null;
     }
 }

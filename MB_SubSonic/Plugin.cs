@@ -98,15 +98,7 @@ public class Plugin
         {
             case Interfaces.Plugin.NotificationType.PluginStartup:
                 var dataPath = _mbApiInterface.Setting_GetPersistentStoragePath();
-
-                // Pre-v3.x filename and format
-                var oldSettingsFilename = Path.Combine(dataPath, "subsonicSettings.dat");
-                // New filename and format from v3.x onwards
                 Subsonic.SettingsFilename = Path.Combine(dataPath, "mb_subsonic.json");
-                if (File.Exists(Subsonic.SettingsFilename))
-                {
-                    Subsonic.MigrateOldSettings(oldSettingsFilename, Subsonic.SettingsFilename);
-                }
 
                 Subsonic.SendNotificationsHandler.Invoke(Subsonic.Initialize()
                     ? Interfaces.Plugin.CallbackType.StorageReady
@@ -255,6 +247,16 @@ public class Plugin
 
     public string[] GetFolders(string path)
     {
+        // MusicBee calls this method in different scenarios:
+        // 1. On the root level, to get the list of root folders/artists
+        // 2. On a folder level, to get the list of subfolders/albums
+        // The path determines if we are on the root level (path is empty) or a subfolder level
+        // This is however problematic in case of duplicate names
+        // (e.g. Artist having an Album with the same name)
+        // In this case, the path will be the same for both the Artist and the Album
+        // and MusicBee does not send the full path in the request, so we have no way of knowing
+        // what is requested (was it the Artist or the Album?)
+
         return Subsonic.GetFolders(path);
     }
 

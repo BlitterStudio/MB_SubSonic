@@ -12,20 +12,27 @@ public static class SettingsHelper
     /// <summary>
     /// Returns the default Subsonic settings.
     /// </summary>
-    /// <returns>A <see cref="SubsonicSettings"/> object with default values.</returns>
-    public static SubsonicSettings DefaultSettings() =>
+    /// <returns>A <see cref="ProfileSettings"/> object with default values.</returns>
+    public static ProfileSettings DefaultSettings() =>
         new()
         {
-            ProfileName = "Default",
-            Host = "localhost",
-            Port = "80",
-            BasePath = "/",
-            Username = "admin",
-            Password = string.Empty,
-            Protocol = SubsonicSettings.ConnectionProtocol.Http,
-            Auth = SubsonicSettings.AuthMethod.Token,
-            BitRate = string.Empty,
-            Transcode = false
+            SelectedProfile = "Default",
+            Settings =
+            [
+                new SubsonicSettings
+                {
+                    Profile = "Default",
+                    Host = "localhost",
+                    Port = "80",
+                    BasePath = "/",
+                    Username = "admin",
+                    Password = string.Empty,
+                    Protocol = ConnectionProtocol.Http,
+                    Auth = AuthMethod.Token,
+                    BitRate = string.Empty,
+                    Transcode = false
+                }
+            ]
         };
 
     /// <summary>
@@ -33,15 +40,32 @@ public static class SettingsHelper
     /// </summary>
     /// <param name="settings">The list of settings to sanitize.</param>
     /// <returns>The sanitized list of settings.</returns>
-    public static List<SubsonicSettings> SanitizeSettings(List<SubsonicSettings> settings)
+    public static ProfileSettings SanitizeSettings(ProfileSettings settings)
     {
-        foreach (var setting in settings)
+        foreach (var setting in settings.Settings)
         {
             setting.Host = SanitizeHost(setting.Host);
             setting.Port = setting.Port.Trim();
             setting.BasePath = SanitizeBasePath(setting.BasePath);
+            setting.Username = setting.Username.Trim();
+            setting.Password = setting.Password.Trim();
+            setting.BitRate = setting.BitRate.Trim();
+            setting.Profile ??= "Default";
         }
+        settings.SelectedProfile ??= "Default";
 
+        return settings;
+    }
+
+    public static SubsonicSettings SanitizeSettings(SubsonicSettings settings)
+    {
+        settings.Host = SanitizeHost(settings.Host);
+        settings.Port = settings.Port.Trim();
+        settings.BasePath = SanitizeBasePath(settings.BasePath);
+        settings.Username = settings.Username.Trim();
+        settings.Password = settings.Password.Trim();
+        settings.BitRate = settings.BitRate.Trim();
+        settings.Profile ??= "Default";
         return settings;
     }
 
