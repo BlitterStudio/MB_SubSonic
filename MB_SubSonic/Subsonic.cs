@@ -407,7 +407,7 @@ The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK
         }
         return _browseByTags 
             ? GetAlbumSongs(directoryPath) 
-            : GetMusicDirectory(directoryPath);
+            : GetMusicDirectoryFiles(directoryPath);
     }
 
     private static List<KeyValuePair<string, string>> GetIndexes(string musicFolderId)
@@ -454,6 +454,27 @@ The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK
         return folders;
     }
 
+    private static SubsonicAPI.Directory GetMusicDirectory(string id)
+    {
+        var request = new RestRequest("getMusicDirectory");
+        request.AddParameter("id", id);
+        var result = SendRequest(request);
+        if (result == null)
+            return null;
+
+        if (result.Item is Error error)
+        {
+            MessageBox.Show($@"An error has occurred:
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return null;
+        }
+
+        if (result.Item is not SubsonicAPI.Directory content || content.child == null)
+            return null;
+
+        return content;
+    }
+
     /// <summary>
     /// Get the directory contents of a music directory.
     /// </summary>
@@ -475,20 +496,8 @@ The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK
             return [];
         }
 
-        var request = new RestRequest("getMusicDirectory");
-        request.AddParameter("id", id);
-        var result = SendRequest(request);
-        if (result == null)
-            return [];
-
-        if (result.Item is Error error)
-        {
-            MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            return null;
-        }
-
-        if (result.Item is not SubsonicAPI.Directory content || content.child == null)
+        var content = GetMusicDirectory(id);
+        if (content?.child == null)
             return [];
 
         foreach (var child in content.child)
@@ -511,7 +520,7 @@ The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK
     /// </summary>
     /// <param name="path"></param>
     /// <returns></returns>
-    private static KeyValuePair<byte, string>[][] GetMusicDirectory(string path)
+    private static KeyValuePair<byte, string>[][] GetMusicDirectoryFiles(string path)
     {
         SetBackgroundTaskMessage("Running GetMusicDirectory...");
         _lastEx = null;
@@ -528,39 +537,38 @@ The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK
         // If we have a format of Artist\Album, split them and get the Album part only
         if (path.Contains(@"\"))
             path = path.Substring(path.LastIndexOf(@"\", StringComparison.Ordinal) + 1);
-        
+
         if (FolderLookup.TryGetValue(path, out var id))
         {
-            var request = new RestRequest("getMusicDirectory");
-            request.AddParameter("id", id);
-            var result = SendRequest(request);
-            if (result == null)
-                return [];
+            RetrieveFilesFromDirectory(id, baseFolderName, songs);
+        }
 
-            if (result.Item is Error error)
+        SetBackgroundTaskMessage("Done running GetMusicDirectory");
+        return songs.ToArray();
+    }
+
+    private static void RetrieveFilesFromDirectory(string directoryId, string baseFolderName, List<KeyValuePair<byte, string>[]> songs)
+    {
+        var content = GetMusicDirectory(directoryId);
+        if (content?.child == null)
+            return;
+
+        foreach (var child in content.child)
+        {
+            if (_errors > 0) break;
+
+            if (child.isDir)
             {
-                MessageBox.Show($@"An error has occurred:
-{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
+                // Recursively retrieve files from subdirectories
+                RetrieveFilesFromDirectory(child.id, baseFolderName, songs);
             }
-
-            if (result.Item is not SubsonicAPI.Directory content || content.child == null)
-                return [];
-
-            foreach (var child in content.child)
+            else
             {
-                if (_errors > 0) break;
-                // Skip directories
-                if (child.isDir) continue;
-
                 var tags = GetTags(child, baseFolderName);
                 if (tags != null)
                     songs.Add(tags);
             }
         }
-
-        SetBackgroundTaskMessage("Done running GetMusicDirectory");
-        return [.. songs];
     }
 
     public static KeyValuePair<byte, string>[] GetFile(string url)
