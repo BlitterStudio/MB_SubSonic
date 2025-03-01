@@ -332,6 +332,46 @@ The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK
             }
         }
 
+        SetBackgroundTaskMessage("Done running GetAlbumSongs");
+        return [.. songs];
+    }
+
+    private static KeyValuePair<byte, string>[][] GetRandomSongs(int size = 100)
+    {
+        SetBackgroundTaskMessage("Running GetRandomSongs...");
+        _lastEx = null;
+
+        if (!IsInitialized)
+        {
+            return [];
+        }
+
+        var songs = new List<KeyValuePair<byte, string>[]>();
+        var request = new RestRequest("getRandomSongs");
+        request.AddParameter("size", size);
+        var result = SendRequest(request);
+        if (result == null)
+            return [];
+
+        if (result.Item is Error error)
+        {
+            MessageBox.Show($@"An error has occurred:
+{error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return [];
+        }
+
+        if (result.Item is not Songs content || content.song == null)
+            return [];
+
+        foreach (var song in content.song)
+        {
+            if (_errors > 0) break;
+            var tags = GetTags(song, null);
+            if (tags != null)
+                songs.Add(tags);
+        }
+
+        SetBackgroundTaskMessage("Done running GetRandomSongs");
         return [.. songs];
     }
 
@@ -359,6 +399,12 @@ The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK
 
     public static KeyValuePair<byte, string>[][] GetFiles(string directoryPath)
     {
+        if (string.IsNullOrEmpty(directoryPath))
+        {
+            // Root level selected
+            // Let's return some random songs
+            return GetRandomSongs();
+        }
         return _browseByTags 
             ? GetAlbumSongs(directoryPath) 
             : GetMusicDirectory(directoryPath);
@@ -482,40 +528,38 @@ The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK
         // If we have a format of Artist\Album, split them and get the Album part only
         if (path.Contains(@"\"))
             path = path.Substring(path.LastIndexOf(@"\", StringComparison.Ordinal) + 1);
-
-        if (!FolderLookup.TryGetValue(path, out var id))
+        
+        if (FolderLookup.TryGetValue(path, out var id))
         {
-            return [];
-        }
+            var request = new RestRequest("getMusicDirectory");
+            request.AddParameter("id", id);
+            var result = SendRequest(request);
+            if (result == null)
+                return [];
 
-        var request = new RestRequest("getMusicDirectory");
-        request.AddParameter("id", id);
-        var result = SendRequest(request);
-        if (result == null)
-            return [];
-
-        if (result.Item is Error error)
-        {
-            MessageBox.Show($@"An error has occurred:
+            if (result.Item is Error error)
+            {
+                MessageBox.Show($@"An error has occurred:
 {error.message}", CaptionServerError, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            return null;
+                return null;
+            }
+
+            if (result.Item is not SubsonicAPI.Directory content || content.child == null)
+                return [];
+
+            foreach (var child in content.child)
+            {
+                if (_errors > 0) break;
+                // Skip directories
+                if (child.isDir) continue;
+
+                var tags = GetTags(child, baseFolderName);
+                if (tags != null)
+                    songs.Add(tags);
+            }
         }
 
-        if (result.Item is not SubsonicAPI.Directory content || content.child == null)
-            return [];
-
-        foreach (var child in content.child)
-        {
-            if (_errors > 0) break;
-            // Only add directories
-            if (child.isDir) continue;
-
-            var tags = GetTags(child, baseFolderName);
-            if (tags != null)
-                songs.Add(tags);
-        }
-
-        SetBackgroundTaskMessage("Done Running GetMusicDirectory");
+        SetBackgroundTaskMessage("Done running GetMusicDirectory");
         return [.. songs];
     }
 
