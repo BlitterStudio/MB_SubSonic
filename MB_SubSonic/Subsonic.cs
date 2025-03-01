@@ -14,7 +14,6 @@ namespace MusicBeePlugin;
 
 public static class Subsonic
 {
-    private const int TagCount = 14;
     private const string ApiVersion = "1.13.0";
     private const string ApiVersionOlder = "1.12.0";
     private const string CaptionServerError = "Error reported from Server";
@@ -932,11 +931,14 @@ The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK
 
     public static bool FolderExists(string path)
     {
-        throw new NotImplementedException();
+        path = path.TrimEnd('\\');
+        return _browseByTags 
+            ? FolderLookup.ContainsKey(path)
+            : ArtistsLookup.ContainsKey(path) || AlbumsLookup.ContainsKey(path);
     }
 
     public static bool FileExists(string url)
     {
-        throw new NotImplementedException();
+        return GetFile(url) != null;
     }
 }
