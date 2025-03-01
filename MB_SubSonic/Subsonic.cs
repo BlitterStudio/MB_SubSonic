@@ -19,18 +19,17 @@ public static class Subsonic
     private const string ApiVersionOlder = "1.12.0";
     private const string CaptionServerError = "Error reported from Server";
     private static SubsonicSettings _currentSettings;
-    private static SubsonicSettings.ServerType _serverType;
+    private static ServerType _serverType;
     public static bool IsInitialized;
     public static string SettingsFilename;
+
     public static Interfaces.Plugin.MB_SendNotificationDelegate SendNotificationsHandler;
     public static Interfaces.Plugin.MB_SetBackgroundTaskMessageDelegate SetBackgroundTaskMessage;
     public static Interfaces.Plugin.MB_RefreshPanelsDelegate RefreshPanels;
-
     public static Interfaces.Plugin.Library_GetFileTagDelegate GetFileTag;
-
     //public static Interfaces.Plugin.Library_GetFileTagsDelegate GetFileTags;
     public static Interfaces.Plugin.Playlist_QueryFilesExDelegate QueryPlaylistFilesEx;
-    public static string CurrentProfile = "Default";
+
     private static string _serverName;
     private static Exception _lastEx;
     private static readonly object CacheFileLock = new();
@@ -42,17 +41,19 @@ public static class Subsonic
     private static bool _browseByTags;
     private static readonly Dictionary<string, string> ArtistsLookup = [];
     private static readonly Dictionary<string, string> AlbumsLookup = [];
+    private static int _errors;
 
     public static bool Initialize()
     {
         _lastEx = null;
+        _errors = 0;
 
         var settings = FileHelper.ReadSettingsFromFile(SettingsFilename);
         if (settings == null)
         {
             MessageBox.Show(@"No MB_SubSonic settings were found!
 The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            _currentSettings = SettingsHelper.DefaultSettings();
+            _currentSettings = SettingsHelper.DefaultSettings().Settings.First();
             _serverName = BuildServerUri(_currentSettings);
             _browseByTags = true;
             // No need to try a Ping in this case
@@ -61,8 +62,8 @@ The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK
         }
         else
         {
-            _currentSettings = settings.Find(s => s.ProfileName.Equals(CurrentProfile));
-            _browseByTags = _currentSettings.BrowseBy == SubsonicSettings.BrowseType.Tags;
+            _currentSettings = settings.Settings.Find(s => s.Profile == settings.SelectedProfile);
+            _browseByTags = _currentSettings.BrowseBy == BrowseType.Tags;
             _validSettings = true;
             IsInitialized = PingServer(_currentSettings);
         }
@@ -72,46 +73,24 @@ The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK
 
         return IsInitialized;
     }
-
-    public static void MigrateOldSettings(string oldSettingsFilename, string newSettingsFilename)
-    {
-        if (!File.Exists(oldSettingsFilename)) return;
-
-        var result = MessageBox.Show(
-            @"Detected an older MB_SubSonic settings file.
-Should it be migrated to the new format and then deleted?
-
-Note: This operation cannot be reversed!
-",
-            @"Old settings file detected", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-        if (result == DialogResult.No) return;
-
-        var settings = FileHelper.ReadSettingsFromOldFile(oldSettingsFilename);
-        FileHelper.SaveSettingsToFile([settings], newSettingsFilename);
-        File.Delete(oldSettingsFilename);
-    }
-
-    public static SubsonicSettings GetCurrentSettings()
-    {
-        return _currentSettings ?? SettingsHelper.DefaultSettings();
-    }
-
-    public static List<SubsonicSettings> LoadSettingsFromFile()
+    
+    public static ProfileSettings LoadSettingsFromFile()
     {
         var settings = FileHelper.ReadSettingsFromFile(SettingsFilename);
-        return settings ?? [SettingsHelper.DefaultSettings()];
+        return settings ?? SettingsHelper.DefaultSettings();
     }
 
     public static void ChangeServerProfile(SubsonicSettings settings)
     {
-        _currentSettings = SettingsHelper.SanitizeSettings([settings]).First();
+        _currentSettings = SettingsHelper.SanitizeSettings(settings);
         _serverName = BuildServerUri(_currentSettings);
+        _browseByTags = _currentSettings.BrowseBy == BrowseType.Tags;
         _validSettings = true;
     }
 
     public static bool PingServer(SubsonicSettings settings)
     {
-        _currentSettings = SettingsHelper.SanitizeSettings([settings]).First();
+        _currentSettings = SettingsHelper.SanitizeSettings(settings);
         _serverName = BuildServerUri(_currentSettings);
         _validSettings = true;
 
@@ -120,7 +99,7 @@ Note: This operation cannot be reversed!
         {
             var request = new RestRequest("ping");
             var result = SendRequest(request);
-            _serverType = result != null ? SubsonicSettings.ServerType.Subsonic : SubsonicSettings.ServerType.None;
+            _serverType = result != null ? ServerType.Subsonic : ServerType.None;
             _validSettings = IsPingOk(result);
             return _validSettings;
         }
@@ -135,12 +114,12 @@ Note: This operation cannot be reversed!
     {
         switch (_serverType)
         {
-            case SubsonicSettings.ServerType.Subsonic:
+            case ServerType.Subsonic:
             {
                 SetBackgroundTaskMessage($"Detected a Subsonic server, Ping response was {response.status}");
                 return response.status == SubsonicAPI.ResponseStatus.ok;
             }
-            case SubsonicSettings.ServerType.None:
+            case ServerType.None:
             default:
             {
                 SetBackgroundTaskMessage("Could not get a valid response to Ping from the Subsonic server");
@@ -158,14 +137,14 @@ Note: This operation cannot be reversed!
     {
     }
 
-    public static bool SaveSettings(List<SubsonicSettings> settings)
+    public static bool SaveSettings(ProfileSettings settings)
     {
         settings = SettingsHelper.SanitizeSettings(settings);
         var savedResult = FileHelper.SaveSettingsToFile(settings, SettingsFilename);
         if (!savedResult)
             return false;
 
-        _currentSettings = settings.Find(s => s.ProfileName.Equals(CurrentProfile));
+        _currentSettings = settings.Settings.Find(s => s.Profile == settings.SelectedProfile);
         IsInitialized = true;
         try
         {
@@ -192,7 +171,7 @@ Note: This operation cannot be reversed!
                || GetFolderId(directoryPath) != null;
     }
 
-    public static List<KeyValuePair<string, string>> GetArtists()
+    private static List<KeyValuePair<string, string>> GetArtists()
     {
         SetBackgroundTaskMessage("Running GetArtists...");
         _lastEx = null;
@@ -220,18 +199,20 @@ Note: This operation cannot be reversed!
 
         foreach (var indexItem in content.index)
         {
+            if (_errors > 0) break;
             foreach (var artist in indexItem.artist)
             {
+                if (_errors > 0) break;
                 artists.Add(new KeyValuePair<string, string>(artist.id, artist.name));
                 if (!ArtistsLookup.ContainsKey(artist.name))
                     ArtistsLookup.Add(artist.name, artist.id);
 
-                var albums = GetArtist(artist.name);
-                foreach (var album in albums)
-                {
-                    if (!AlbumsLookup.ContainsKey(album.Value))
-                        AlbumsLookup.Add(album.Value, album.Key);
-                }
+                //var albums = GetArtist(artist.name);
+                //foreach (var album in albums)
+                //{
+                //    if (!AlbumsLookup.ContainsKey(album.Value))
+                //        AlbumsLookup.Add(album.Value, album.Key);
+                //}
             }
         }
 
@@ -239,7 +220,7 @@ Note: This operation cannot be reversed!
         return artists;
     }
 
-    public static List<KeyValuePair<string, string>> GetArtist(string artistName)
+    private static List<KeyValuePair<string, string>> GetArtist(string artistName)
     {
         SetBackgroundTaskMessage("Running GetArtist...");
         _lastEx = null;
@@ -276,6 +257,7 @@ Note: This operation cannot be reversed!
 
         foreach (var album in content.album)
         {
+            if (_errors > 0) break;
             artistAlbums.Add(new KeyValuePair<string, string>(album.id, album.name));
             if (!AlbumsLookup.ContainsKey(album.name))
                 AlbumsLookup.Add(album.name, album.id);
@@ -312,6 +294,7 @@ Note: This operation cannot be reversed!
             var artistAlbums = GetArtist(albumName);
             foreach (var album in artistAlbums)
             {
+                if (_errors > 0) break;
                 var request = new RestRequest("getAlbum");
                 request.AddParameter("id", album.Key);
                 var result = SendRequest(request);
@@ -330,6 +313,7 @@ Note: This operation cannot be reversed!
 
                 foreach (var song in content.song)
                 {
+                    if (_errors > 0) break;
                     var tags = GetTags(song, baseFolderName);
                     if (tags != null)
                         songs.Add(tags);
@@ -357,6 +341,7 @@ Note: This operation cannot be reversed!
 
             foreach (var song in content.song)
             {
+                if (_errors > 0) break;
                 var tags = GetTags(song, baseFolderName);
                 if (tags != null)
                     songs.Add(tags);
@@ -1074,7 +1059,7 @@ Note: This operation cannot be reversed!
         var salt = GenerateSalt();
         var token = Md5(_currentSettings.Password + salt);
         var transcodeAndBitRate = GetTranscodeAndBitRate();
-        var uriLine = _currentSettings.Auth == SubsonicSettings.AuthMethod.HexPass
+        var uriLine = _currentSettings.Auth == AuthMethod.HexPass
             ? $"{_serverName}rest/stream?u={_currentSettings.Username}&p=enc:{BitConverter.ToString(Encoding.Default.GetBytes(_currentSettings.Password)).Replace("-", "")}&v={ApiVersionOlder}&c=MusicBee&id={fileId}&{transcodeAndBitRate}"
             : $"{_serverName}rest/stream?u={_currentSettings.Username}&t={token}&s={salt}&v={ApiVersion}&c=MusicBee&id={fileId}&{transcodeAndBitRate}";
 
@@ -1092,8 +1077,8 @@ Note: This operation cannot be reversed!
 
     private static string GetTranscodeAndBitRate()
     {
-        /* If the Transcode is set, then there must be a bitrate that you would want to set.
-         * ... and if the maxbitrate is already set at the server side, this would not
+        /* If the Transcode is set, then there must be a bit rate that you would want to set.
+         * ... and if the max bit rate is already set at the server side, this would not
          * cause any harm.
          */
         if (_currentSettings.Transcode)
@@ -1119,7 +1104,7 @@ Note: This operation cannot be reversed!
         var client = new RestClient($"{_serverName}rest/");
         request.AddParameter("u", _currentSettings.Username);
 
-        if (_currentSettings.Auth == SubsonicSettings.AuthMethod.HexPass)
+        if (_currentSettings.Auth == AuthMethod.HexPass)
         {
             var hexPass = $"enc:{BitConverter.ToString(Encoding.Default.GetBytes(_currentSettings.Password)).Replace("-", "")}";
             request.AddParameter("p", hexPass);
@@ -1139,14 +1124,19 @@ Note: This operation cannot be reversed!
         var response = client.ExecuteAsync<Response>(request).Result;
         if (!response.IsSuccessful)
         {
+            if (_errors > 0) return response.Data;
             MessageBox.Show($@"Error retrieving response from Subsonic server:
 
 {response.ErrorException}",
                 @"Subsonic Plugin Error",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
+
+            _errors++;
+            return response.Data;
         }
 
+        _errors = 0;
         return response.Data;
     }
 
@@ -1155,7 +1145,7 @@ Note: This operation cannot be reversed!
         var client = new RestClient($"{_serverName}rest/");
         request.AddParameter("u", _currentSettings.Username);
 
-        if (_currentSettings.Auth == SubsonicSettings.AuthMethod.HexPass)
+        if (_currentSettings.Auth == AuthMethod.HexPass)
         {
             var hexPass = $"enc:{BitConverter.ToString(Encoding.Default.GetBytes(_currentSettings.Password)).Replace("-", "")}";
             request.AddParameter("p", hexPass);

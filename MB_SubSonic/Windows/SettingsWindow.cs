@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Windows.Forms;
@@ -11,8 +10,7 @@ public partial class SettingsWindow : Form
 {
     private readonly Interfaces.Plugin.PluginInfo _about;
     private Interfaces.Plugin.MusicBeeApiInterface _mbApiInterface;
-    private List<SubsonicSettings> _settings;
-    private string _currentProfile;
+    private ProfileSettings _settings;
 
     public SettingsWindow()
     {
@@ -28,7 +26,6 @@ public partial class SettingsWindow : Form
         PopulateComboboxes();
 
         FormClosing += Settings_FormClosing;
-        Shown += Settings_OnShown;
         VisibleChanged += OnVisibleChanged;
     }
 
@@ -57,12 +54,12 @@ public partial class SettingsWindow : Form
 
     private void UpdateProfilesDataSource()
     {
-        cmbProfile.DataSource = _settings.Select(s => s.ProfileName).ToList();
+        cmbProfile.DataSource = _settings.Settings.Select(s => s.Profile).ToList();
     }
 
     private void PopulateFields()
     {
-        var currentSettings = _settings.Find(s => s.ProfileName.Equals(_currentProfile));
+        var currentSettings = _settings.Settings.First(s => s.Profile == _settings.SelectedProfile);
 
         TextBoxHostname.Text = currentSettings.Host;
         TextBoxPort.Text = currentSettings.Port;
@@ -82,31 +79,20 @@ public partial class SettingsWindow : Form
 
         ComboBoxBrowseBy.SelectedIndex = (int)currentSettings.BrowseBy;
 
-        // If we only have one profile, or the default one selected, disable the Delete button
-        btnProfileDelete.Enabled = _settings.Count != 1 && !_currentProfile.Equals("Default");
-        // Don't allow renaming of the Default profile
-        btnProfileRename.Enabled = !_currentProfile.Equals("Default");
+        // If we only have one profile, disable the Delete button
+        btnProfileDelete.Enabled = _settings.Settings.Count != 1;
     }
 
     private void OnVisibleChanged(object sender, EventArgs eventArgs)
     {
-        if (Visible)
-        {
-            _settings = Subsonic.LoadSettingsFromFile();
-            UpdateProfilesDataSource();
-            _currentProfile = Subsonic.CurrentProfile;
-            cmbProfile.SelectedItem = _currentProfile;
-        }
-    }
+        if (!Visible) return;
 
-    private void Settings_OnShown(object sender, EventArgs eventArgs)
-    {
         _settings = Subsonic.LoadSettingsFromFile();
+        var profile = _settings.SelectedProfile;
         UpdateProfilesDataSource();
-        _currentProfile = Subsonic.CurrentProfile;
-        cmbProfile.SelectedItem = _currentProfile;
+        cmbProfile.SelectedItem = profile;
     }
-
+    
     private void Settings_FormClosing(object sender, FormClosingEventArgs e)
     {
         if (e.CloseReason != CloseReason.UserClosing) return;
@@ -134,6 +120,7 @@ public partial class SettingsWindow : Form
 {_about.Description}
 
 Author: {_about.Author}
+
 https://github.com/BlitterStudio/MB_SubSonic", caption, MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
@@ -145,7 +132,6 @@ https://github.com/BlitterStudio/MB_SubSonic", caption, MessageBoxButtons.OK, Me
     private void ButtonSave_Click(object sender, EventArgs e)
     {
         StoreCurrentSettings();
-        Subsonic.CurrentProfile = _currentProfile;
         Subsonic.ChangeServerProfile(GetCurrentSettings());
         PersistValues();
         Hide();
@@ -154,7 +140,6 @@ https://github.com/BlitterStudio/MB_SubSonic", caption, MessageBoxButtons.OK, Me
     private void btnApply_Click(object sender, EventArgs e)
     {
         StoreCurrentSettings();
-        Subsonic.CurrentProfile = _currentProfile;
         Subsonic.ChangeServerProfile(GetCurrentSettings());
     }
 
@@ -187,17 +172,18 @@ https://github.com/BlitterStudio/MB_SubSonic", caption, MessageBoxButtons.OK, Me
             Password = TextBoxPassword.Text,
             Transcode = CheckBoxTranscode.Checked,
             Protocol = ComboBoxProtocol.SelectedItem.ToString().Equals("HTTP")
-                ? SubsonicSettings.ConnectionProtocol.Http
-                : SubsonicSettings.ConnectionProtocol.Https,
+                ? ConnectionProtocol.Http
+                : ConnectionProtocol.Https,
             Auth = ComboBoxAuth.SelectedIndex.Equals(0)
-                ? SubsonicSettings.AuthMethod.Token
-                : SubsonicSettings.AuthMethod.HexPass,
+                ? AuthMethod.Token
+                : AuthMethod.HexPass,
             BitRate = string.IsNullOrEmpty(ComboBoxBitrate.SelectedItem.ToString())
                 ? "128K"
                 : ComboBoxBitrate.SelectedItem.ToString(),
             BrowseBy = ComboBoxBrowseBy.SelectedIndex.Equals(0)
-                ? SubsonicSettings.BrowseType.Tags
-                : SubsonicSettings.BrowseType.Directories
+                ? BrowseType.Tags
+                : BrowseType.Directories,
+            Profile = cmbProfile.SelectedItem.ToString()
         };
 
         return settings;
@@ -205,7 +191,7 @@ https://github.com/BlitterStudio/MB_SubSonic", caption, MessageBoxButtons.OK, Me
 
     private void StoreCurrentSettings()
     {
-        var settings = _settings.Find(s => s.ProfileName.Equals(_currentProfile));
+        var settings = _settings.Settings.Find(s => s.Profile == _settings.SelectedProfile);
         if (settings == null) return;
 
         settings.Host = TextBoxHostname.Text;
@@ -215,22 +201,25 @@ https://github.com/BlitterStudio/MB_SubSonic", caption, MessageBoxButtons.OK, Me
         settings.Password = TextBoxPassword.Text;
         settings.Transcode = CheckBoxTranscode.Checked;
         settings.Protocol = ComboBoxProtocol.SelectedItem.ToString().Equals("HTTP")
-            ? SubsonicSettings.ConnectionProtocol.Http
-            : SubsonicSettings.ConnectionProtocol.Https;
+            ? ConnectionProtocol.Http
+            : ConnectionProtocol.Https;
         settings.Auth = ComboBoxAuth.SelectedIndex.Equals(0)
-            ? SubsonicSettings.AuthMethod.Token
-            : SubsonicSettings.AuthMethod.HexPass;
+            ? AuthMethod.Token
+            : AuthMethod.HexPass;
         settings.BitRate = string.IsNullOrEmpty(ComboBoxBitrate.SelectedItem.ToString())
             ? "128K"
             : ComboBoxBitrate.SelectedItem.ToString();
         settings.BrowseBy = ComboBoxBrowseBy.SelectedIndex.Equals(0)
-            ? SubsonicSettings.BrowseType.Tags
-            : SubsonicSettings.BrowseType.Directories;
+            ? BrowseType.Tags
+            : BrowseType.Directories;
+        settings.Profile = cmbProfile.SelectedItem.ToString();
+
+        _settings.SelectedProfile = cmbProfile.SelectedItem.ToString();
     }
 
     private void cmbProfile_SelectedIndexChanged(object sender, EventArgs e)
     {
-        _currentProfile = cmbProfile.SelectedItem.ToString();
+        _settings.SelectedProfile = cmbProfile.SelectedItem.ToString();
         PopulateFields();
     }
 
@@ -238,30 +227,31 @@ https://github.com/BlitterStudio/MB_SubSonic", caption, MessageBoxButtons.OK, Me
     {
         StoreCurrentSettings();
         var newProfileName = Prompt.ShowDialog("Profile Name:", "Profile Name");
-        _settings.Add(new SubsonicSettings{ProfileName = newProfileName });
+        _settings.Settings.Add(new SubsonicSettings { Profile = newProfileName });
         UpdateProfilesDataSource();
-        _currentProfile = newProfileName;
-        cmbProfile.SelectedItem = _currentProfile;
+        _settings.SelectedProfile = newProfileName;
+        cmbProfile.SelectedItem = newProfileName;
     }
 
     private void btnProfileRename_Click(object sender, EventArgs e)
     {
         var newProfileName = Prompt.ShowDialog("Change Profile Name to:", "Profile Name");
-        var settings = _settings.Find(s => s.ProfileName.Equals(_currentProfile));
-        settings.ProfileName = newProfileName;
+        var settings = _settings.Settings.Find(s => s.Profile == _settings.SelectedProfile);
+        settings.Profile = newProfileName;
         UpdateProfilesDataSource();
-        _currentProfile = newProfileName;
-        cmbProfile.SelectedItem = _currentProfile;
+        _settings.SelectedProfile = newProfileName;
+        cmbProfile.SelectedItem = newProfileName;
     }
 
     private void btnProfileDelete_Click(object sender, EventArgs e)
     {
-        if (MessageBox.Show(@"Are you sure you want to delete the current Profile?", @"Deleting Profile", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+        if (MessageBox.Show(@"Are you sure you want to delete the current Profile?", @"Deleting Profile",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
         {
-            var settingToRemove = _settings.Find(s => s.ProfileName.Equals(_currentProfile));
-            _settings.Remove(settingToRemove);
+            var settingToRemove = _settings.Settings.Find(s => s.Profile == _settings.SelectedProfile);
+            _settings.Settings.Remove(settingToRemove);
             UpdateProfilesDataSource();
-            _currentProfile = "Default";
+            _settings.SelectedProfile = _settings.Settings.First().Profile;
             PopulateFields();
         }
     }

@@ -1,33 +1,35 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace MusicBeePlugin.Domain;
 
+public enum AuthMethod
+{
+    Token,
+    HexPass
+}
+
+public enum BrowseType
+{
+    Tags,
+    Directories
+}
+
+public enum ConnectionProtocol
+{
+    Http,
+    Https
+}
+
+public enum ServerType
+{
+    None,
+    Subsonic
+}
+
 public class SubsonicSettings
 {
-    public enum AuthMethod
-    {
-        Token,
-        HexPass
-    }
-
-    public enum ConnectionProtocol
-    {
-        Http,
-        Https
-    }
-
-    public enum ServerType
-    {
-        None,
-        Subsonic
-    }
-
-    public enum BrowseType
-    {
-        Tags,
-        Directories
-    }
-
+    public string Profile { get; set; }
     public string Host { get; set; }
     public string Port { get; set; }
     public string BasePath { get; set; }
@@ -37,19 +39,24 @@ public class SubsonicSettings
     public ConnectionProtocol Protocol { get; set; }
     public AuthMethod Auth { get; set; }
     public string BitRate { get; set; }
-    public string ProfileName { get; set; }
     public BrowseType BrowseBy { get; set; }
+}
+
+public class ProfileSettings
+{
+    public string SelectedProfile { get; set; }
+    public List<SubsonicSettings> Settings { get; set; }
 }
 
 public static class SubsonicSettingsExtensions
 {
-    public static string ToFriendlyString(this SubsonicSettings.ConnectionProtocol me)
+    public static string ToFriendlyString(this ConnectionProtocol me)
     {
         return me switch
         {
-            SubsonicSettings.ConnectionProtocol.Http => "HTTP",
-            SubsonicSettings.ConnectionProtocol.Https => "HTTPS",
-            _ => throw new ArgumentOutOfRangeException(nameof(me), me, null),
+            ConnectionProtocol.Http => "HTTP",
+            ConnectionProtocol.Https => "HTTPS",
+            _ => throw new ArgumentOutOfRangeException(nameof(me), me, null)
         };
     }
 }
