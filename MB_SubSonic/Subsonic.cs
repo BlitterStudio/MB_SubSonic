@@ -732,8 +732,8 @@ The defaults will be set instead...", @"No settings found", MessageBoxButtons.OK
 
     public static void UpdateRatingLove(string id, string starred)
     {
-        if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(starred))
-            throw new ArgumentException("Id and starred parameters cannot be null or empty.");
+        if (string.IsNullOrEmpty(id))
+            throw new ArgumentException("Id parameter cannot be null or empty.");
 
         var resource = starred.Equals("L", StringComparison.OrdinalIgnoreCase) ? "star" : "unstar";
         var request = new RestRequest { Resource = resource };
