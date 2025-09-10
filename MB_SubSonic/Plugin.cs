@@ -37,7 +37,7 @@ public class Plugin
         _about.Type = Interfaces.Plugin.PluginType.Storage;
         _about.VersionMajor = 3; // your plugin version
         _about.VersionMinor = 2;
-        _about.Revision = 0;
+        _about.Revision = 1;
         _about.MinInterfaceVersion = Interfaces.Plugin.MinInterfaceVersion;
         _about.MinApiRevision = Interfaces.Plugin.MinApiRevision;
         _about.ReceiveNotifications = Interfaces.Plugin.ReceiveNotificationFlags.PlayerEvents
