@@ -36,8 +36,8 @@ public class Plugin
         // current only applies to artwork, lyrics or instant messenger name that appears in the provider drop down selector or target Instant Messenger
         _about.Type = Interfaces.Plugin.PluginType.Storage;
         _about.VersionMajor = 3; // your plugin version
-        _about.VersionMinor = 2;
-        _about.Revision = 1;
+        _about.VersionMinor = 3;
+        _about.Revision = 0;
         _about.MinInterfaceVersion = Interfaces.Plugin.MinInterfaceVersion;
         _about.MinApiRevision = Interfaces.Plugin.MinApiRevision;
         _about.ReceiveNotifications = Interfaces.Plugin.ReceiveNotificationFlags.PlayerEvents
@@ -135,43 +135,44 @@ public class Plugin
                 Subsonic.UpdateRating(id, rating);
                 break;
 
-            //case Interfaces.Plugin.NotificationType.PlaylistCreated:
-            //    // TODO send new playlist to Subsonic Server
-            //    string[] filenames;
-            //    Subsonic.QueryPlaylistFilesEx(sourceFileUrl, out filenames);
+            case Interfaces.Plugin.NotificationType.PlaylistCreated:
+                if (string.IsNullOrEmpty(sourceFileUrl)) break;
+                Subsonic.QueryPlaylistFilesEx(sourceFileUrl, out var createdFilenames);
+                if (createdFilenames == null) break;
+                var createdSongIds = GetSongIds(createdFilenames);
+                Subsonic.CreatePlaylist(GetPlaylistName(sourceFileUrl), createdSongIds);
+                break;
 
-            //    break;
-
-            //case Interfaces.Plugin.NotificationType.PlaylistUpdated:
-            //    //TODO check what happens here
-            //    string[] filenames1;
-            //    Subsonic.QueryPlaylistFilesEx(sourceFileUrl, out filenames1);
-
-            //    break;
+            case Interfaces.Plugin.NotificationType.PlaylistUpdated:
+                if (string.IsNullOrEmpty(sourceFileUrl)) break;
+                Subsonic.QueryPlaylistFilesEx(sourceFileUrl, out var updatedFilenames);
+                if (updatedFilenames == null) break;
+                var updatedSongIds = GetSongIds(updatedFilenames);
+                // For now we recreate/update the playlist content
+                var playlists = Subsonic.GetPlaylists();
+                if (playlists == null) break;
+                var playlistName = GetPlaylistName(sourceFileUrl);
+                var existing = playlists.FirstOrDefault(p => p.Value.Equals(playlistName, StringComparison.OrdinalIgnoreCase));
+                if (!string.IsNullOrEmpty(existing.Key))
+                {
+                    Subsonic.DeletePlaylist(existing.Key);
+                }
+                Subsonic.CreatePlaylist(playlistName, updatedSongIds);
+                break;
 
             case Interfaces.Plugin.NotificationType.PlaylistDeleted:
-                //TODO Delete playlist
                 var serverPlaylists = Subsonic.GetPlaylists();
-                var playlistToDelete = serverPlaylists.Where(p => p.Value.Equals(GetPlaylistName(sourceFileUrl)));
+                var playlistToDelete = serverPlaylists.Where(p => p.Value.Equals(GetPlaylistName(sourceFileUrl), StringComparison.OrdinalIgnoreCase));
                 foreach (var item in playlistToDelete)
                 {
-                    Subsonic.DeletePlaylist(int.Parse(item.Key));
+                    Subsonic.DeletePlaylist(item.Key);
                 }
                 break;
 
             case Interfaces.Plugin.NotificationType.PlaylistMoved:
-                Subsonic.QueryPlaylistFilesEx(sourceFileUrl, out var filenames);
-
-                // Get Song IDs to add to playlist
-                var songIds = new List<int>();
-                foreach (var filename in filenames)
-                {
-                    id = Subsonic.GetFileTag(filename, Interfaces.Plugin.MetaDataType.Custom16);
-                    if (int.TryParse(id, out var songId))
-                        songIds.Add(songId);
-                }
-
-                Subsonic.CreatePlaylist(GetPlaylistName(sourceFileUrl), songIds);
+                Subsonic.QueryPlaylistFilesEx(sourceFileUrl, out var movedFilenames);
+                var movedSongIds = GetSongIds(movedFilenames);
+                Subsonic.CreatePlaylist(GetPlaylistName(sourceFileUrl), movedSongIds);
                 break;
 
             //case NotificationType.TrackChanged:
@@ -183,11 +184,32 @@ public class Plugin
 
     private string GetPlaylistName(string playlistUrl)
     {
-        // Get Playlist Name
-        const string trimEndChars = ".mbp";
-        const string trimStartChars = "\\";
-        var playlistName = playlistUrl.TrimEnd(trimEndChars.ToCharArray()).Substring(playlistUrl.LastIndexOf('\\'));
-        return playlistName.TrimStart(trimStartChars.ToCharArray());
+        if (string.IsNullOrEmpty(playlistUrl)) return "Unknown Playlist";
+        try {
+            return Path.GetFileNameWithoutExtension(playlistUrl);
+        } catch {
+            return "Invalid Playlist Name";
+        }
+    }
+
+    private List<string> GetSongIds(string[] filenames)
+    {
+        var songIds = new List<string>();
+        if (filenames == null) return songIds;
+        foreach (var filename in filenames)
+        {
+            if (string.IsNullOrEmpty(filename)) continue;
+            var id = Subsonic.GetFileTag(filename, Interfaces.Plugin.MetaDataType.Custom16);
+
+            if (string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(filename))
+            {
+                id = Subsonic.NormalizeId(filename);
+            }
+
+            if (!string.IsNullOrEmpty(id))
+                songIds.Add(id);
+        }
+        return songIds;
     }
 
     // return an array of lyric or artwork provider names this plugin supports

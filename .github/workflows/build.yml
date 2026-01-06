@@ -1,0 +1,59 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v1
+
+    - name: Restore NuGet Packages
+      run: nuget restore MB_SubSonic.sln
+
+    - name: Build Solution
+      run: msbuild MB_SubSonic.sln /p:Configuration=Release /p:Platform="Any CPU"
+
+    - name: Prepare Artifact
+      shell: pwsh
+      run: |
+        $version = if ("${{ github.ref }}".StartsWith("refs/tags/v")) { "${{ github.ref_name }}" } else { "build-${{ github.run_number }}" }
+        $zipName = "mb_Subsonic_$version.zip"
+        echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
+        
+        # Ensure the bin/Release directory exist and contains the DLL
+        $dllPath = "MB_SubSonic/bin/Release/mb_Subsonic.dll"
+        if (Test-Path $dllPath) {
+          Compress-Archive -Path $dllPath -DestinationPath $zipName
+        } else {
+          Write-Error "Could not find $dllPath"
+          exit 1
+        }
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.ZIP_NAME }}
+        path: ${{ env.ZIP_NAME }}
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v2
+      with:
+        files: ${{ env.ZIP_NAME }}
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
