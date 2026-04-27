@@ -8,8 +8,13 @@ on:
   pull_request:
     branches: [ master ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
+    permissions:
+      contents: write
     runs-on: windows-latest
 
     steps:
